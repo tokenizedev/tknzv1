@@ -436,7 +436,7 @@ export const CoinCreator: React.FC = () => {
             </>
           ) : (
             <>
-              <Send className="w-4 h-4" />
+              <Send className="w-4 h-4 space-y-4" />
               <span>Create Meme Coin</span>
             </>
           )}
