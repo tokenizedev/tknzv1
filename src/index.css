@@ -5,7 +5,14 @@
 @layer base {
   body {
     @apply antialiased;
+    overflow-y: hidden;
   }
+}
+
+#root{
+  height: 600px;
+  overflow-y: hidden;
+  position: relative;
 }
 
 @layer components {
@@ -37,4 +44,22 @@
     @apply bg-gradient-to-br from-purple-500/10 to-purple-600/10
            p-3 rounded-xl shadow-inner;
   }
+}
+
+/* Custom scrollbar styles */
+::-webkit-scrollbar {
+  width: 8px; /* Width of the scrollbar */
+}
+
+::-webkit-scrollbar-track {
+  background: transparent; /* Background of the scrollbar track */
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, #a855f7, #7e22ce); /* Gradient color for the scrollbar thumb */
+  border-radius: 10px; /* Rounded corners for the scrollbar thumb */
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(to bottom, #7e22ce, #5b21b6); /* Darker gradient on hover */
 }
