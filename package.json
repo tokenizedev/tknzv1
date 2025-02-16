@@ -1,7 +1,8 @@
 {
   "name": "tokenize",
   "private": true,
-  "version": "0.1.1",
+  "type": "module",
+  "version": "0.1.2",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
@@ -11,8 +12,7 @@
     "bump": "commit-and-tag-version",
     "keygen": "scripts/gen-extension-pem.sh",
     "package": "node pack.js",
-    "repackage": "npm run build && npm run package",
-    "release": "npm run bump && npm run package"
+    "release": "npm run build && npm run bump && npm run package"
   },
   "dependencies": {
     "@solana/web3.js": "^1.91.1",
