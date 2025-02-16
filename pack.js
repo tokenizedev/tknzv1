@@ -10,7 +10,7 @@ const __dirname = dirname(__filename);
 try {
   const { base } = parse(__dirname);
   const { version } = JSON.parse(
-    readFileSync(resolve(__dirname, 'dist', 'manifest.json'), 'utf8')
+    readFileSync(resolve(__dirname, 'package.json'), 'utf8')
   );
 
   const outdir = resolve(__dirname, 'release');
