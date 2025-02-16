@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.1.4](https://tokenizedev///compare/v0.1.2...v0.1.4) (2025-02-16)
+
+
+### Features
+
+* **package.json:** update version to 0.1.3 and add postbuild script ([666931f](https://tokenizedev///commit/666931f3bf2a595373ffcd422cfbff971e0485ac))
+
 ## [0.1.2](https://tokenizedev///compare/v0.1.1...v0.1.2) (2025-02-16)
 
 
