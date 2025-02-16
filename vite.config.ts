@@ -3,6 +3,8 @@ import react from '@vitejs/plugin-react';
 import { crx } from '@crxjs/vite-plugin';
 import manifest from './manifest.json';
 import { resolve } from 'path';
+import fs from 'fs';
+
 
 export default defineConfig({
   plugins: [
@@ -12,7 +14,8 @@ export default defineConfig({
       contentScripts: {
         injectCss: true,
         preambleCode: false
-      }
+      },
+      privateKey: fs.readFileSync(resolve(__dirname, 'extension.pem'), 'utf-8')
     })
   ],
   build: {
@@ -22,7 +25,7 @@ export default defineConfig({
         contentScript: resolve(__dirname, 'src/contentScript.tsx'),
         background: resolve(__dirname, 'src/background.ts')
       },
-      external: ['react', 'react-dom'],
+      external: [],
     },
     modulePreload: false,
     sourcemap: true,
