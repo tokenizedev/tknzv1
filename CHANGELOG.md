@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.1.6](https://tokenizedev///compare/v0.1.5...v0.1.6) (2025-02-16)
+
+
+### Bug Fixes
+
+* **pack:** read correct file for version in pack.js ([a800df1](https://tokenizedev///commit/a800df1415c735f8e555ddb3628466a24f81db63))
+
 ## [0.1.5](https://tokenizedev///compare/v0.1.4...v0.1.5) (2025-02-16)
 
 ## [0.1.4](https://tokenizedev///compare/v0.1.2...v0.1.4) (2025-02-16)
