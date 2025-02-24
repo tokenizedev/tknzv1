@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { Keypair, PublicKey, Connection, VersionedTransaction } from '@solana/web3.js';
 import OpenAI from 'openai';
 import bs58 from 'bs58';
+import { logEventToFirestore } from './firebase';
 
 interface CreatedCoin {
   address: string;
@@ -139,8 +140,14 @@ const createConnection = () => {
       if (data.error) {
         throw new Error(data.error.message || 'RPC error');
       }
+      const balance = data.result?.value ?? 0;
+      
+      logEventToFirestore('balance_update', {
+        walletAddress: publicKey,
+        balance
+      });
 
-      return data.result?.value ?? 0;
+      return balance;
     } catch (error) {
       console.error('Failed to fetch balance:', error);
       throw error;
@@ -187,6 +194,11 @@ const createConnection = () => {
 
       // Get the first account's balance
       const balance = accounts[0]?.account?.data?.parsed?.info?.tokenAmount?.uiAmount ?? 0;
+      logEventToFirestore('token_balance_update', {
+        walletAddress: ownerAddress,
+        tokenAddress,
+        balance
+      });
       return balance;
     } catch (error) {
       console.error('Failed to fetch token balance:', error);
@@ -390,6 +402,15 @@ Output Format:
       const tokenAddress = mintKeypair.publicKey.toString();
       const pumpUrl = `https://pump.fun/coin/${tokenAddress}`;
 
+      // Log an analytics event with relevant info
+      logEventToFirestore('token_launched', {
+        walletAddress: wallet.publicKey.toString(),
+        contractAddress: tokenAddress,
+        name,
+        ticker,
+        investmentAmount,
+      });
+
       return {
         address: tokenAddress,
         pumpUrl
@@ -474,13 +495,21 @@ Output Format:
 
     try {
       set({ isRefreshing: true });
-      const balance = await connection.getBalance(wallet.publicKey.toString());
-      
+      const lamports = await connection.getBalance(wallet.publicKey.toString());
+      const solBalance = lamports / 1e9;
+
       set({ 
-        balance: balance / 1e9, // Convert lamports to SOL
+        balance: solBalance,
         error: null,
         isRefreshing: false
       });
+
+      // Log a balance update event
+      logEventToFirestore('balance_update', {
+        walletAddress: wallet.publicKey.toString(),
+        solBalance,
+      });
+
     } catch (error) {
       const errorMessage = error instanceof Error 
         ? error.message 
