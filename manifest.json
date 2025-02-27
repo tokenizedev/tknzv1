@@ -4,6 +4,7 @@
   "version": "0.1.6",
   "description": "Create meme coins on Pump.fun directly from news articles",
   "permissions": [
+    "activeTab",
     "storage",
     "scripting"
   ],
@@ -18,6 +19,21 @@
       "128": "assets/icon128.png"
     }
   },
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "src/contentScript.tsx"
+      ],
+      "run_at": "document_end"
+    }
+  ],
+  "background": {
+    "service_worker": "src/background.ts",
+    "type": "module"
+  },
   "icons": {
     "16": "assets/icon16.png",
     "48": "assets/icon48.png",
@@ -27,6 +43,7 @@
     {
       "resources": [
         "assets/*",
+        "src/contentScript.tsx",
         "*.js",
         "*.woff2"
       ],
