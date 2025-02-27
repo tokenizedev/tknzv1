@@ -21,7 +21,9 @@ export default defineConfig({
   build: {
     rollupOptions: {
       input: {
-        main: resolve(__dirname, 'index.html')
+        main: resolve(__dirname, 'index.html'),
+        contentScript: resolve(__dirname, 'src/contentScript.tsx'),
+        background: resolve(__dirname, 'src/background.ts')
       },
       external: [],
     },
@@ -40,5 +42,10 @@ export default defineConfig({
   },
   optimizeDeps: {
     include: ['html2canvas', 'react', 'react-dom']
+  },
+  resolve: {
+    alias: {
+      'html2canvas': resolve(__dirname, 'node_modules/html2canvas/dist/html2canvas.esm.js')
+    }
   }
 });
