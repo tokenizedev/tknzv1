@@ -10,8 +10,8 @@ interface ArticleData {
   xUrl?: string;
 }
 
-// Development mode mock data
 const DEV_MODE = process.env.NODE_ENV === 'development' && !chrome?.tabs;
+
 const MOCK_ARTICLE_DATA: ArticleData = {
   title: "Bitcoin Reaches New All-Time High",
   image: "https://images.unsplash.com/photo-1518546305927-5a555bb7020d?w=800",
@@ -21,7 +21,7 @@ const MOCK_ARTICLE_DATA: ArticleData = {
 
 export const CoinCreator: React.FC = () => {
   const { balance, error: walletError, investmentAmount: defaultInvestment, addCreatedCoin, createCoin } = useStore();
-  const [articleData, setArticleData] = useState<ArticleData>({
+  const [_articleData, setArticleData] = useState<ArticleData>({
     title: '',
     image: '',
     description: '',
@@ -66,19 +66,13 @@ export const CoinCreator: React.FC = () => {
     }
   };
 
-  const generateSuggestions = async (data: ArticleData, level = memeLevel) => {
+  const generateSuggestions = async (url: string, level = memeLevel) => {
     setIsGenerating(true);
     setError(null);
     try {
-      const { title, description: articleDesc, xUrl } = data;
-      const isXPost = Boolean(xUrl);
-      
-      if (!title) {
-        throw new Error('No article title available');
-      }
-
       // Check if it's TKNZ.FUN domain
-      const isTknzDomain = data.url.includes('tknz.fun');
+      const isTknzDomain = url.includes('tknz.fun');
+
       if (isTknzDomain) {
         setCoinName('TKNZ.FUN');
         setTicker('TKNZ');
@@ -86,16 +80,19 @@ export const CoinCreator: React.FC = () => {
         setIsGenerating(false);
         return;
       }
+      const tokenCreationData = await useStore.getState().getTokenCreationData(url, level)
+      const { article, token } = tokenCreationData;
+      const { name } = token;
+      
+      if (!name) {
+        throw new Error('No article title available');
+      }
 
-      // Create prompt for AI
-      const prompt = `Article Title: ${title}\nDescription: ${articleDesc}\nType: ${isXPost ? 'Social Media Post' : 'News Article'}\n\nGenerate a ${isXPost ? 'tweet-based' : 'news-based'} meme coin.`;
-
-      // Generate meme using AI
-      const aiResponse = await useStore.getState().generateAIMeme(prompt, level);
-
-      setCoinName(aiResponse.name);
-      setTicker(aiResponse.ticker);
-      setDescription(aiResponse.description);
+      setArticleData(article);
+      setImageUrl(article.image);
+      setCoinName(token.name);
+      setTicker(token.ticker);
+      setDescription(token.description);
       setMemeLevel((level + 1) % 4);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to generate suggestions';
@@ -117,40 +114,20 @@ export const CoinCreator: React.FC = () => {
           setArticleData(data);
           setWebsiteUrl(data.url);
           setImageUrl(data.image);
-          await generateSuggestions(data, 0);
+          await generateSuggestions(data.url, 0);
         } else if (typeof chrome !== 'undefined' && chrome?.tabs) {
           const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+
           if (!tabs[0]?.id) {
             throw new Error('No active tab found');
           }
-
-          let response;
-          try {
-            response = await chrome.tabs.sendMessage(tabs[0].id, { type: 'GET_ARTICLE_DATA' });
-          } catch (e) {
-            await chrome.scripting.executeScript({
-              target: { tabId: tabs[0].id },
-              files: ['src/contentScript.tsx']
-            });
-            response = await chrome.tabs.sendMessage(tabs[0].id, { type: 'GET_ARTICLE_DATA' });
+          const url = tabs[0]?.url;
+          if (!url) {
+            throw new Error('No URL found');
           }
-
-          if (!response) {
-            throw new Error('Failed to extract data from the page');
-          }
-
-          data = {
-            title: response.title || '',
-            image: response.image || '',
-            description: response.description || '',
-            url: response.url || tabs[0].url || '',
-            xUrl: response.xUrl || ''
-          };
-
-          setArticleData(data);
-          
           // Check if it's TKNZ.FUN domain
-          const isTknzDomain = data.url.includes('tknz.fun');
+          const isTknzDomain = url.includes('tknz.fun');
+
           if (isTknzDomain) {
             setCoinName('TKNZ.FUN');
             setTicker('TKNZ');
@@ -158,16 +135,16 @@ export const CoinCreator: React.FC = () => {
           }
           
           // Auto-populate URLs based on the type
-          const isTwitterUrl = data.url.includes('twitter.com') || data.url.includes('x.com');
+          const isTwitterUrl = url.includes('twitter.com') || url.includes('x.com');
+
           if (isTwitterUrl) {
-            setXUrl(data.url);
+            setXUrl(url);
           } else {
-            setWebsiteUrl(data.url);
+            setWebsiteUrl(url);
           }
           
-          setImageUrl(data.image);
           if (!isTknzDomain) {
-            await generateSuggestions(data, 0);
+            await generateSuggestions(url, 0);
           }
         }
       } catch (error) {
@@ -257,7 +234,7 @@ export const CoinCreator: React.FC = () => {
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-gray-900">Token Details</h3>
           <button
-            onClick={() => generateSuggestions(articleData)}
+            onClick={() => generateSuggestions(websiteUrl)}
             disabled={isGenerating || websiteUrl.includes('tknz.fun')}
             className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg hover:from-purple-600 hover:to-purple-700 transition-all duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
