@@ -1,7 +1,5 @@
 import { create } from 'zustand';
-import { Keypair, PublicKey, Connection, VersionedTransaction } from '@solana/web3.js';
-import OpenAI from 'openai';
-import bs58 from 'bs58';
+import { Keypair, Connection, VersionedTransaction } from '@solana/web3.js';
 import { logEventToFirestore } from './firebase';
 
 interface CreatedCoin {
@@ -23,6 +21,22 @@ interface CoinCreationParams {
   investmentAmount: number;
 }
 
+//make a tyhpe for this data
+interface TokenCreationData {
+  article: {
+    title: string;
+    image: string;
+    description: string;
+    url: string;
+    isXPost: boolean;
+  };
+  token: {
+    name: string;
+    ticker: string;
+    description: string;
+  };
+}
+
 interface WalletState {
   wallet: Keypair | null;
   balance: number;
@@ -36,19 +50,13 @@ interface WalletState {
   setInvestmentAmount: (amount: number) => Promise<void>;
   updateCoinBalance: (address: string, balance: number) => Promise<void>;
   refreshTokenBalances: () => Promise<void>;
-  generateAIMeme: (prompt: string, level: number) => Promise<{ name: string; ticker: string; description: string; }>;
   createCoin: (params: CoinCreationParams) => Promise<{ address: string; pumpUrl: string; }>;
+  getTokenCreationData: (url: string, level: number) => Promise<TokenCreationData>;
 }
 
 // Development mode mock data
 const DEV_MODE = process.env.NODE_ENV === 'development' && !window.chrome?.storage;
-
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: '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',
-  dangerouslyAllowBrowser: true
-});
-
+const TOKEN_CREATION_API_URL = 'https://tknz.fun/.netlify/functions/token';
 // Mock storage for development
 const devStorage = {
   data: new Map<string, any>(),
@@ -221,100 +229,21 @@ export const useStore = create<WalletState>((set, get) => ({
   createdCoins: [],
   isRefreshing: false,
   investmentAmount: 0,
-  
-  generateAIMeme: async (prompt: string, level: number) => {
-    const systemPrompt = `You are a blockchain tokenization expert specializing in creating literal and accurate token names for social media content. Your primary goal is to accurately represent the content, especially at Level 0.
 
-### **Level 0 (Most Important - Current level: ${level === 0}):**
-- **Core Principle:** 100% literal, no creativity, just facts
-- **Name Format:**
-  - For tweets with images: Use format "[Subject] Image" (e.g., "Bitcoin Chart Image", "Cat Photo")
-  - For text-only tweets: Use 2-4 key words that summarize the main point
-- **Ticker:** Direct abbreviation of key words (2-5 chars recommended, but can be up to 15)
-- **Description:**
-  - Long tweets (>100 chars): Summarize the key point in one clear sentence
-  - Short tweets: Use the exact tweet text
-  - Remove hashtags and @mentions
-- **Absolutely NO:**
-  - Emojis
-  - Meme references
-  - Crypto slang
-  - Marketing language
-  - Exclamation marks
-- **Example:**
-  Tweet: "Just deployed our new AI model that can generate photorealistic images from text descriptions! #AI #Tech"
-  Output:
-  {
-    "name": "AI Model Deployment",
-    "ticker": "AIMD",
-    "description": "Announcement of new AI model deployment for text-to-image generation"
-  }
+  getTokenCreationData: async (url: string, level: number = 1) => {
+    const response = await fetch(TOKEN_CREATION_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ url, level })
+    })
 
-### **Level 1 (Current level: ${level === 1}):**
-- 90% literal content, 10% style
-- One emoji maximum
-- Keep focus on the actual content
-- Example:
-  {
-    "name": "AI Vision Launch",
-    "ticker": "AIVL",
-    "description": "New AI model transforms text into photorealistic images ✨"
-  }
-
-### **Level 2 (Current level: ${level === 2}):**
-- 75% literal content, 25% style
-- Two emojis maximum
-- Example:
-  {
-    "name": "AI Creator Pro",
-    "ticker": "AIC",
-    "description": "Text-to-image AI technology revolutionizing digital art 🎨 🤖"
-  }
-
-### **Level 3 (Current level: ${level === 3}):**
-- 50% literal content, 50% style
-- Three emojis maximum
-- Example:
-  {
-    "name": "AI Pixel Magic",
-    "ticker": "MAGIC",
-    "description": "Turn your words into masterpieces with our new AI! 🎨 ✨ 🚀"
-  }
-
-### **Critical Rules:**
-1. Level 0 must be COMPLETELY LITERAL - no creative elements
-2. All levels must clearly reference the actual content
-3. Never use generic names
-4. Ticker suggestions should be 2-5 characters, all caps (though user can input up to 15)
-5. No "coin" or "token" words
-6. For Level 0, if it's a retweet or quote tweet, focus on the quoted content
-7. For Level 0, if there's an image, explicitly mention it in the name
-
-Output Format:
-{
-  "name": "Literal Name",
-  "ticker": "TICK",
-  "description": "Literal Description"
-}`;
-
-    try {
-      const completion = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: prompt }
-        ],
-        temperature: 0.7 + (level * 0.1) // Increase creativity with level
-      });
-
-      const response = completion.choices[0]?.message?.content;
-      if (!response) throw new Error('No response from AI');
-
-      return JSON.parse(response);
-    } catch (error) {
-      console.error('AI generation error:', error);
-      throw error;
+    if (!response.ok) {
+      throw new Error(`Failed to fetch token creation data: ${response.statusText}`);
     }
+
+    return response.json()
   },
 
   createCoin: async ({ name, ticker, description, imageUrl, websiteUrl, twitter, telegram, investmentAmount }) => {
