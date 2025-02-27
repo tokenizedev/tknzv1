@@ -10,6 +10,8 @@ interface ArticleData {
   xUrl?: string;
 }
 
+const DEV_MODE = process.env.NODE_ENV === 'development' && !chrome?.tabs;
+
 const MOCK_ARTICLE_DATA: ArticleData = {
   title: "Bitcoin Reaches New All-Time High",
   image: "https://images.unsplash.com/photo-1518546305927-5a555bb7020d?w=800",
