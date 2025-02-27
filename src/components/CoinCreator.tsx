@@ -2,9 +2,24 @@ import React, { useState, useEffect } from 'react';
 import { Image, Type, FileText, Send, Loader2, AlertCircle, Globe, Sparkles, DollarSign, Hand as BrandX, GitBranch as BrandTelegram } from 'lucide-react';
 import { useStore } from '../store';
 
+interface ArticleData {
+  title: string;
+  image: string;
+  description: string;
+  url: string;
+  xUrl?: string;
+}
+
+const MOCK_ARTICLE_DATA: ArticleData = {
+  title: "Bitcoin Reaches New All-Time High",
+  image: "https://images.unsplash.com/photo-1518546305927-5a555bb7020d?w=800",
+  description: "The world's largest cryptocurrency by market cap has reached a new milestone...",
+  url: "https://example.com/bitcoin-ath"
+};
+
 export const CoinCreator: React.FC = () => {
   const { balance, error: walletError, investmentAmount: defaultInvestment, addCreatedCoin, createCoin } = useStore();
-  const [articleData, setArticleData] = useState<ArticleData>({
+  const [_articleData, setArticleData] = useState<ArticleData>({
     title: '',
     image: '',
     description: '',
