@@ -3,11 +3,13 @@ import { Image, Type, FileText, Send, Loader2, AlertCircle, Globe, Sparkles, Dol
 import { useStore } from '../store';
 
 interface ArticleData {
-  title: string;
-  image: string;
-  description: string;
-  url: string;
-  xUrl?: string;
+  title: string
+  image: string
+  description: string
+  url: string
+  author?: string
+  xUrl?: string,
+  isXPost: boolean
 }
 
 const DEV_MODE = process.env.NODE_ENV === 'development' && !chrome?.tabs;
@@ -16,7 +18,9 @@ const MOCK_ARTICLE_DATA: ArticleData = {
   title: "Bitcoin Reaches New All-Time High",
   image: "https://images.unsplash.com/photo-1518546305927-5a555bb7020d?w=800",
   description: "The world's largest cryptocurrency by market cap has reached a new milestone...",
-  url: "https://example.com/bitcoin-ath"
+  url: "https://example.com/bitcoin-ath",
+  xUrl: "https://x.com/bitcoin",
+  isXPost: false
 };
 
 export const CoinCreator: React.FC = () => {
@@ -25,7 +29,8 @@ export const CoinCreator: React.FC = () => {
     title: '',
     image: '',
     description: '',
-    url: ''
+    url: '',
+    isXPost: false
   });
   const [coinName, setCoinName] = useState('');
   const [ticker, setTicker] = useState('');
@@ -66,13 +71,14 @@ export const CoinCreator: React.FC = () => {
     }
   };
 
-  const generateSuggestions = async (url: string, level = memeLevel) => {
+  const generateSuggestions = async (article: ArticleData, level = memeLevel) => {
     setIsGenerating(true);
     setError(null);
     try {
       // Check if it's TKNZ.FUN domain
-      const isTknzDomain = url.includes('tknz.fun');
-
+      const isTknzDomain = article.url.includes('tknz.fun');
+      const isTwitterUrl = article.url.includes('twitter.com') || article.url.includes('x.com');
+      
       if (isTknzDomain) {
         setCoinName('TKNZ.FUN');
         setTicker('TKNZ');
@@ -80,12 +86,18 @@ export const CoinCreator: React.FC = () => {
         setIsGenerating(false);
         return;
       }
-      const tokenCreationData = await useStore.getState().getTokenCreationData(url, level)
-      const { article, token } = tokenCreationData;
+      const tokenCreationData = await useStore.getState().getTokenCreationData(article, level)
+      const { token } = tokenCreationData;
       const { name } = token;
       
       if (!name) {
         throw new Error('No article title available');
+      }
+
+      if (isTwitterUrl) {
+        setXUrl(article.url);
+      } else {
+        setWebsiteUrl(article.url);
       }
 
       setArticleData(article);
@@ -114,38 +126,10 @@ export const CoinCreator: React.FC = () => {
           setArticleData(data);
           setWebsiteUrl(data.url);
           setImageUrl(data.image);
-          await generateSuggestions(data.url, 0);
-        } else if (typeof chrome !== 'undefined' && chrome?.tabs) {
-          const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-
-          if (!tabs[0]?.id) {
-            throw new Error('No active tab found');
-          }
-          const url = tabs[0]?.url;
-          if (!url) {
-            throw new Error('No URL found');
-          }
-          // Check if it's TKNZ.FUN domain
-          const isTknzDomain = url.includes('tknz.fun');
-
-          if (isTknzDomain) {
-            setCoinName('TKNZ.FUN');
-            setTicker('TKNZ');
-            setDescription('TKNZ - Tokenize Anything, Tokenize Everything');
-          }
-          
-          // Auto-populate URLs based on the type
-          const isTwitterUrl = url.includes('twitter.com') || url.includes('x.com');
-
-          if (isTwitterUrl) {
-            setXUrl(url);
-          } else {
-            setWebsiteUrl(url);
-          }
-          
-          if (!isTknzDomain) {
-            await generateSuggestions(url, 0);
-          }
+          await generateSuggestions(data, 0);
+        } else {
+          const articleData = await useStore.getState().getArticleData();
+          await generateSuggestions(articleData, 0);
         }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Failed to extract page data';
