@@ -51,12 +51,28 @@ interface WalletState {
   updateCoinBalance: (address: string, balance: number) => Promise<void>;
   refreshTokenBalances: () => Promise<void>;
   createCoin: (params: CoinCreationParams) => Promise<{ address: string; pumpUrl: string; }>;
-  getTokenCreationData: (url: string, level: number) => Promise<TokenCreationData>;
+  getArticleData: () => Promise<ArticleData>;
+  getTokenCreationData: (article: ArticleData, level: number) => Promise<TokenCreationData>;
+}
+
+interface ArticleData {
+  title: string
+  image: string
+  description: string
+  url: string
+  author?: string
+  xUrl?: string,
+  isXPost: boolean
+}
+
+interface ArticleTokenRequest {
+    article: ArticleData,
+    level?: number
 }
 
 // Development mode mock data
 const DEV_MODE = process.env.NODE_ENV === 'development' && !window.chrome?.storage;
-const TOKEN_CREATION_API_URL = 'https://tknz.fun/.netlify/functions/token';
+const TOKEN_CREATION_API_URL = 'https://tknz.fun/.netlify/functions/article-token';
 // Mock storage for development
 const devStorage = {
   data: new Map<string, any>(),
@@ -230,13 +246,39 @@ export const useStore = create<WalletState>((set, get) => ({
   isRefreshing: false,
   investmentAmount: 0,
 
-  getTokenCreationData: async (url: string, level: number = 1) => {
+  getArticleData: async () => {
+    if (typeof chrome == 'undefined' ||  !chrome?.tabs) {
+      throw new Error('Chrome tabs not supported');
+    }
+
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+
+    if (!tabs[0]?.id) {
+      throw new Error('No active tab found');
+    }
+
+    let response;
+
+    try {
+      response = await chrome.tabs.sendMessage(tabs[0].id, { type: 'GET_ARTICLE_DATA' });
+    } catch (e) {
+      await chrome.scripting.executeScript({
+        target: { tabId: tabs[0].id },
+        files: ['src/contentScript.tsx']
+      });
+      response = await chrome.tabs.sendMessage(tabs[0].id, { type: 'GET_ARTICLE_DATA' });
+    }
+
+    return response;
+  },
+
+  getTokenCreationData: async (article: ArticleData, level: number = 1) => {
     const response = await fetch(TOKEN_CREATION_API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ url, level })
+      body: JSON.stringify({ article, level })
     })
 
     if (!response.ok) {
