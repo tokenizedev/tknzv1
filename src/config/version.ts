@@ -1,0 +1,1 @@
+export const APP_VERSION = (import.meta as any).env.VITE_APP_VERSION; 
