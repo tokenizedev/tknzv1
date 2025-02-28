@@ -112,6 +112,8 @@ const extractTweetData = async () => {
     return {
       title: tweetText || 'Tweet',
       image: canvas.toDataURL('image/png'),
+      authorName,
+      tweetImage,
       description: tweetText,
       url: window.location.href,
       xUrl: window.location.href
