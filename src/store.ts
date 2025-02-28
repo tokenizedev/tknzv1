@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { Keypair, Connection, VersionedTransaction } from '@solana/web3.js';
 import { logEventToFirestore } from './firebase';
-
+import { compareVersions } from 'compare-versions';
 interface CreatedCoin {
   address: string;
   name: string;
@@ -53,6 +53,7 @@ interface WalletState {
   createCoin: (params: CoinCreationParams) => Promise<{ address: string; pumpUrl: string; }>;
   getArticleData: () => Promise<ArticleData>;
   getTokenCreationData: (article: ArticleData, level: number) => Promise<TokenCreationData>;
+  isLatestVersion: (version: string) => Promise<[string, boolean]>;
 }
 
 interface ArticleData {
@@ -65,14 +66,12 @@ interface ArticleData {
   isXPost: boolean
 }
 
-interface ArticleTokenRequest {
-    article: ArticleData,
-    level?: number
-}
-
 // Development mode mock data
 const DEV_MODE = process.env.NODE_ENV === 'development' && !window.chrome?.storage;
 const TOKEN_CREATION_API_URL = 'https://tknz.fun/.netlify/functions/article-token';
+const APP_VERSION_API_URL = 'https://tknz.fun/.netlify/functions/version';
+
+
 // Mock storage for development
 const devStorage = {
   data: new Map<string, any>(),
@@ -245,7 +244,11 @@ export const useStore = create<WalletState>((set, get) => ({
   createdCoins: [],
   isRefreshing: false,
   investmentAmount: 0,
-
+  isLatestVersion: async (version: string) => {
+    const response = await fetch(APP_VERSION_API_URL);
+    const data = await response.json();
+    return [data.app.version, compareVersions(version, data.app.version) >= 0];
+  },
   getArticleData: async () => {
     if (typeof chrome == 'undefined' ||  !chrome?.tabs) {
       throw new Error('Chrome tabs not supported');

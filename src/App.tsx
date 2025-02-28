@@ -4,15 +4,20 @@ import { useStore } from './store';
 import { WalletSetup } from './components/WalletSetup';
 import { CoinCreator } from './components/CoinCreator';
 import { WalletPage } from './components/WalletPage';
+import { APP_VERSION } from './config/version';
 
 function App() {
-  const { wallet, balance, initializeWallet, getBalance, isRefreshing } = useStore();
+  const { wallet, balance, initializeWallet, getBalance, isRefreshing, isLatestVersion } = useStore();
   const [loading, setLoading] = useState(true);
   const [showWallet, setShowWallet] = useState(false);
-
+  const [latestVersion, setLatestVersion] = useState(false);
+  const [updateAvailable, setUpdateAvailable] = useState('');
   useEffect(() => {
     const init = async () => {
       await initializeWallet();
+      const [latestVersion, isLatest] = await isLatestVersion(APP_VERSION);
+      setLatestVersion(isLatest);
+      setUpdateAvailable(latestVersion);
       setLoading(false);
     };
     init();
@@ -23,6 +28,20 @@ function App() {
       <div className="w-[400px] h-[600px] flex items-center justify-center bg-gradient-to-br from-purple-50 via-white to-purple-50">
         <div className="animate-spin">
           <Coin className="w-8 h-8 text-purple-600" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!latestVersion) {
+    return (
+      <div className="w-[400px] h-[600px] flex items-center justify-center bg-gradient-to-br from-purple-50 via-white to-purple-50">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold">New version available</h1>
+          <p>Please update to the latest version</p>
+          <p>Current version: {APP_VERSION}</p>
+          <p>Latest version: {updateAvailable}</p>
+          <a href="https://chromewebstore.google.com/detail/eejballiemiamlndhkblapmlmjdgaaoi" className="text-purple-600">Update now</a>
         </div>
       </div>
     );
