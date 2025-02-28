@@ -4,7 +4,7 @@ import { crx } from '@crxjs/vite-plugin';
 import manifest from './manifest.json';
 import { resolve } from 'path';
 import fs from 'fs';
-
+import pkg from './package.json';
 
 export default defineConfig({
   plugins: [
@@ -18,6 +18,9 @@ export default defineConfig({
       privateKey: fs.readFileSync(resolve(__dirname, 'extension.pem'), 'utf-8')
     })
   ],
+  define: {
+    'import.meta.env.VITE_APP_VERSION': JSON.stringify(pkg.version)
+  },
   build: {
     rollupOptions: {
       input: {
