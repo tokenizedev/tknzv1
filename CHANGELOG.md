@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.2.2](https://tokenizedev///compare/v0.2.1...v0.2.2) (2025-03-25)
+
+
+### Features
+
+* **App:** update component logic for version check to show when update is not the latest version ([cc913e6](https://tokenizedev///commit/cc913e6aa2a290cb0e40b270bc7c902381208faa))
+
 ## [0.2.1](https://tokenizedev///compare/v0.2.0...v0.2.1) (2025-03-25)
 
 
