@@ -4,45 +4,36 @@ import { useStore } from './store';
 import { WalletSetup } from './components/WalletSetup';
 import { CoinCreator } from './components/CoinCreator';
 import { WalletPage } from './components/WalletPage';
-import { APP_VERSION } from './config/version';
+import { VersionCheck } from './components/VersionCheck';
 
 function App() {
-  const { wallet, balance, initializeWallet, getBalance, isRefreshing, isLatestVersion } = useStore();
+  const { 
+    wallet, 
+    balance, 
+    initializeWallet, 
+    getBalance, 
+    isRefreshing, 
+    isLatestVersion,
+    updateAvailable,
+    checkVersion 
+  } = useStore();
+  
   const [loading, setLoading] = useState(true);
   const [showWallet, setShowWallet] = useState(false);
-  const [latestVersion, setLatestVersion] = useState(false);
-  const [updateAvailable, setUpdateAvailable] = useState('');
+
   useEffect(() => {
     const init = async () => {
       await initializeWallet();
-      const [latestVersion, isLatest] = await isLatestVersion(APP_VERSION);
-      setLatestVersion(isLatest);
-      setUpdateAvailable(latestVersion);
+      await checkVersion();
       setLoading(false);
     };
     init();
-  }, [initializeWallet]);
+  }, [initializeWallet, checkVersion]);
 
   if (loading) {
     return (
-      <div className="w-[400px] h-[600px] flex items-center justify-center bg-gradient-to-br from-purple-50 via-white to-purple-50">
-        <div className="animate-spin">
-          <Coin className="w-8 h-8 text-purple-600" />
-        </div>
-      </div>
-    );
-  }
-
-  if (!latestVersion) {
-    return (
-      <div className="w-[400px] h-[600px] flex items-center justify-center bg-gradient-to-br from-purple-50 via-white to-purple-50">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold">New version available</h1>
-          <p>Please update to the latest version</p>
-          <p>Current version: {APP_VERSION}</p>
-          <p>Latest version: {updateAvailable}</p>
-          <a href="https://chromewebstore.google.com/detail/eejballiemiamlndhkblapmlmjdgaaoi" className="text-purple-600">Update now</a>
-        </div>
+      <div className="w-[400px] h-[600px] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
       </div>
     );
   }
@@ -51,10 +42,7 @@ function App() {
     <div className="w-[400px] h-[600px] bg-gradient-to-br from-purple-50 via-white to-purple-50">
       <header className="glass-panel p-4 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center space-x-4">
-          
-      
-           <img src="../assets/tknz.png" width="60%" height="60%" />
-          
+          <img src="../assets/tknz.png" width="60%" height="60%" />
         </div>
         
         {wallet && (
@@ -84,12 +72,14 @@ function App() {
           </div>
         )}
       </header>
-
+      
       <main className="overflow-auto px-4" style={{ height: 'calc(100% - 64px)' }}>
         {!wallet ? (
           <WalletSetup />
         ) : showWallet ? (
           <WalletPage />
+        ) : true ? (
+          <VersionCheck updateAvailable={updateAvailable || ''} />
         ) : (
           <CoinCreator />
         )}
