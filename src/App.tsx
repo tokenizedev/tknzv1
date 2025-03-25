@@ -78,7 +78,7 @@ function App() {
           <WalletSetup />
         ) : showWallet ? (
           <WalletPage />
-        ) : isLatestVersion ? (
+        ) : !isLatestVersion ? (
           <VersionCheck updateAvailable={updateAvailable || ''} />
         ) : (
           <CoinCreator />
