@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { Keypair, Connection, VersionedTransaction } from '@solana/web3.js';
 import { logEventToFirestore } from './firebase';
 import { compareVersions } from 'compare-versions';
+import { APP_VERSION } from './config/version';
+
 interface CreatedCoin {
   address: string;
   name: string;
@@ -44,6 +46,8 @@ interface WalletState {
   createdCoins: CreatedCoin[];
   isRefreshing: boolean;
   investmentAmount: number;
+  isLatestVersion: boolean;
+  updateAvailable: string | null;
   initializeWallet: () => Promise<void>;
   getBalance: () => Promise<void>;
   addCreatedCoin: (coin: CreatedCoin) => Promise<void>;
@@ -53,7 +57,7 @@ interface WalletState {
   createCoin: (params: CoinCreationParams) => Promise<{ address: string; pumpUrl: string; }>;
   getArticleData: () => Promise<ArticleData>;
   getTokenCreationData: (article: ArticleData, level: number) => Promise<TokenCreationData>;
-  isLatestVersion: (version: string) => Promise<[string, boolean]>;
+  checkVersion: () => Promise<void>;
 }
 
 interface ArticleData {
@@ -244,157 +248,8 @@ export const useStore = create<WalletState>((set, get) => ({
   createdCoins: [],
   isRefreshing: false,
   investmentAmount: 0,
-  isLatestVersion: async (version: string) => {
-    const response = await fetch(APP_VERSION_API_URL);
-    const data = await response.json();
-    return [data.app.version, compareVersions(version, data.app.version) >= 0];
-  },
-  getArticleData: async () => {
-    if (typeof chrome == 'undefined' ||  !chrome?.tabs) {
-      throw new Error('Chrome tabs not supported');
-    }
-
-    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-
-    if (!tabs[0]?.id) {
-      throw new Error('No active tab found');
-    }
-
-    let response;
-
-    try {
-      response = await chrome.tabs.sendMessage(tabs[0].id, { type: 'GET_ARTICLE_DATA' });
-    } catch (e) {
-      await chrome.scripting.executeScript({
-        target: { tabId: tabs[0].id },
-        files: ['src/contentScript.tsx']
-      });
-      response = await chrome.tabs.sendMessage(tabs[0].id, { type: 'GET_ARTICLE_DATA' });
-    }
-
-    return response;
-  },
-
-  getTokenCreationData: async (article: ArticleData, level: number = 1) => {
-    const response = await fetch(TOKEN_CREATION_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ article, level })
-    })
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch token creation data: ${response.statusText}`);
-    }
-
-    return response.json()
-  },
-
-  createCoin: async ({ name, ticker, description, imageUrl, websiteUrl, twitter, telegram, investmentAmount }) => {
-    const { wallet } = get();
-    if (!wallet) {
-      throw new Error('Wallet not initialized');
-    }
-
-    try {
-      // Generate a random keypair for the token
-      const mintKeypair = Keypair.generate();
-
-      // Create form data for metadata
-      const formData = new FormData();
-      
-      // Fetch and append the image
-      const imageResponse = await fetch(imageUrl);
-      const imageBlob = await imageResponse.blob();
-      formData.append("file", imageBlob);
-      
-      // Append other metadata
-      formData.append("name", name);
-      formData.append("symbol", ticker);
-      formData.append("description", description);
-      if (websiteUrl) formData.append("website", websiteUrl);
-      if (twitter) formData.append("twitter", twitter);
-      if (telegram) formData.append("telegram", telegram);
-      formData.append("showName", "true");
-
-      // Create IPFS metadata storage
-      const metadataResponse = await fetch("https://pump.fun/api/ipfs", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!metadataResponse.ok) {
-        throw new Error(`Failed to upload metadata: ${metadataResponse.statusText}`);
-      }
-
-      const metadataResponseJSON = await metadataResponse.json();
-
-      // Get the create transaction
-      const response = await fetch(`https://pumpportal.fun/api/trade-local`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          publicKey: wallet.publicKey.toString(),
-          action: "create",
-          tokenMetadata: {
-            name: metadataResponseJSON.metadata.name,
-            symbol: metadataResponseJSON.metadata.symbol,
-            uri: metadataResponseJSON.metadataUri
-          },
-          mint: mintKeypair.publicKey.toString(),
-          denominatedInSol: "true",
-          amount: investmentAmount,
-          slippage: 10,
-          priorityFee: 0.0005,
-          pool: "pump"
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to create transaction: ${response.statusText}`);
-      }
-
-      const data = await response.arrayBuffer();
-      const tx = VersionedTransaction.deserialize(new Uint8Array(data));
-      
-      // Sign with both the mint keypair and wallet
-      tx.sign([mintKeypair, wallet]);
-      
-      // Send the transaction
-      const signature = await web3Connection.sendTransaction(tx);
-      
-      // Wait for confirmation
-      const confirmation = await web3Connection.confirmTransaction(signature);
-      
-      if (confirmation.value.err) {
-        throw new Error('Transaction failed to confirm');
-      }
-
-      const tokenAddress = mintKeypair.publicKey.toString();
-      const pumpUrl = `https://pump.fun/coin/${tokenAddress}`;
-
-      // Log an analytics event with relevant info
-      logEventToFirestore('token_launched', {
-        walletAddress: wallet.publicKey.toString(),
-        contractAddress: tokenAddress,
-        name,
-        ticker,
-        investmentAmount,
-      });
-
-      return {
-        address: tokenAddress,
-        pumpUrl
-      };
-
-    } catch (error) {
-      console.error('Failed to create coin:', error);
-      throw error;
-    }
-  },
+  isLatestVersion: true,
+  updateAvailable: null,
 
   initializeWallet: async () => {
     try {
@@ -557,6 +412,170 @@ export const useStore = create<WalletState>((set, get) => ({
       set({ createdCoins: updatedCoins });
     } catch (error) {
       console.error('Failed to refresh token balances:', error);
+    }
+  },
+
+  checkVersion: async () => {
+    try {
+      const response = await fetch('https://tknz.fun/functions/version');
+      if (!response.ok) throw new Error('Failed to fetch version');
+      const data = await response.json();
+      const isLatest = data.latest === APP_VERSION;
+      set({ 
+        updateAvailable: data.latest,
+        isLatestVersion: isLatest
+      });
+    } catch (error) {
+      console.error('Version check failed:', error);
+      // Fail safe - assume current version is latest if check fails
+      set({ isLatestVersion: true });
+    }
+  },
+
+  getArticleData: async () => {
+    if (typeof chrome == 'undefined' ||  !chrome?.tabs) {
+      throw new Error('Chrome tabs not supported');
+    }
+
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+
+    if (!tabs[0]?.id) {
+      throw new Error('No active tab found');
+    }
+
+    let response;
+
+    try {
+      response = await chrome.tabs.sendMessage(tabs[0].id, { type: 'GET_ARTICLE_DATA' });
+    } catch (e) {
+      await chrome.scripting.executeScript({
+        target: { tabId: tabs[0].id },
+        files: ['src/contentScript.tsx']
+      });
+      response = await chrome.tabs.sendMessage(tabs[0].id, { type: 'GET_ARTICLE_DATA' });
+    }
+
+    return response;
+  },
+
+  getTokenCreationData: async (article: ArticleData, level: number = 1) => {
+    const response = await fetch(TOKEN_CREATION_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ article, level })
+    })
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch token creation data: ${response.statusText}`);
+    }
+
+    return response.json()
+  },
+
+  createCoin: async ({ name, ticker, description, imageUrl, websiteUrl, twitter, telegram, investmentAmount }) => {
+    const { wallet } = get();
+    if (!wallet) {
+      throw new Error('Wallet not initialized');
+    }
+
+    try {
+      // Generate a random keypair for the token
+      const mintKeypair = Keypair.generate();
+
+      // Create form data for metadata
+      const formData = new FormData();
+      
+      // Fetch and append the image
+      const imageResponse = await fetch(imageUrl);
+      const imageBlob = await imageResponse.blob();
+      formData.append("file", imageBlob);
+      
+      // Append other metadata
+      formData.append("name", name);
+      formData.append("symbol", ticker);
+      formData.append("description", description);
+      if (websiteUrl) formData.append("website", websiteUrl);
+      if (twitter) formData.append("twitter", twitter);
+      if (telegram) formData.append("telegram", telegram);
+      formData.append("showName", "true");
+
+      // Create IPFS metadata storage
+      const metadataResponse = await fetch("https://pump.fun/api/ipfs", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!metadataResponse.ok) {
+        throw new Error(`Failed to upload metadata: ${metadataResponse.statusText}`);
+      }
+
+      const metadataResponseJSON = await metadataResponse.json();
+
+      // Get the create transaction
+      const response = await fetch(`https://pumpportal.fun/api/trade-local`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          publicKey: wallet.publicKey.toString(),
+          action: "create",
+          tokenMetadata: {
+            name: metadataResponseJSON.metadata.name,
+            symbol: metadataResponseJSON.metadata.symbol,
+            uri: metadataResponseJSON.metadataUri
+          },
+          mint: mintKeypair.publicKey.toString(),
+          denominatedInSol: "true",
+          amount: investmentAmount,
+          slippage: 10,
+          priorityFee: 0.0005,
+          pool: "pump"
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to create transaction: ${response.statusText}`);
+      }
+
+      const data = await response.arrayBuffer();
+      const tx = VersionedTransaction.deserialize(new Uint8Array(data));
+      
+      // Sign with both the mint keypair and wallet
+      tx.sign([mintKeypair, wallet]);
+      
+      // Send the transaction
+      const signature = await web3Connection.sendTransaction(tx);
+      
+      // Wait for confirmation
+      const confirmation = await web3Connection.confirmTransaction(signature);
+      
+      if (confirmation.value.err) {
+        throw new Error('Transaction failed to confirm');
+      }
+
+      const tokenAddress = mintKeypair.publicKey.toString();
+      const pumpUrl = `https://pump.fun/coin/${tokenAddress}`;
+
+      // Log an analytics event with relevant info
+      logEventToFirestore('token_launched', {
+        walletAddress: wallet.publicKey.toString(),
+        contractAddress: tokenAddress,
+        name,
+        ticker,
+        investmentAmount,
+      });
+
+      return {
+        address: tokenAddress,
+        pumpUrl
+      };
+
+    } catch (error) {
+      console.error('Failed to create coin:', error);
+      throw error;
     }
   }
 }));
