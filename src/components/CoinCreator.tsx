@@ -25,7 +25,7 @@ const MOCK_ARTICLE_DATA: ArticleData = {
 
 export const CoinCreator: React.FC = () => {
   const { balance, error: walletError, investmentAmount: defaultInvestment, addCreatedCoin, createCoin } = useStore();
-  const [_articleData, setArticleData] = useState<ArticleData>({
+  const [articleData, setArticleData] = useState<ArticleData>({
     title: '',
     image: '',
     description: '',
@@ -75,6 +75,8 @@ export const CoinCreator: React.FC = () => {
     setIsGenerating(true);
     setError(null);
     try {
+      console.error('Generating suggestions for:', article);
+      console.log('Generating suggestions for:', article);
       // Check if it's TKNZ.FUN domain
       const isTknzDomain = article.url.includes('tknz.fun');
       const isTwitterUrl = article.url.includes('twitter.com') || article.url.includes('x.com');
@@ -218,12 +220,12 @@ export const CoinCreator: React.FC = () => {
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-gray-900">Token Details</h3>
           <button
-            onClick={() => generateSuggestions(websiteUrl)}
+            onClick={() => generateSuggestions(articleData)}
             disabled={isGenerating || websiteUrl.includes('tknz.fun')}
             className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg hover:from-purple-600 hover:to-purple-700 transition-all duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Sparkles className="w-4 h-4" />
-            <span>{isGenerating ? 'Generating...' : 'MEMIER!'}</span>
+            <span>{isGenerating ? 'Generating...' : 'MEMIER!!'}</span>
           </button>
         </div>
 
