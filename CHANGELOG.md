@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.2.3](https://tokenizedev///compare/v0.2.2...v0.2.3) (2025-04-30)
+
+
+### Features
+
+* **components:** Add functionality to generate suggestions when creating a new coin ([c838890](https://tokenizedev///commit/c838890bee285d9b10587bdcbc37441366d5967b))
+
 ## [0.2.2](https://tokenizedev///compare/v0.2.1...v0.2.2) (2025-03-25)
 
 
