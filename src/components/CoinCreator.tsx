@@ -84,8 +84,11 @@ export const CoinCreator: React.FC = () => {
       if (isTknzDomain) {
         setCoinName('TKNZ.FUN');
         setTicker('TKNZ');
-        setDescription('TKNZ - Tokenize Anything, Tokenize Everything');
+        setDescription('TKNZ -- Tokenize Anything, Tokenize Everything. TKNZ empowers users to create their own tokens on Pump.fun directly from any web page or social media post. With this tool, the friction of launching a token is removed. No need to copy paste links or images. Just one click and the content is tokenized onto the blockchain forever!');
         setIsGenerating(false);
+        setImageUrl(https://tknz.fun/assets/hero.png);
+        setWebsiteUrl(data.url);
+        setXUrl(https://x.com/tknzfun);
         return;
       }
       const tokenCreationData = await useStore.getState().getTokenCreationData(article, level)
