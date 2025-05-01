@@ -14,6 +14,7 @@
  - [Chrome Extension Installation](#chrome-extension-installation)
  - [Scripts](#scripts)
  - [Directory Structure](#directory-structure)
+ - [Architecture](#architecture)
  - [Contributing](#contributing)
  - [License](#license)
 
@@ -132,6 +133,34 @@
  ├── vite.config.ts         # Vite + CRXJS config
  ├── tsconfig.json
  └── README.md              # <-- You are here
+ ```
+  
+ ## Architecture
+ 
+ ```mermaid
+ graph LR
+   subgraph "Chrome Extension"
+     CS["Content Script"]
+     BG["Background Service Worker"]
+     UI["React Popup UI"]
+     Store["Zustand Store"]
+   end
+
+   subgraph "External Services"
+     AI["Token Creation API"]
+     PumpFun["Pump.fun API & IPFS"]
+     Solana["Solana Blockchain"]
+     Firebase["Firebase Analytics"]
+   end
+
+   CS -->|Extract content| BG
+   UI -->|User actions| BG
+   BG -->|State updates| Store
+   BG -->|Generate metadata| AI
+   BG -->|Upload metadata| PumpFun
+   BG -->|Create & fund tokens| Solana
+   BG -->|Log events| Firebase
+   Store -->|State| UI
  ```
 
  ## Contributing
