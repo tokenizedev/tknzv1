@@ -50,5 +50,16 @@ export default defineConfig({
     alias: {
       'html2canvas': resolve(__dirname, 'node_modules/html2canvas/dist/html2canvas.esm.js')
     }
+  },
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: 'src/setupTests.ts',
+    include: ['src/**/*.{test,spec}.{js,ts,jsx,tsx}'],
+    coverage: {
+      provider: 'c8',
+      reporter: ['text', 'json', 'html']
+    },
+    mockReset: true
   }
 });
