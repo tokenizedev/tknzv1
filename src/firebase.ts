@@ -3,7 +3,7 @@ import { getFirestore, collection, addDoc } from 'firebase/firestore';
 
 // Replace these with your own Firebase config values
 const firebaseConfig = {
-  apiKey: "AIzaSyCFBjnGN4PVQAGGcpX-eh_z4Prj1otfRI0",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: "tknz-2a8a2.firebaseapp.com",
   projectId: "tknz-2a8a2",
   storageBucket: "tknz-2a8a2.firebasestorage.app",
