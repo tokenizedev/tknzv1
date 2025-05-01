@@ -55,11 +55,12 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: 'src/setupTests.ts',
-    include: ['src/**/*.{test,spec}.{js,ts,jsx,tsx}'],
-    coverage: {
-      provider: 'c8',
-      reporter: ['text', 'json', 'html']
-    },
+    // include unit tests in src and legacy CJS tests in the tests/ directory
+    include: [
+      // include test files in src and tests directories (supporting various extensions)
+      'src/**/*.{test,spec}.{js,ts,jsx,tsx}',
+      'tests/**/*.{test,spec}.{js,ts,jsx,tsx,cjs}'
+    ],
     mockReset: true
   }
 });
