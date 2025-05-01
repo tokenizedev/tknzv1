@@ -13,7 +13,8 @@
     "bump": "commit-and-tag-version",
     "keygen": "scripts/gen-extension-pem.sh",
     "package": "node pack.js",
-    "release": "npm run build && npm run bump && npm run package"
+    "release": "npm run build && npm run bump && npm run package",
+    "test": "node tests/manifest.test.cjs && node tests/index.test.cjs"
   },
   "dependencies": {
     "@solana/web3.js": "^1.91.1",
