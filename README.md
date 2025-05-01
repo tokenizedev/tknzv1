@@ -16,6 +16,7 @@
  - [Directory Structure](#directory-structure)
  - [Architecture](#architecture)
  - [Contributing](#contributing)
+ - [Roadmap](#roadmap)
  - [License](#license)
 
  ## Goals
@@ -171,6 +172,9 @@
  4. Push to your branch: `git push origin feature/YourFeature`.
  5. Open a pull request.
  Ensure code is linted and builds cleanly.
+
+ ## Roadmap
+ The project's roadmap is available [here](roadmap-05-01-2025.md).
 
  ## License
  This project is private. Please contact the maintainers for access.
