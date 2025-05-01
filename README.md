@@ -114,6 +114,8 @@
  - `npm run keygen`      — Generate `extension.pem` for packaging.
  - `npm run package`     — Package into CRX.
  - `npm run release`     — Build, bump version, and package.
+ - `npm run test`        — Run unit tests in watch mode.
+ - `npm run test:ci`     — Run tests once with coverage.
 
  ## Directory Structure
  ```
