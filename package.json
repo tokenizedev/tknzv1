@@ -14,8 +14,9 @@
     "keygen": "scripts/gen-extension-pem.sh",
     "package": "node pack.js",
     "release": "npm run build && npm run bump && npm run package",
-    "test": "vitest",
-    "test:ci": "vitest --run --coverage"
+    "test": "node ./node_modules/vitest/vitest.mjs run",
+    "test:watch": "node ./node_modules/vitest/vitest.mjs",
+    "test:ci": "node ./node_modules/vitest/vitest.mjs run"
   },
   "dependencies": {
     "@solana/web3.js": "^1.91.1",
