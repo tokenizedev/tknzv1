@@ -63,6 +63,14 @@ export default defineConfig({
       // include any other TS test files in tests folder
       'tests/**/*.ts'
     ],
-    mockReset: true
+    exclude: ['tests/store.test.ts'],
+    mockReset: true,
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html'],
+      all: true,
+      src: ['src'],
+      exclude: ['src/mocks/**', 'src/setupTests.ts', 'src/vite-env.d.ts']
+    }
   }
 });

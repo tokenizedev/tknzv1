@@ -5,6 +5,13 @@ import createFetchMock from 'vitest-fetch-mock'
 import '@testing-library/jest-dom';
 import { server } from './mocks/server';
 
+// Stub global fetch for all tests to prevent real network calls
+import { vi } from 'vitest';
+beforeEach(() => {
+  // Stub both window.fetch and global.fetch
+  (globalThis as any).fetch = vi.fn();
+});
+
 const fetchMocker = createFetchMock(vi)
 
 fetchMocker.enableMocks()
