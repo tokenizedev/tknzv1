@@ -41,7 +41,7 @@ const initialize = () => {
 };
 
 // Function to extract tweet data
-const extractTweetData = async () => {
+export const extractTweetData = async () => {
   try {
     // Wait for tweet container to be available
     let retries = 0;
@@ -131,7 +131,7 @@ const extractTweetData = async () => {
 };
 
 // Function to extract article data
-const extractArticleData = () => {
+export const extractArticleData = () => {
   try {
     let title = '';
     let image = '';
@@ -240,15 +240,16 @@ const extractArticleData = () => {
   }
 };
 
-// Initialize on load
-initialize();
-
-// Re-initialize on dynamic navigation (for SPAs)
-let lastUrl = location.href;
-new MutationObserver(() => {
-  const url = location.href;
-  if (url !== lastUrl) {
-    lastUrl = url;
-    initialize();
-  }
-}).observe(document, { subtree: true, childList: true });
+// Auto-initialize in a Chrome extension environment
+if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
+  initialize();
+  // Re-initialize on dynamic navigation (for SPAs)
+  let lastUrl = location.href;
+  new MutationObserver(() => {
+    const url = location.href;
+    if (url !== lastUrl) {
+      lastUrl = url;
+      initialize();
+    }
+  }).observe(document, { subtree: true, childList: true });
+}
