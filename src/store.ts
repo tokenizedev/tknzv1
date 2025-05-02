@@ -175,11 +175,6 @@ export const useStore = create<WalletState>((set, get) => ({
         isRefreshing: false
       });
 
-      // Log a balance update event
-      logEventToFirestore('balance_update', {
-        walletAddress: wallet.publicKey.toString(),
-        solBalance,
-      });
 
     } catch (error) {
       const errorMessage = error instanceof Error 
