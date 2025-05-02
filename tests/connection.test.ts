@@ -8,6 +8,7 @@ describe('connection util', () => {
     // Stub global fetch
     (global as any).fetch = vi.fn();
     conn = createConnection();
+    vi.stubGlobal('fetch', vi.fn());
   });
 
   afterEach(() => {
