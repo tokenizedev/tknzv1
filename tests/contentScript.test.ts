@@ -57,7 +57,7 @@ describe('extractArticleData', () => {
 
   it('returns default values when no elements present', () => {
     const data = extractArticleData();
-    // In absence of elements, fallback returns Untitled Article
+    // With no matching elements, default title falls back
     expect(data.title).toBe('Untitled Article');
     expect(data.image).toBe('');
     expect(data.description).toBe('');
