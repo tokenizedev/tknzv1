@@ -1,8 +1,11 @@
-[![CI](https://github.com/tokenizedev/tknzv1/actions/workflows/ci.yml/badge.svg)](https://github.com/tokenizedev/tknzv1/actions/workflows/ci.yml)
+
 
 <div align="center">
   <img src="assets/logo.jpg" alt="TKNZ Logo" width="200" />
 </div>
+
+[![CI](https://github.com/tokenizedev/tknzv1/actions/workflows/ci.yml/badge.svg)](https://github.com/tokenizedev/tknzv1/actions/workflows/ci.yml)
+
 
 [https://tknz.fun](https://tknz.fun)
 
