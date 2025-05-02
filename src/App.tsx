@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Coins as Coin, Wallet, RefreshCw, Sidebar } from 'lucide-react';
+import { Coins as Coin, Wallet, RefreshCw, Sidebar, X } from 'lucide-react';
 import { useStore } from './store';
 import { WalletSetup } from './components/WalletSetup';
 import { CoinCreator } from './components/CoinCreator';
@@ -27,17 +27,32 @@ function App({ isSidebar = false }: AppProps = {}) {
   // Open the Chrome extension side panel for the current tab
   const openSidebar = async () => {
     try {
-      // Get the active tab in the current window
       const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
       const tab = tabs[0];
       if (tab?.id != null) {
-        // Open the side panel for this tab
         await chrome.sidePanel.open({ tabId: tab.id });
-        // Ensure the side panel is enabled and using the default path
         await chrome.sidePanel.setOptions({ tabId: tab.id, path: 'sidebar.html', enabled: true });
       }
     } catch (error) {
       console.error('Failed to open side panel:', error);
+    }
+    // Close the popup window if we're in popup context
+    if (!isSidebar) {
+      window.close();
+    }
+  };
+  // Close the side panel and return to popup mode
+  const closeSidebar = async () => {
+    try {
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      const tab = tabs[0];
+      if (tab?.id != null) {
+        await chrome.sidePanel.setOptions({ tabId: tab.id, enabled: false });
+        // Open the extension popup
+        await chrome.action.openPopup();
+      }
+    } catch (error) {
+      console.error('Failed to close side panel:', error);
     }
   };
 
@@ -78,13 +93,24 @@ function App({ isSidebar = false }: AppProps = {}) {
                 <RefreshCw className={`w-4 h-4 text-purple-600 ${isRefreshing ? 'animate-spin' : ''}`} />
               </button>
             </div>
-            <button
-              onClick={openSidebar}
-              className="p-2.5 rounded-xl hover:bg-purple-50 text-gray-600 hover:text-purple-600 transition-all duration-200"
-              title="Open Sidebar"
-            >
-              <Sidebar className="w-5 h-5" />
-            </button>
+            {/* Toggle between open and close based on context */}
+            {!isSidebar ? (
+              <button
+                onClick={openSidebar}
+                className="p-2.5 rounded-xl hover:bg-purple-50 text-gray-600 hover:text-purple-600 transition-all duration-200"
+                title="Open Sidebar"
+              >
+                <Sidebar className="w-5 h-5" />
+              </button>
+            ) : (
+              <button
+                onClick={closeSidebar}
+                className="p-2.5 rounded-xl hover:bg-purple-50 text-gray-600 hover:text-purple-600 transition-all duration-200"
+                title="Close Sidebar"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
             <button 
               className={`p-2.5 rounded-xl transition-all duration-200 ${
                 showWallet 
