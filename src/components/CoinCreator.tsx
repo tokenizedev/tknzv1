@@ -163,6 +163,53 @@ export const CoinCreator: React.FC = () => {
       setIsLoading(false);
     });
   }, []);
+  // Subscribe to active tab changes in side panel to re-fetch article data
+  useEffect(() => {
+    // Only in side panel environment
+    if (!chrome?.tabs || !window.location.pathname.includes('sidebar.html')) {
+      return;
+    }
+    const fetchForActiveTab = async () => {
+      try {
+        setError(null);
+        setIsLoading(true);
+        const article = await useStore.getState().getArticleData();
+        await generateSuggestions(article, 0);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Failed to extract page data';
+        console.error('Error updating article data on tab change:', error);
+        setError(errorMessage);
+        // Fallback to URL if extraction fails
+        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+        const url = tabs[0]?.url || '';
+        if (url.includes('twitter.com') || url.includes('x.com')) {
+          setXUrl(url);
+        } else {
+          setWebsiteUrl(url);
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    const handleActivated = async ({ tabId }: chrome.tabs.OnActivatedActiveInfo) => {
+      await fetchForActiveTab();
+    };
+    const handleUpdated = async (
+      tabId: number,
+      changeInfo: chrome.tabs.TabChangeInfo,
+      tab: chrome.tabs.Tab
+    ) => {
+      if (tab.active && changeInfo.status === 'complete') {
+        await fetchForActiveTab();
+      }
+    };
+    chrome.tabs.onActivated.addListener(handleActivated);
+    chrome.tabs.onUpdated.addListener(handleUpdated);
+    return () => {
+      chrome.tabs.onActivated.removeListener(handleActivated);
+      chrome.tabs.onUpdated.removeListener(handleUpdated);
+    };
+  }, []);
 
   const handleSubmit = async () => {
     if (balance < requiredBalance) {
