@@ -21,7 +21,7 @@ describe('connection util', () => {
       json: () => Promise.resolve({ result: { value: 1000 } })
     } as any;
     (fetch as any).mockResolvedValue(mockResponse);
-    const balance = await conn.getBalance('publicKey');
+    const balance = await conn.getBalance('3vgJTkBPHGh7qK87CcouAxvvJnu95LRLKC9tNmz2XyGj');
     expect(balance).toBe(1000);
   });
 

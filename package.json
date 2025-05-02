@@ -16,7 +16,8 @@
     "release": "yarn build && yarn bump && yarn package",
     "test": "node ./node_modules/vitest/vitest.mjs run",
     "test:watch": "node ./node_modules/vitest/vitest.mjs",
-    "test:ci": "node ./node_modules/vitest/vitest.mjs run"
+    "test:ci": "node ./node_modules/vitest/vitest.mjs run",
+    "test:coverage": "node ./node_modules/vitest/vitest.mjs run --coverage"
   },
   "dependencies": {
     "@solana/web3.js": "^1.91.1",
