@@ -59,7 +59,9 @@ export default defineConfig({
     include: [
       // include test files in src and tests directories (supporting various extensions)
       'src/**/*.{test,spec}.{js,ts,jsx,tsx}',
-      'tests/**/*.{test,spec}.{js,ts,jsx,tsx,cjs}'
+      'tests/**/*.{test,spec}.{js,ts,jsx,tsx,cjs}',
+      // include any other TS test files in tests folder
+      'tests/**/*.ts'
     ],
     mockReset: true
   }
