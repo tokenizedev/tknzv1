@@ -1,8 +1,9 @@
 import { create } from 'zustand';
-import { Keypair, Connection, VersionedTransaction } from '@solana/web3.js';
+import { Keypair, VersionedTransaction } from '@solana/web3.js';
 import { logEventToFirestore } from './firebase';
-import { compareVersions } from 'compare-versions';
 import { APP_VERSION } from './config/version';
+import { storage } from './utils/storage';
+import { createConnection, web3Connection } from './utils/connection';
 
 interface CreatedCoin {
   address: string;
@@ -70,171 +71,12 @@ interface ArticleData {
   isXPost: boolean
 }
 
-// Development mode mock data
-const DEV_MODE = process.env.NODE_ENV === 'development' && !window.chrome?.storage;
 const TOKEN_CREATION_API_URL = 'https://tknz.fun/.netlify/functions/article-token';
 const APP_VERSION_API_URL = 'https://tknz.fun/.netlify/functions/version';
 
 
-// Mock storage for development
-const devStorage = {
-  data: new Map<string, any>(),
-  get: async (key: string) => ({ [key]: devStorage.data.get(key) }),
-  set: async (data: Record<string, any>) => {
-    Object.entries(data).forEach(([key, value]) => {
-      devStorage.data.set(key, value);
-    });
-  }
-};
 
-// Storage interface that works in both environments
-const storage = {
-  get: async (key: string): Promise<Record<string, any>> => {
-    try {
-      if (DEV_MODE || !window.chrome?.storage?.local) {
-        return devStorage.get(key);
-      }
-      return new Promise((resolve) => {
-        chrome.storage.local.get([key], (result) => {
-          if (chrome.runtime.lastError) {
-            console.error('Storage error:', chrome.runtime.lastError);
-            resolve({});
-          } else {
-            resolve(result);
-          }
-        });
-      });
-    } catch (error) {
-      console.error('Storage get error:', error);
-      return {};
-    }
-  },
-  set: async (data: Record<string, any>): Promise<void> => {
-    try {
-      if (DEV_MODE || !window.chrome?.storage?.local) {
-        return devStorage.set(data);
-      }
-      return new Promise((resolve, reject) => {
-        chrome.storage.local.set(data, () => {
-          if (chrome.runtime.lastError) {
-            reject(new Error(chrome.runtime.lastError.message));
-          } else {
-            resolve();
-          }
-        });
-      });
-    } catch (error) {
-      console.error('Storage set error:', error);
-      throw error;
-    }
-  }
-};
 
-// RPC endpoint
-const RPC_ENDPOINT = 'https://mainnet.helius-rpc.com/?api-key=8fb5b733-fd3e-41e0-8493-e1c994cf008a';
-
-// Create web3 connection
-const web3Connection = new Connection(RPC_ENDPOINT, 'confirmed');
-
-// Create a connection with retry support for balance checks
-const createConnection = () => {
-  const getBalance = async (publicKey: string): Promise<number> => {
-    const body = {
-      jsonrpc: '2.0',
-      id: 'bolt',
-      method: 'getBalance',
-      params: [
-        publicKey,
-        { commitment: 'confirmed' }
-      ]
-    };
-
-    try {
-      const response = await fetch(RPC_ENDPOINT, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body)
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      
-      if (data.error) {
-        throw new Error(data.error.message || 'RPC error');
-      }
-      const balance = data.result?.value ?? 0;
-      
-      logEventToFirestore('balance_update', {
-        walletAddress: publicKey,
-        balance
-      });
-
-      return balance;
-    } catch (error) {
-      console.error('Failed to fetch balance:', error);
-      throw error;
-    }
-  };
-
-  const getTokenBalance = async (tokenAddress: string, ownerAddress: string): Promise<number> => {
-    const body = {
-      jsonrpc: '2.0',
-      id: 'bolt',
-      method: 'getTokenAccountsByOwner',
-      params: [
-        ownerAddress,
-        {
-          mint: tokenAddress
-        },
-        {
-          encoding: 'jsonParsed'
-        }
-      ]
-    };
-
-    try {
-      const response = await fetch(RPC_ENDPOINT, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body)
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      
-      if (data.error) {
-        throw new Error(data.error.message || 'RPC error');
-      }
-
-      const accounts = data.result?.value || [];
-      if (accounts.length === 0) return 0;
-
-      // Get the first account's balance
-      const balance = accounts[0]?.account?.data?.parsed?.info?.tokenAmount?.uiAmount ?? 0;
-      logEventToFirestore('token_balance_update', {
-        walletAddress: ownerAddress,
-        tokenAddress,
-        balance
-      });
-      return balance;
-    } catch (error) {
-      console.error('Failed to fetch token balance:', error);
-      return 0;
-    }
-  };
-
-  return { getBalance, getTokenBalance };
-};
 
 const connection = createConnection();
 
@@ -333,11 +175,6 @@ export const useStore = create<WalletState>((set, get) => ({
         isRefreshing: false
       });
 
-      // Log a balance update event
-      logEventToFirestore('balance_update', {
-        walletAddress: wallet.publicKey.toString(),
-        solBalance,
-      });
 
     } catch (error) {
       const errorMessage = error instanceof Error 
