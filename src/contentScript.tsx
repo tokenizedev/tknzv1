@@ -119,7 +119,10 @@ export const extractTweetData = async () => {
       xUrl: window.location.href
     };
   } catch (error) {
-    console.error('Error extracting tweet data:', error);
+    // Suppress error logs during testing
+    if (!(import.meta as any).vitest) {
+      console.error('Error extracting tweet data:', error);
+    }
     return {
       title: document.title || 'Tweet',
       image: '',
@@ -230,7 +233,10 @@ export const extractArticleData = () => {
       url
     };
   } catch (error) {
-    console.error('Error extracting article data:', error);
+    // Suppress error logs during testing
+    if (!(import.meta as any).vitest) {
+      console.error('Error extracting article data:', error);
+    }
     return {
       title: document.title || 'Untitled Article',
       image: '',
