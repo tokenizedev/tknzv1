@@ -4,6 +4,8 @@ import { logEventToFirestore } from './firebase';
 import { APP_VERSION } from './config/version';
 import { storage } from './utils/storage';
 import { createConnection, web3Connection } from './utils/connection';
+const DEV_MODE = process.env.NODE_ENV === 'development' && !chrome?.tabs;
+import { compareVersions } from 'compare-versions'
 
 interface CreatedCoin {
   address: string;
@@ -254,18 +256,18 @@ export const useStore = create<WalletState>((set, get) => ({
 
   checkVersion: async () => {
     try {
-      const response = await fetch('https://tknz.fun/functions/version');
+      const response = await fetch(APP_VERSION_API_URL);
       if (!response.ok) throw new Error('Failed to fetch version');
-      const data = await response.json();
-      const isLatest = data.latest === APP_VERSION;
+      const { app: { version } } = await response.json();
+      const isLatestVersion = compareVersions(APP_VERSION, version) >= 0
       set({ 
-        updateAvailable: data.latest,
-        isLatestVersion: isLatest
+        updateAvailable: isLatestVersion ? null : version,
+        isLatestVersion
       });
     } catch (error) {
       console.error('Version check failed:', error);
       // Fail safe - assume current version is latest if check fails
-      set({ isLatestVersion: true });
+      set({ isLatestVersion });
     }
   },
 
