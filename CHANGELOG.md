@@ -2,6 +2,57 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.3.0](https://tokenizedev///compare/v0.2.3...v0.3.0) (2025-05-02)
+
+
+### ⚠ BREAKING CHANGES
+
+* **app:** The App component now accepts an optional isSidebar prop to control the display of the sidebar. Make sure to pass this prop when using the App component to enable the sidebar functionality.
+
+### Features
+
+* add 'popup' class to body element ([b47199a](https://tokenizedev///commit/b47199a3f138fe4b02732f43a459bb82dab312cc))
+* Add a link to TKNZ website in the README file ([8decb98](https://tokenizedev///commit/8decb98ee087aef2abea7b41f82da0d4e088f00a))
+* Add additional logo to README.md ([e2b7627](https://tokenizedev///commit/e2b762701a0ecf397c1b374c926f73dff2c64305))
+* Add CI badge to logo section in README.md ([1bb3e2c](https://tokenizedev///commit/1bb3e2c931eb51f026e27aa54d2b3487aad7c2e1))
+* Add CI badge to README file ([d98bf7f](https://tokenizedev///commit/d98bf7f383b8888a4d040cb08deaabdfd3e9a506))
+* Add CI badge to README.md ([e59b831](https://tokenizedev///commit/e59b83161d92b7d6e29f6140f3a8c90404d770ed))
+* Add CI badge to README.md ([9c7facc](https://tokenizedev///commit/9c7facc7fc2a2e5c2de19e1adb1788944cd162e1))
+* add class "sidebar" to body tag in sidebar.html ([03e7c24](https://tokenizedev///commit/03e7c2410995903e78c614918c48c80d7f795b1d))
+* Add fetch mock setup using vitest-fetch-mock ([e272949](https://tokenizedev///commit/e272949f6202d07cee0499e1df809c56b58d5216))
+* add initial tests. update readme and add roadmap. add .env example ([9eb62b6](https://tokenizedev///commit/9eb62b64c425d1b3a58c6dcbbe5549c1d9d2673b))
+* Add sidebar page in vite.config.ts ([112dc05](https://tokenizedev///commit/112dc05d3db1052e76f9b1d77dd3f00fca470c75))
+* Add VITE_APP_VERSION to .env.example ([080c7dd](https://tokenizedev///commit/080c7dde4c82c48d6ab60164535545c8aa50f3db))
+* Add X icon to lucide-react import and closeSidebar function to toggle sidebar in App component ([7d83dee](https://tokenizedev///commit/7d83deee4d1fa85b68ee4bf425795d4661ce0b46))
+* **app:** add functionality to close window if sidebar is open ([a6791cf](https://tokenizedev///commit/a6791cf1453420b9a4a1593b5b1e001a123e7386))
+* **app:** add optional sidebar functionality ([541ed48](https://tokenizedev///commit/541ed4868e664b4716a2175d46cab9debb922fe5))
+* **app:** improve app usability by isolating real estate for tokenization ([95384a4](https://tokenizedev///commit/95384a40359261d5faca7806aca212f2b3abc5b6))
+* **ci:** add step to generate extension key for CRX signing ([466d92b](https://tokenizedev///commit/466d92b983d41aacbdd4d6f416de0082155f4d23))
+* **CoinCreator:** Add subscription to active tab changes in side panel for re-fetching article data ([299d6d0](https://tokenizedev///commit/299d6d07f38b07c9178077d5cbcf7e35cd153582))
+* **css:** Add full viewport height and scrollable sidebar context ([0e47f15](https://tokenizedev///commit/0e47f15776bccf24ac12d021ce78165d2b541970))
+* **dependency:** upgrade vitest-fetch-mock to v0.4.5 ([b89f425](https://tokenizedev///commit/b89f42535a9222e95c5c514ae995d605d2990ed2))
+* **deps:** update testing libraries and add coverage tool ([d521e35](https://tokenizedev///commit/d521e3587eb6fa585ade1120947229d2da105d77))
+* **extension:** add tests to establish baseline functionality and reliability ([be1144c](https://tokenizedev///commit/be1144ce0e4e8d0b5b294c54a8249213fd15c8c9))
+* **manifest:** Add 'sidePanel' and 'tabs' permissions ([0a996ff](https://tokenizedev///commit/0a996ff0b8389ab400b1cd7d48b0f930f7631c29))
+* **package.json:** add vitest-fetch-mock dependency ([cfbce2e](https://tokenizedev///commit/cfbce2e41239b55dd1d2607a2c0790b7f3c1d8ee))
+* **sidebar:** it's a bar, on the side. sidebar ([c448721](https://tokenizedev///commit/c448721f1ebfb09851eb92f006ebddf94cd53900))
+* **store:** add version check feature using compare-versions library ([6b96064](https://tokenizedev///commit/6b960644accd6e2430d1c5f3a9d0e67e819fa448))
+* Update README.md with CI badge and center align logo ([5b36e03](https://tokenizedev///commit/5b36e03cdeee7d2f86dd97a73d4fffdd8148b322))
+* **utils:** Update fetch method in createConnection function ([6ad3993](https://tokenizedev///commit/6ad3993268a75cff074b20b9da8002edcd7fab84))
+
+
+### Bug Fixes
+
+* **ci:** update GitHub Actions upload artifact action ([d09e567](https://tokenizedev///commit/d09e567583ec776fd35fca9fc90c2219e880e441))
+* **CoinCreator:** Correct image and URL assignment with proper string formatting ([38cf464](https://tokenizedev///commit/38cf464e6b1769d6b0f777287bdadcbd5c32711b))
+* **contentScript:** improve fallback title handling in extractArticleData ([6c7a1a2](https://tokenizedev///commit/6c7a1a23757f211227f5994f9554b90c0ba9b7ef))
+* **contentScript:** suppress error logs during testing ([fb458f1](https://tokenizedev///commit/fb458f1f17b129b3221bfe36c437b3244933fa51))
+* Fix fetch stubbing issue in connection.test.ts ([89609d2](https://tokenizedev///commit/89609d25cf7fb83cc2231e30ba774cc4c059b510))
+* **store:** remove unnecessary balance update logging ([d42748a](https://tokenizedev///commit/d42748a4f14d640a6bd12428a4123ead03392c0b))
+* **styles:** Update sidebar CSS to fix scrolling issue ([b2a88db](https://tokenizedev///commit/b2a88dbe818516291ca804ef40c0f98d8451e2c1))
+* update CI badge in README.md ([b14c381](https://tokenizedev///commit/b14c3819404976a4157786052371a9254e9acb91))
+* update Firebase API key to use environment variable ([399473f](https://tokenizedev///commit/399473f4df913ce74138e66cc888b09f14e19dd8))
+
 ## [0.2.3](https://tokenizedev///compare/v0.2.2...v0.2.3) (2025-04-30)
 
 
