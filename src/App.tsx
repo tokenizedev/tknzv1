@@ -46,10 +46,15 @@ function App({ isSidebar = false }: AppProps = {}) {
     try {
       const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
       const tab = tabs[0];
+      
       if (tab?.id != null) {
-        await chrome.sidePanel.setOptions({ tabId: tab.id, enabled: false });
-        // Open the extension popup
-        await chrome.action.openPopup();
+        if (isSidebar) {
+          window.close()
+        } else {
+          await chrome.sidePanel.setOptions({ tabId: tab.id, enabled: false });
+          // Open the extension popup
+          await chrome.action.openPopup();
+        }
       }
     } catch (error) {
       console.error('Failed to close side panel:', error);
