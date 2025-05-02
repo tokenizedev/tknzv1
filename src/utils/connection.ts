@@ -26,7 +26,7 @@ export const createConnection = () => {
       params: [publicKey, { commitment: 'confirmed' }]
     };
     try {
-      const response = await fetch(RPC_ENDPOINT, {
+      const response = await window.fetch(RPC_ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
@@ -42,7 +42,10 @@ export const createConnection = () => {
       logEventToFirestore('balance_update', { walletAddress: publicKey, balance });
       return balance;
     } catch (error) {
-      console.error('Failed to fetch balance:', error);
+      // Suppress error logs during testing
+      if (!(import.meta as any).vitest) {
+        console.error('Failed to fetch balance:', error);
+      }
       throw error;
     }
   };
@@ -76,7 +79,10 @@ export const createConnection = () => {
       logEventToFirestore('token_balance_update', { walletAddress: ownerAddress, tokenAddress, balance });
       return balance;
     } catch (error) {
-      console.error('Failed to fetch token balance:', error);
+      // Suppress error logs during testing
+      if (!(import.meta as any).vitest) {
+        console.error('Failed to fetch token balance:', error);
+      }
       return 0;
     }
   };
