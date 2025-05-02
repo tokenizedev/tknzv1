@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { Coins as Coin, Wallet, RefreshCw } from 'lucide-react';
+import { Coins as Coin, Wallet, RefreshCw, Sidebar, X } from 'lucide-react';
 import { useStore } from './store';
 import { WalletSetup } from './components/WalletSetup';
 import { CoinCreator } from './components/CoinCreator';
 import { WalletPage } from './components/WalletPage';
 import { VersionCheck } from './components/VersionCheck';
 
-function App() {
+interface AppProps { isSidebar?: boolean; }
+function App({ isSidebar = false }: AppProps = {}) {
   const { 
     wallet, 
     balance, 
@@ -21,6 +22,45 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [showWallet, setShowWallet] = useState(false);
 
+  
+
+  // Open the Chrome extension side panel for the current tab
+  const openSidebar = async () => {
+    try {
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      const tab = tabs[0];
+      if (tab?.id != null) {
+        await chrome.sidePanel.open({ tabId: tab.id });
+        await chrome.sidePanel.setOptions({ tabId: tab.id, path: 'sidebar.html', enabled: true });
+      }
+    } catch (error) {
+      console.error('Failed to open side panel:', error);
+    }
+    // Close the popup window if we're in popup context
+    if (!isSidebar) {
+      window.close();
+    }
+  };
+  // Close the side panel and return to popup mode
+  const closeSidebar = async () => {
+    try {
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      const tab = tabs[0];
+      
+      if (tab?.id != null) {
+        if (isSidebar) {
+          window.close()
+        } else {
+          await chrome.sidePanel.setOptions({ tabId: tab.id, enabled: false });
+          // Open the extension popup
+          await chrome.action.openPopup();
+        }
+      }
+    } catch (error) {
+      console.error('Failed to close side panel:', error);
+    }
+  };
+
   useEffect(() => {
     const init = async () => {
       await initializeWallet();
@@ -32,14 +72,14 @@ function App() {
 
   if (loading) {
     return (
-      <div className="w-[400px] h-[600px] flex items-center justify-center">
+      <div className={`${isSidebar ? 'w-full h-full ' : 'w-[400px] h-[600px] '}flex items-center justify-center`}>
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
       </div>
     );
   }
 
   return (
-    <div className="w-[400px] h-[600px] bg-gradient-to-br from-purple-50 via-white to-purple-50">
+    <div className={`${isSidebar ? 'w-full h-full ' : 'w-[400px] h-[600px] '}bg-gradient-to-br from-purple-50 via-white to-purple-50`}>
       <header className="glass-panel p-4 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center space-x-4">
           <img src="../assets/tknz.png" width="60%" height="60%" />
@@ -58,6 +98,24 @@ function App() {
                 <RefreshCw className={`w-4 h-4 text-purple-600 ${isRefreshing ? 'animate-spin' : ''}`} />
               </button>
             </div>
+            {/* Toggle between open and close based on context */}
+            {!isSidebar ? (
+              <button
+                onClick={openSidebar}
+                className="p-2.5 rounded-xl hover:bg-purple-50 text-gray-600 hover:text-purple-600 transition-all duration-200"
+                title="Open Sidebar"
+              >
+                <Sidebar className="w-5 h-5" />
+              </button>
+            ) : (
+              <button
+                onClick={closeSidebar}
+                className="p-2.5 rounded-xl hover:bg-purple-50 text-gray-600 hover:text-purple-600 transition-all duration-200"
+                title="Close Sidebar"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
             <button 
               className={`p-2.5 rounded-xl transition-all duration-200 ${
                 showWallet 
