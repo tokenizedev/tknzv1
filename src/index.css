@@ -17,11 +17,11 @@
   position: relative;
 }
 
-/* Sidebar context: full viewport height and scrollable */
+/* Sidebar context: full viewport height (inner container handles scrolling) */
 body.sidebar #root {
   height: 100vh;
   max-height: none;
-  overflow-y: auto;
+  overflow-y: hidden;
 }
 
 @layer components {
