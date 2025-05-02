@@ -1,4 +1,11 @@
-import { extractArticleData } from '../src/contentScript';
+import { vi } from 'vitest';
+// Mock html2canvas for tweet screenshot
+vi.mock('html2canvas', () => ({
+  __esModule: true,
+  default: (element: any, options: any) =>
+    Promise.resolve({ toDataURL: () => 'data:image/png;base64,TEST' }),
+}));
+import { extractArticleData, extractTweetData } from '../src/contentScript';
 
 describe('extractArticleData', () => {
   const originalLocation = window.location;
@@ -11,6 +18,41 @@ describe('extractArticleData', () => {
   });
   afterAll(() => {
     window.location = originalLocation;
+  });
+
+  describe('extractTweetData', () => {
+    beforeEach(() => {
+      document.body.innerHTML = '';
+      // Ensure URL is set
+      (window as any).location = { href: 'https://tweet.com/post', origin: 'https://tweet.com' };
+    });
+
+    it('extracts tweet data and screenshot', async () => {
+      document.body.innerHTML = `
+        <article data-testid="tweet">
+          <div lang="en">Hello Tweet</div>
+          <img alt="Image" src="https://img.com/t.png" />
+          <div data-testid="User-Name"><span>AuthorX</span></div>
+        </article>
+      `;
+      const data = await extractTweetData();
+      expect(data.title).toBe('Hello Tweet');
+      expect(data.description).toBe('Hello Tweet');
+      expect(data.image).toBe('data:image/png;base64,TEST');
+      expect(data.tweetImage).toBe('https://img.com/t.png');
+      expect(data.authorName).toBe('AuthorX');
+      expect(data.url).toBe('https://tweet.com/post');
+      expect(data.xUrl).toBe('https://tweet.com/post');
+    });
+
+    it('falls back when tweet container missing', async () => {
+      document.body.innerHTML = '';
+      const data = await extractTweetData();
+      // Fallback returns 'Tweet' as title when not found
+      expect(data.title).toBe('Tweet');
+      expect(data.image).toBe('');
+      expect(data.description).toBe('');
+    });
   });
 
   it('returns default values when no elements present', () => {
