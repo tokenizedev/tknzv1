@@ -1,3 +1,9 @@
+<div align="center">
+  <img src="assets/logo.jpg" alt="TKNZ Logo" width="200" />
+</div>
+
+[![CI](https://github.com/tokenizedev/tknzv1/actions/workflows/ci.yml/badge.svg)](https://github.com/tokenizedev/tknzv1/actions/workflows/ci.yml)
+
  # TKNZ (Tokenize) Chrome Extension
 
  TKNZ (pronounced "tokenize") is a Chrome extension that lets you create meme coins on Pump.fun directly from news articles and tweets. It provides a simple UI to manage a Solana wallet, extract article or tweet data (title, image, description) and generate token metadata, then launch tokens with a specified investment amount.
@@ -114,6 +120,8 @@
  - `npm run keygen`      — Generate `extension.pem` for packaging.
  - `npm run package`     — Package into CRX.
  - `npm run release`     — Build, bump version, and package.
+ - `npm run test`        — Run unit tests in watch mode.
+ - `npm run test:ci`     — Run tests once with coverage.
 
  ## Directory Structure
  ```
