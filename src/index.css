@@ -9,10 +9,19 @@
   }
 }
 
-#root{
+#root {
+  /* Default popup size: fixed height */
   height: 600px;
+  max-height: 600px;
   overflow-y: hidden;
   position: relative;
+}
+
+/* Sidebar context: full viewport height and scrollable */
+body.sidebar #root {
+  height: 100vh;
+  max-height: none;
+  overflow-y: auto;
 }
 
 @layer components {
