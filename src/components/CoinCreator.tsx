@@ -129,9 +129,9 @@ export const CoinCreator: React.FC = () => {
         setTicker('TKNZ');
         setDescription('TKNZ -- Tokenize Anything, Tokenize Everything. TKNZ empowers users to create their own tokens on Pump.fun directly from any web page or social media post. With this tool, the friction of launching a token is removed. No need to copy paste links or images. Just one click and the content is tokenized onto the blockchain forever!');
         setIsGenerating(false);
-          setImageUrl('https://tknz.fun/assets/hero.png');
-        setWebsiteUrl(data.url);
-          setXUrl('https://x.com/tknzfun');
+        setImageUrl('https://tknz.fun/assets/hero.png');
+        setWebsiteUrl(article.url);
+        setXUrl('https://x.com/tknzfun');
         return;
       }
       const tokenCreationData = await useStore.getState().getTokenCreationData(article, level)
@@ -234,7 +234,7 @@ export const CoinCreator: React.FC = () => {
         setIsLoading(false);
       }
     };
-    const handleActivated = async ({ tabId }: chrome.tabs.OnActivatedActiveInfo) => {
+    const handleActivated = async ({ tabId }: { tabId: number }) => {
       await fetchForActiveTab();
     };
     const handleUpdated = async (
@@ -357,7 +357,7 @@ export const CoinCreator: React.FC = () => {
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <label className="flex items-center text-sm font-terminal text-cyber-green/80">
+            <label className="flex items-center text-sm font-terminal text-cyber-pink">
               <Type className="w-4 h-4 mr-2" />
               Coin Name
             </label>
@@ -371,7 +371,7 @@ export const CoinCreator: React.FC = () => {
           </div>
 
           <div className="space-y-2">
-            <label className="flex items-center text-sm font-terminal text-cyber-green/80">
+            <label className="flex items-center text-sm font-terminal text-cyber-pink">
               <Type className="w-4 h-4 mr-2" />
               Ticker
             </label>
@@ -386,7 +386,7 @@ export const CoinCreator: React.FC = () => {
           </div>
 
           <div className="space-y-2">
-            <label className="flex items-center text-sm font-terminal text-cyber-green/80">
+            <label className="flex items-center text-sm font-terminal text-cyber-pink">
               <Image className="w-4 h-4 mr-2" />
               Image URL
             </label>
@@ -400,7 +400,7 @@ export const CoinCreator: React.FC = () => {
           </div>
 
           <div className="space-y-2">
-            <label className="flex items-center text-sm font-terminal text-cyber-green/80">
+            <label className="flex items-center text-sm font-terminal text-cyber-pink">
               <FileText className="w-4 h-4 mr-2" />
               Description
             </label>
@@ -415,7 +415,7 @@ export const CoinCreator: React.FC = () => {
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <label className="flex items-center text-sm font-terminal text-cyber-green/80">
+              <label className="flex items-center text-sm font-terminal text-cyber-pink">
                 <Globe className="w-4 h-4 mr-2" />
                 Website URL (Optional)
               </label>
@@ -429,7 +429,7 @@ export const CoinCreator: React.FC = () => {
             </div>
 
             <div className="space-y-2">
-              <label className="flex items-center text-sm font-terminal text-cyber-green/80">
+              <label className="flex items-center text-sm font-terminal text-cyber-pink">
                 <BrandX className="w-4 h-4 mr-2" />
                 X/Twitter URL (Optional)
               </label>
@@ -443,7 +443,7 @@ export const CoinCreator: React.FC = () => {
             </div>
 
             <div className="space-y-2">
-              <label className="flex items-center text-sm font-terminal text-cyber-green/80">
+              <label className="flex items-center text-sm font-terminal text-cyber-pink">
                 <BrandTelegram className="w-4 h-4 mr-2" />
                 Telegram URL (Optional)
               </label>
@@ -462,7 +462,7 @@ export const CoinCreator: React.FC = () => {
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center space-x-2">
               <DollarSign className="w-4 h-4 text-cyber-green" />
-              <span className="text-sm font-terminal text-cyber-green">Investment Amount</span>
+              <span className="text-sm font-terminal text-cyber-pink">Investment Amount</span>
             </div>
             <span className="text-xs font-terminal text-cyber-purple">Pump.Fun Fee: 0.02 SOL</span>
           </div>
@@ -485,7 +485,7 @@ export const CoinCreator: React.FC = () => {
                 </div>
               )}
             </div>
-            <span className="text-sm font-terminal text-cyber-green">SOL</span>
+            <span className="text-sm font-terminal text-white">SOL</span>
           </div>
 
           {balance < requiredBalance && (
@@ -499,7 +499,7 @@ export const CoinCreator: React.FC = () => {
           <div className="crypto-card p-6 space-y-4 border-cyber-green">
             <h3 className="text-lg font-terminal text-cyber-green uppercase tracking-wide">🎉 Coin Created Successfully!</h3>
             <div className="space-y-2">
-              <p className="text-sm font-terminal text-cyber-green/70">Your coin is now live on Pump.fun!</p>
+              <p className="text-sm font-terminal text-white">Your coin is now live on Pump.fun!</p>
               <a
                 href={createdCoin.pumpUrl}
                 target="_blank"

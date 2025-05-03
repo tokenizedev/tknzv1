@@ -3,8 +3,10 @@ import { Coins as Coin, Wallet, RefreshCw, Sidebar, X, Zap, Code, Shield, Extern
 import { useStore } from './store';
 import { WalletSetup } from './components/WalletSetup';
 import { CoinCreator } from './components/CoinCreator';
-import { WalletPage } from './components/WalletPage';
+import { WalletPageCyber } from './components/WalletPageCyber';
 import { VersionCheck } from './components/VersionCheck';
+import { Leaderboard } from './components/Leaderboard';
+import { Loader } from './components/Loader';
 
 interface AppProps { isSidebar?: boolean; }
 function App({ isSidebar = false }: AppProps = {}) {
@@ -25,7 +27,6 @@ function App({ isSidebar = false }: AppProps = {}) {
   
   // Add this for cypherpunk animation effects
   const [animateZap, setAnimateZap] = useState(false);
-  const [copiedAddress, setCopiedAddress] = useState(false);
   
   const [glitching, setGlitching] = useState(false);
   const mainAreaRef = useRef<HTMLDivElement>(null);
@@ -94,13 +95,7 @@ function App({ isSidebar = false }: AppProps = {}) {
     getBalance();
     setTimeout(() => setAnimateZap(false), 1500);
   };
-
-  // Simulate copying wallet address
-  const copyAddress = (address: string) => {
-    navigator.clipboard.writeText(address);
-    setCopiedAddress(true);
-    setTimeout(() => setCopiedAddress(false), 2000);
-  };
+  
 
   useEffect(() => {
     const init = async () => {
@@ -113,72 +108,9 @@ function App({ isSidebar = false }: AppProps = {}) {
 
   if (loading) {
     return (
-      <div className={`${isSidebar ? 'w-full h-full ' : 'w-[400px] h-[600px] '}flex items-center justify-center bg-cyber-black`}>
-        {/* Cypherpunk loader */}
-        <div className="relative">
-          <div className="w-12 h-12 border-2 border-cyber-purple rounded-full animate-spin relative">
-            <div className="absolute top-0 left-0 w-3 h-3 bg-cyber-purple rounded-full animate-pulse-fast"></div>
-          </div>
-          <div className="absolute inset-0 flex items-center justify-center">
-            <Code className="w-6 h-6 text-cyber-green animate-pulse" />
-          </div>
-          <div className="absolute -bottom-6 w-full text-center text-cyber-green text-xs animate-pulse font-terminal">
-            INITIALIZING
-          </div>
-        </div>
-      </div>
+      <Loader isSidebar={isSidebar} />
     );
   }
-
-  // Mock wallet address for demo
-  const walletAddress = wallet ? "8MXXotWeXCLpNqPMbDS1M" : "";
-
-  const renderLeaderboard = () => (
-    <div className="leaderboard-container mb-6">
-      <div className="p-4">
-        <h1 className="leaderboard-title text-center mb-6">TKNZ LEADERBOARD</h1>
-        
-        <div className="flex justify-between mb-4">
-          <div className="relative flex-1 mr-2">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-cyber-green/50 w-4 h-4" />
-            <input 
-              type="text" 
-              className="search-field pl-10" 
-              placeholder="SEARCH TOKEN || CREATOR" 
-            />
-          </div>
-          
-          <button className="leaderboard-sort">
-            <span>SORT BY: MC</span>
-            <ArrowUpDown className="w-4 h-4" />
-          </button>
-        </div>
-        
-        <table className="leaderboard-table">
-          <thead>
-            <tr>
-              <th>RANK</th>
-              <th>TOKEN</th>
-              <th>MC</th>
-              <th>CREATOR</th>
-              <th className="text-right">LAUNCHED</th>
-            </tr>
-          </thead>
-          <tbody>
-            {leaderboardData.map((item) => (
-              <tr key={item.rank}>
-                <td className="text-cyber-green/70">#{item.rank}</td>
-                <td>{item.token}</td>
-                <td className="money">${item.mc.toFixed(2)} USD</td>
-                <td className="creator">{item.creator}</td>
-                <td className="time text-right">{item.launched}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
 
   return (
     <div className={`${isSidebar ? 'w-full h-full ' : 'w-[400px] h-[600px] '}bg-cyber-black bg-binary-pattern binary-overlay`}>
@@ -309,94 +241,10 @@ function App({ isSidebar = false }: AppProps = {}) {
           <WalletSetup />
         ) : showLeaderboard ? (
           <div className="py-6">
-            {renderLeaderboard()}
+            <Leaderboard leaderboardData={leaderboardData} />
           </div>
         ) : showWallet ? (
-          <div className="py-6 space-y-4">
-            {/* Wallet page styled as a terminal */}
-            <div className="crypto-card">
-              <div className="crypto-card-header">
-                <h2 className="crypto-card-title">Wallet Balance</h2>
-                <button 
-                  onClick={triggerBalanceEffect} 
-                  className="text-cyber-green/70 hover:text-cyber-green"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                </button>
-              </div>
-              <div className="crypto-card-body">
-                <div className="balance-display">
-                  <span className={animateZap ? 'animate-glitch' : ''}>
-                    {balance.toFixed(2)} SOL
-                  </span>
-                </div>
-                <p className="text-cyber-green/70 text-sm font-terminal">
-                  Auto-refreshes every minute
-                </p>
-                <p className="text-cyber-green/70 text-sm font-terminal">
-                  Balance also updates when you open the extension
-                </p>
-              </div>
-            </div>
-
-            {/* Investment per coin */}
-            <div className="crypto-card">
-              <div className="crypto-card-header">
-                <h2 className="crypto-card-title">Investment per Coin</h2>
-                <span className="text-cyber-purple text-xs font-mono">
-                  max 85 SOL
-                </span>
-              </div>
-              <div className="crypto-card-body">
-                <div className="flex items-center mb-3">
-                  <input 
-                    type="text" 
-                    className="input-field font-terminal" 
-                    placeholder="0"
-                  />
-                  <span className="ml-2 text-cyber-green/80 font-terminal">SOL</span>
-                  <button className="ml-2 text-xl text-cyber-purple font-bold">$</button>
-                </div>
-                <p className="text-cyber-green/70 text-xs font-terminal mb-3">
-                  This amount + 0.03 SOL will be required for each coin creation:
-                </p>
-                <ul className="text-cyber-green/70 text-xs font-terminal space-y-1 list-inside list-disc">
-                  <li>0.02 SOL Pump.fun fee</li>
-                  <li>0.01 SOL transaction fee</li>
-                </ul>
-              </div>
-            </div>
-
-            {/* Fund your wallet */}
-            <div className="bg-cyber-black border border-cyber-green/30 rounded-md p-4 mb-3">
-              <h2 className="text-cyber-purple font-terminal text-xl uppercase text-center mb-4">Fund Your Wallet</h2>
-              <div className="hash-display mb-4 flex items-center justify-center bg-cyber-dark/50 text-cyber-green">
-                <span className="text-cyber-green mr-2 font-terminal">{walletAddress}</span>
-                <button 
-                  onClick={() => copyAddress(walletAddress)}
-                  className={`hover:text-cyber-green-dark ${copiedAddress ? 'text-cyber-purple' : 'text-cyber-green/70'}`}
-                >
-                  <Copy className="w-4 h-4" />
-                </button>
-              </div>
-              <div className="qr-container border border-cyber-green/20">
-                {/* Placeholder for QR code */}
-                <div className="w-full h-[150px] bg-white flex items-center justify-center text-black">
-                  {/* In a real implementation, this would be an actual QR code component */}
-                  <div className="w-full h-full bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTUwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTUwIiBoZWlnaHQ9IjE1MCIgZmlsbD0ibm9uZSIvPjxwYXRoIGQ9Ik0gMzAgMzAgTCA1MCAzMCBMIDUwIDUwIEwgMzAgNTAgWiBNIDcwIDMwIEwgOTAgMzAgTCA5MCA1MCBMIDY5IDUwIFogTSAzMCA3MCBMIDU2IDcwIEwgNTAgOTAgTCAzMCA5MCBaIE0gNzAgNzAgTCA5MCA3MCBMIDkwIDkwIEwgNzAgOTAgWiBNIDMwIDExMCBMIDUwIDExMCBMIDUwIDEzMCBMIDMwIDEzMCBaIE0gNzAgMTEwIEwgOTAgMTEwIEwgOTAgMTMwIEwgNzAgMTMwIFoiIGZpbGw9IiMwMDAwMDAiLz48L3N2Zz4=')] bg-no-repeat bg-center"></div>
-                </div>
-              </div>
-              <p className="text-center text-cyber-green mt-4 text-sm font-terminal">
-                Scan this QR code or copy the address above to send SOL to your wallet
-              </p>
-            </div>
-
-            {/* Export private key */}
-            <div className="bg-cyber-dark rounded-md p-4 flex items-center justify-between border border-cyber-green/30">
-              <h3 className="text-cyber-green font-terminal text-sm uppercase">Export Private Key</h3>
-              <AlertTriangle className="text-cyber-yellow w-4 h-4" />
-            </div>
-          </div>
+          <WalletPageCyber />
         ) : !isLatestVersion ? (
           <VersionCheck updateAvailable={updateAvailable || ''} />
         ) : (
