@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.3.1](https://tokenizedev///compare/v0.3.0...v0.3.1) (2025-05-03)
+
+
+### Features
+
+* Add commit-and-tag-version configuration to bump package.json and manifest.json files ([bdb220b](https://tokenizedev///commit/bdb220b4dc29c170b99e0b29cfa7202114a1057d))
+
 ## [0.3.0](https://tokenizedev///compare/v0.2.3...v0.3.0) (2025-05-02)
 
 
