@@ -5,7 +5,7 @@ import { logEventToFirestore } from '../firebase';
  * RPC endpoint for Solana network.
  */
 const RPC_ENDPOINT = 'https://mainnet.helius-rpc.com/?api-key=8fb5b733-fd3e-41e0-8493-e1c994cf008a';
-
+const DEVNET_RPC_ENDPOINT = 'https://api.devnet.solana.com';
 /**
  * High-level Solana connection for sending and confirming transactions.
  */
