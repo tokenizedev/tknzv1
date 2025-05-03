@@ -12,31 +12,33 @@ export default {
       },
       colors: {
         // Terminal-inspired cypherpunk color palette matching the leaderboard
-        'cyber-black': '#000000',
-        'cyber-dark': '#040f09',
+        'cyber-black': '#0c0c0c',
+        'cyber-dark': '#121212',
         'cyber-gray': '#0c1a12',
         'cyber-green': '#00ff41', // Bright terminal green seen in leaderboard
         'cyber-green-dark': '#00b342',
-        'cyber-blue': '#00d0ff',
+        'cyber-blue': '#0ff0fc',
         'cyber-blue-dark': '#0a84ff',
-        'cyber-purple': '#ff00ff', // Pink/purple accent color
-        'cyber-pink': '#ff3e84', // Alternative accent 
+        'cyber-purple': '#d57eeb',
+        'cyber-pink': '#ff206e', // Alternative accent 
         'cyber-orange': '#ff3c00',
         'cyber-yellow': '#ffcc00',
         'cyber-white': '#e5e5e5',
         'terminal-green': '#0cff8d', // Slightly more blue-tinted green
-        'usd-green': '#54d168', // For USD amounts
+        'usd-green': '#2cca73', // For USD amounts
       },
       animation: {
         'glow': 'glow 1.5s ease-in-out infinite alternate',
-        'pulse-fast': 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'pulse-fast': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
         'cyber-spin': 'spin 10s linear infinite',
         'float': 'float 3s ease-in-out infinite',
         'flicker': 'flicker 3s linear infinite',
         'glitch': 'glitch 1s linear infinite',
         'cryptographic': 'cryptographic 10s linear infinite',
         'binary-shift': 'binary-shift 20s linear infinite',
-        'terminal-cursor': 'terminal-cursor 1s step-end infinite',
+        'terminal-cursor': 'terminal_blink 1s step-end infinite',
+        'matrix-code': 'matrix 20s linear infinite',
+        'scanline': 'scanline 2s linear infinite',
       },
       keyframes: {
         glow: {
@@ -64,9 +66,17 @@ export default {
           '0%': { transform: 'translateX(0)' },
           '100%': { transform: 'translateX(-50%)' },
         },
-        'terminal-cursor': {
-          '0%, 100%': { opacity: '1' },
-          '50%': { opacity: '0' },
+        terminal_blink: {
+          '0%, 100%': { opacity: 1 },
+          '50%': { opacity: 0 },
+        },
+        matrix: {
+          '0%': { transform: 'translateY(-100%)' },
+          '100%': { transform: 'translateY(100%)' },
+        },
+        scanline: {
+          '0%': { transform: 'translateY(0%)' },
+          '100%': { transform: 'translateY(100%)' },
         },
       },
       backgroundImage: {
@@ -77,12 +87,12 @@ export default {
         'leaderboard-border': 'linear-gradient(90deg, rgba(0,255,65,0.1) 0%, rgba(0,255,65,0.3) 10%, rgba(0,255,65,0.3) 90%, rgba(0,255,65,0.1) 100%)',
       },
       boxShadow: {
-        'neon-green': '0 0 5px #00ff41, 0 0 10px #00ff41',
-        'neon-blue': '0 0 5px #00d0ff, 0 0 10px #00d0ff',
+        'neon-green': '0 0 5px rgba(0, 255, 65, 0.5)',
+        'neon-blue': '0 0 5px rgba(15, 240, 252, 0.5)',
         'neon-pink': '0 0 5px #ff3e84, 0 0 10px #ff3e84',
-        'neon-purple': '0 0 5px #ff00ff, 0 0 10px #ff00ff',
-        'terminal': '0 0 0 1px #00ff41, 0 0 10px rgba(0, 255, 65, 0.4) inset',
-        'leaderboard': '0 0 20px rgba(0, 255, 65, 0.3), 0 0 10px rgba(255, 0, 255, 0.1) inset',
+        'neon-purple': '0 0 5px rgba(213, 126, 235, 0.5)',
+        'terminal': '0 0 10px rgba(0, 255, 65, 0.3), inset 0 0 2px rgba(0, 255, 65, 0.5)',
+        'leaderboard': '0 0 15px rgba(0, 0, 0, 0.7), 0 0 5px rgba(0, 255, 65, 0.3)',
       },
       borderWidth: {
         '1': '1px',
