@@ -54,5 +54,17 @@
     "vite": "^5.1.5",
     "vitest": "^0.34.3",
     "vitest-fetch-mock": "^0.4.5"
+  },
+  "commit-and-tag-version": {
+    "bumpFiles": [
+      {
+        "filename": "package.json",
+        "type": "json"
+      },
+      {
+        "filename": "manifest.json",
+        "type": "json"
+      }
+    ]
   }
 }
