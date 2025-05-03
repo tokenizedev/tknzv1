@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Image, Type, FileText, Send, Loader2, AlertCircle, Globe, Sparkles, DollarSign, Hand as BrandX, GitBranch as BrandTelegram } from 'lucide-react';
+import { Image, Type, FileText, Send, Loader2, AlertCircle, Globe, Sparkles, DollarSign, Hand as BrandX, GitBranch as BrandTelegram, Terminal, Zap } from 'lucide-react';
 import { useStore } from '../store';
 
 interface ArticleData {
@@ -21,6 +21,30 @@ const MOCK_ARTICLE_DATA: ArticleData = {
   url: "https://example.com/bitcoin-ath",
   xUrl: "https://x.com/bitcoin",
   isXPost: false
+};
+
+// Terminal loading animation component
+const TerminalLoading: React.FC<{ text: string; progress: number }> = ({ text, progress }) => {
+  return (
+    <div className="w-full space-y-1">
+      <div className="flex items-center justify-between mb-1">
+        <span className="font-terminal text-xs text-cyber-green">{text}</span>
+        <span className="font-terminal text-xs text-cyber-green">{Math.round(progress)}%</span>
+      </div>
+      <div className="w-full bg-cyber-dark border border-cyber-green/30 h-2 overflow-hidden">
+        <div 
+          className="h-full bg-cyber-green transition-all duration-300"
+          style={{ width: `${progress}%` }}
+        ></div>
+      </div>
+      <div className="font-terminal text-xs text-cyber-green/60 font-mono">
+        {Array.from({ length: Math.floor(progress / 10) }).map((_, i) => (
+          <span key={i} className="opacity-70">█</span>
+        ))}
+        <span className="animate-terminal-cursor">_</span>
+      </div>
+    </div>
+  );
 };
 
 export const CoinCreator: React.FC = () => {
@@ -45,12 +69,31 @@ export const CoinCreator: React.FC = () => {
   const [investmentAmount, setInvestmentAmount] = useState(defaultInvestment);
   const [memeLevel, setMemeLevel] = useState(0);
   const [isCreating, setIsCreating] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState(0);
   const [createdCoin, setCreatedCoin] = useState<{
     address: string;
     pumpUrl: string;
   } | null>(null);
 
   const requiredBalance = investmentAmount + 0.03;
+
+  // Progress animation effect for the terminal loading
+  useEffect(() => {
+    if (isCreating) {
+      setLoadingProgress(0);
+      const interval = setInterval(() => {
+        setLoadingProgress(prev => {
+          if (prev >= 95) {
+            clearInterval(interval);
+            return prev;
+          }
+          return prev + Math.random() * 5;
+        });
+      }, 200);
+      
+      return () => clearInterval(interval);
+    }
+  }, [isCreating]);
 
   useEffect(() => {
     setInvestmentAmount(defaultInvestment);
@@ -218,9 +261,16 @@ export const CoinCreator: React.FC = () => {
     }
 
     setIsCreating(true);
+    setLoadingProgress(0);
     setError(null);
 
     try {
+      // Simulate initial progress
+      for (let i = 0; i < 5; i++) {
+        await new Promise(resolve => setTimeout(resolve, 300));
+        setLoadingProgress(prev => Math.min(prev + Math.random() * 15, 95));
+      }
+
       const response = await createCoin({
         name: coinName,
         ticker: ticker,
@@ -232,6 +282,8 @@ export const CoinCreator: React.FC = () => {
         investmentAmount: investmentAmount
       });
 
+      setLoadingProgress(100);
+      
       await addCreatedCoin({
         address: response.address,
         name: coinName,
@@ -245,14 +297,26 @@ export const CoinCreator: React.FC = () => {
       const errorMessage = error instanceof Error ? error.message : 'Failed to create coin';
       setError(`Failed to create coin: ${errorMessage}`);
     } finally {
-      setIsCreating(false);
+      setTimeout(() => {
+        setIsCreating(false);
+      }, 500);
     }
   };
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-[400px]">
-        <Loader2 className="w-8 h-8 text-purple-600 animate-spin" />
+        <div className="relative">
+          <div className="w-12 h-12 border-2 border-cyber-green rounded-full animate-spin relative">
+            <div className="absolute top-0 left-0 w-3 h-3 bg-cyber-purple rounded-full animate-pulse-fast"></div>
+          </div>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Terminal className="w-6 h-6 text-cyber-green animate-pulse" />
+          </div>
+          <div className="absolute -bottom-6 w-full text-center text-cyber-green text-xs animate-pulse font-terminal">
+            LOADING
+          </div>
+        </div>
       </div>
     );
   }
@@ -260,28 +324,40 @@ export const CoinCreator: React.FC = () => {
   return (
     <div className="space-y-6 py-6">
       {(error || walletError) && (
-        <div className="bg-red-50/80 backdrop-blur-sm border border-red-100 rounded-xl p-4 flex items-start space-x-2">
-          <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5 text-red-600" />
-          <p className="text-sm text-red-700">{error || walletError}</p>
+        <div className="terminal-window p-4 flex items-start space-x-2">
+          <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5 text-cyber-pink" />
+          <div>
+            <p className="text-sm text-cyber-pink font-terminal">ERROR_CODE: 0xE1A2</p>
+            <p className="text-sm text-left font-terminal text-cyber-pink">{error || walletError}</p>
+          </div>
         </div>
       )}
 
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-gray-900">Token Details</h3>
+        <div className="flex items-center justify-between border-b border-cyber-green/30 pb-2">
+          <h3 className="font-terminal text-cyber-green text-lg uppercase tracking-wide">Token Details</h3>
           <button
             onClick={() => generateSuggestions(articleData)}
             disabled={isGenerating || websiteUrl.includes('tknz.fun')}
-            className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg hover:from-purple-600 hover:to-purple-700 transition-all duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center space-x-2 px-4 py-1.5 bg-cyber-black border border-cyber-purple text-cyber-purple rounded-sm hover:bg-cyber-purple/10 transition-all duration-200 font-terminal tracking-wider disabled:opacity-50 disabled:cursor-not-allowed uppercase text-sm"
           >
-            <Sparkles className="w-4 h-4" />
-            <span>{isGenerating ? 'Generating...' : 'MEMIER!!'}</span>
+            {isGenerating ? (
+              <>
+                <Terminal className="w-4 h-4 animate-pulse mr-1" />
+                <span className="animate-pulse">GENERATING...</span>
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4 mr-1" />
+                <span>MEMIER!!</span>
+              </>
+            )}
           </button>
         </div>
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <label className="flex items-center text-sm font-medium text-gray-700">
+            <label className="flex items-center text-sm font-terminal text-cyber-green/80">
               <Type className="w-4 h-4 mr-2" />
               Coin Name
             </label>
@@ -289,13 +365,13 @@ export const CoinCreator: React.FC = () => {
               type="text"
               value={coinName}
               onChange={(e) => setCoinName(e.target.value)}
-              className="input-field"
+              className="input-field font-terminal"
               placeholder="Enter coin name"
             />
           </div>
 
           <div className="space-y-2">
-            <label className="flex items-center text-sm font-medium text-gray-700">
+            <label className="flex items-center text-sm font-terminal text-cyber-green/80">
               <Type className="w-4 h-4 mr-2" />
               Ticker
             </label>
@@ -303,14 +379,14 @@ export const CoinCreator: React.FC = () => {
               type="text"
               value={ticker}
               onChange={(e) => setTicker(e.target.value.toUpperCase())}
-              className="input-field"
+              className="input-field font-terminal"
               maxLength={15}
               placeholder="Enter ticker (max 15 chars)"
             />
           </div>
 
           <div className="space-y-2">
-            <label className="flex items-center text-sm font-medium text-gray-700">
+            <label className="flex items-center text-sm font-terminal text-cyber-green/80">
               <Image className="w-4 h-4 mr-2" />
               Image URL
             </label>
@@ -318,20 +394,20 @@ export const CoinCreator: React.FC = () => {
               type="url"
               value={imageUrl}
               onChange={(e) => setImageUrl(e.target.value)}
-              className="input-field"
+              className="input-field font-terminal"
               placeholder="Enter image URL"
             />
           </div>
 
           <div className="space-y-2">
-            <label className="flex items-center text-sm font-medium text-gray-700">
+            <label className="flex items-center text-sm font-terminal text-cyber-green/80">
               <FileText className="w-4 h-4 mr-2" />
               Description
             </label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="input-field min-h-[100px]"
+              className="input-field font-terminal min-h-[100px]"
               rows={3}
               placeholder="Enter coin description"
             />
@@ -339,7 +415,7 @@ export const CoinCreator: React.FC = () => {
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <label className="flex items-center text-sm font-medium text-gray-700">
+              <label className="flex items-center text-sm font-terminal text-cyber-green/80">
                 <Globe className="w-4 h-4 mr-2" />
                 Website URL (Optional)
               </label>
@@ -347,13 +423,13 @@ export const CoinCreator: React.FC = () => {
                 type="url"
                 value={websiteUrl}
                 onChange={(e) => setWebsiteUrl(e.target.value)}
-                className="input-field"
+                className="input-field font-terminal"
                 placeholder="Enter website URL"
               />
             </div>
 
             <div className="space-y-2">
-              <label className="flex items-center text-sm font-medium text-gray-700">
+              <label className="flex items-center text-sm font-terminal text-cyber-green/80">
                 <BrandX className="w-4 h-4 mr-2" />
                 X/Twitter URL (Optional)
               </label>
@@ -361,13 +437,13 @@ export const CoinCreator: React.FC = () => {
                 type="url"
                 value={xUrl}
                 onChange={(e) => setXUrl(e.target.value)}
-                className="input-field"
+                className="input-field font-terminal"
                 placeholder="Enter X/Twitter URL"
               />
             </div>
 
             <div className="space-y-2">
-              <label className="flex items-center text-sm font-medium text-gray-700">
+              <label className="flex items-center text-sm font-terminal text-cyber-green/80">
                 <BrandTelegram className="w-4 h-4 mr-2" />
                 Telegram URL (Optional)
               </label>
@@ -375,20 +451,20 @@ export const CoinCreator: React.FC = () => {
                 type="url"
                 value={telegramUrl}
                 onChange={(e) => setTelegramUrl(e.target.value)}
-                className="input-field"
+                className="input-field font-terminal"
                 placeholder="Enter Telegram URL"
               />
             </div>
           </div>
         </div>
 
-        <div className="glass-panel p-4 rounded-xl space-y-2">
+        <div className="crypto-card p-4 space-y-2">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center space-x-2">
-              <DollarSign className="w-4 h-4 text-gray-600" />
-              <span className="text-sm font-medium text-gray-700">Investment Amount</span>
+              <DollarSign className="w-4 h-4 text-cyber-green" />
+              <span className="text-sm font-terminal text-cyber-green">Investment Amount</span>
             </div>
-            <span className="text-xs text-purple-600">Pump.Fun Fee: 0.02 SOL</span>
+            <span className="text-xs font-terminal text-cyber-purple">Pump.Fun Fee: 0.02 SOL</span>
           </div>
           
           <div className="flex items-center space-x-2">
@@ -400,58 +476,66 @@ export const CoinCreator: React.FC = () => {
                 step="0.01"
                 value={investmentAmount}
                 onChange={handleInvestmentChange}
-                className={`input-field w-full ${investmentAmount > 85 ? 'border-red-300 focus:ring-red-400' : ''}`}
+                className={`input-field w-full font-terminal ${investmentAmount > 85 ? 'border-cyber-pink' : ''}`}
                 placeholder="Enter SOL amount (max 85)"
               />
               {investmentAmount > 85 && (
                 <div className="absolute right-0 top-1/2 -translate-y-1/2 mr-2">
-                  <AlertCircle className="w-5 h-5 text-red-500" />
+                  <AlertCircle className="w-5 h-5 text-cyber-pink" />
                 </div>
               )}
             </div>
-            <span className="text-sm font-medium text-gray-600">SOL</span>
+            <span className="text-sm font-terminal text-cyber-green">SOL</span>
           </div>
 
           {balance < requiredBalance && (
-            <div className="text-xs text-red-600 mt-1">
+            <div className="text-xs text-cyber-pink mt-1 font-terminal">
               Add at least {requiredBalance.toFixed(2)} SOL to create a meme coin
             </div>
           )}
         </div>
 
         {createdCoin && (
-          <div className="glass-panel p-6 rounded-xl space-y-4">
-            <h3 className="text-lg font-semibold text-green-600">🎉 Coin Created Successfully!</h3>
+          <div className="crypto-card p-6 space-y-4 border-cyber-green">
+            <h3 className="text-lg font-terminal text-cyber-green uppercase tracking-wide">🎉 Coin Created Successfully!</h3>
             <div className="space-y-2">
-              <p className="text-sm text-gray-600">Your coin is now live on Pump.fun!</p>
+              <p className="text-sm font-terminal text-cyber-green/70">Your coin is now live on Pump.fun!</p>
               <a
                 href={createdCoin.pumpUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="btn-primary w-full flex items-center justify-center space-x-2"
+                className="btn-primary w-full flex items-center justify-center space-x-2 font-terminal"
               >
                 <Globe className="w-4 h-4" />
-                <span>View on Pump.fun</span>
+                <span>VIEW ON PUMP.FUN</span>
               </a>
             </div>
           </div>
         )}
 
+        {/* Final create button with special styling */}
         <button
           onClick={handleSubmit}
           disabled={balance < requiredBalance || isCreating}
-          className="btn-primary w-full flex items-center justify-center space-x-2"
+          className={`w-full font-terminal text-lg uppercase tracking-wider border rounded-sm transition-all duration-300 relative overflow-hidden ${
+            isCreating 
+              ? 'bg-cyber-dark border-cyber-green/70 text-cyber-green py-6' 
+              : 'bg-cyber-black hover:bg-cyber-green/20 border-cyber-green text-cyber-green py-4 hover:shadow-neon-green'
+          }`}
         >
           {isCreating ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              <span>Creating Coin...</span>
-            </>
+            <div className="px-6 space-y-3">
+              <div className="flex items-center justify-between mb-1">
+                <span className="font-terminal text-sm">CREATING COIN...</span>
+                <Terminal className="w-4 h-4 animate-pulse" />
+              </div>
+              <TerminalLoading text="Initializing transaction..." progress={loadingProgress} />
+            </div>
           ) : (
-            <>
-              <Send className="w-4 h-4 space-y-4" />
-              <span>Create Meme Coin</span>
-            </>
+            <div className="flex items-center justify-center space-x-2">
+              <Zap className="w-5 h-5" />
+              <span>CREATE MEME COIN</span>
+            </div>
           )}
         </button>
       </div>
