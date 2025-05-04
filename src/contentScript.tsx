@@ -1,19 +1,26 @@
 // Content script to extract article data
 import html2canvas from 'html2canvas';
 
+const getIsXPost = () => window.location.hostname === 'x.com' || window.location.hostname === 'twitter.com';
 // Selection mode: highlight divs and allow user to select content
 function startSelectionMode() {
   const highlightMap = new WeakMap();
   const buttonMap = new WeakMap();
+  const isXPost = getIsXPost();
+  const selectors = (isXPost ? ['article[data-testid="tweet"]'] : ['div, p']).join(',');
 
   const onMouseEnter = (e: Event) => {
     const el = e.currentTarget as HTMLElement;
+    // if already showing select button for this element, skip to prevent duplicates
+    if (buttonMap.has(el)) {
+      return;
+    }
     // store original outline
     highlightMap.set(el, el.style.outline);
     el.style.outline = '2px solid #00ff41';
     // create select button
     const btn = document.createElement('button');
-    console.log('btn', btn);
+    
     btn.textContent = 'Select';
     Object.assign(btn.style, {
       position: 'absolute',
@@ -33,35 +40,46 @@ function startSelectionMode() {
 
   const onMouseLeave = (e: Event) => {
     const el = e.currentTarget as HTMLElement;
+    // if moving into our select button, ignore and keep highlight
+    const btn = buttonMap.get(el);
+    // relatedTarget is the element the pointer entered
+    const related = (e as MouseEvent).relatedTarget as Node | null;
+    if (btn && related && (btn === related || btn.contains(related))) {
+      return;
+    }
     // restore outline
     const orig = highlightMap.get(el);
-    if (orig !== undefined) el.style.outline = orig;
+    if (orig !== undefined) {
+      el.style.outline = orig;
+    }
     // remove button
-    const btn = buttonMap.get(el);
-    if (btn) btn.remove();
-    console.log('onMouseLeave', el);
+    if (btn) {
+      btn.remove();
+    }
   }
 
   const selectElement = (el: HTMLElement) => {
     cleanup();
-    const content = el.innerText || el.textContent || '';
-    chrome.runtime.sendMessage({ type: 'CONTENT_SELECTED', content });
+    
+    extractContent(el).then(content => {
+      chrome.runtime.sendMessage({ type: 'CONTENT_SELECTED', content });
+    });    
   };
 
   const cleanup = () => {
-    document.querySelectorAll('div').forEach(div => {
-      div.removeEventListener('mouseenter', onMouseEnter);
-      div.removeEventListener('mouseleave', onMouseLeave);
-      const btn = buttonMap.get(div as HTMLElement);
+    document.querySelectorAll(selectors).forEach(el => {
+      el.removeEventListener('mouseenter', onMouseEnter);
+      el.removeEventListener('mouseleave', onMouseLeave);
+      const btn = buttonMap.get(el as HTMLElement);
       if (btn) btn.remove();
     });
   };
 
   // Attach listeners to all divs with sufficient text
-  document.querySelectorAll('div').forEach(div => {
-    if ((div.textContent || '').trim().length > 20) {
-      div.addEventListener('mouseenter', onMouseEnter);
-      div.addEventListener('mouseleave', onMouseLeave);
+  document.querySelectorAll(selectors).forEach(el => {
+    if ((el.textContent || '').trim().length > 20) {
+      el.addEventListener('mouseenter', onMouseEnter);
+      el.addEventListener('mouseleave', onMouseLeave);
     }
   });
 }
@@ -78,22 +96,11 @@ const initialize = () => {
   // Set up message listener
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.type === 'START_SELECT_MODE') {
-      console.log('START_SELECT_MODE request received');
       startSelectionMode();
-      return;
+      return true;
     }
     if (request.type === 'GET_ARTICLE_DATA') {
-      console.log('Received GET_ARTICLE_DATA request');
-      const isXPost = window.location.hostname === 'x.com' || window.location.hostname === 'twitter.com';
-      
-      if (isXPost) {
-        // For Twitter/X posts, we need to handle async screenshot
-        extractTweetData().then(sendResponse);
-        return true; // Keep the message channel open for async response
-      } else {
-        // For regular articles, we can respond synchronously
-        sendResponse(extractArticleData());
-      }
+      extractContent().then(sendResponse);
     }
     return true;
   });
@@ -110,14 +117,58 @@ const initialize = () => {
   }
 };
 
+const extractContent = async (baseElement: HTMLElement = document.body) => {
+  const isXPost = getIsXPost();
+  if (isXPost) {
+    return extractTweetData(baseElement, baseElement);
+  } else {
+    return extractArticleData(baseElement);
+  }
+}
+
+const extractImage = (baseElement: HTMLElement = document.body) => {
+  // Extract image
+  const imageSelectors = [
+    'meta[property="og:image"]',
+    'meta[name="twitter:image"]',
+    'link[rel="image_src"]',
+    'article img',
+    '.article-content img',
+    '.post-content img',
+    'img',
+  ];
+
+  for (const selector of imageSelectors) {
+    const element = baseElement.querySelector(selector);
+    if (element) {
+      let imgSrc = element instanceof HTMLMetaElement 
+        ? element.getAttribute('content') || ''
+        : element.getAttribute('src') || '';
+      
+      if (imgSrc) {
+        try {
+          if (!imgSrc.startsWith('http')) {
+            imgSrc = new URL(imgSrc, window.location.origin).href;
+          }
+          return imgSrc;
+        } catch (e) {
+          console.warn('Invalid image URL:', imgSrc);
+          continue;
+        }
+      }
+    }
+  }
+  return '';
+}
+
 // Function to extract tweet data
-export const extractTweetData = async () => {
+const extractTweetData = async (tweetContainer: HTMLElement | null = null, baseElement: HTMLElement = document.body) => {
   try {
     // Wait for tweet container to be available
     let retries = 0;
-    let tweetContainer;
+    
     while (!tweetContainer && retries < 10) {
-      tweetContainer = document.querySelector('article[data-testid="tweet"]');
+      tweetContainer = baseElement.querySelector('article[data-testid="tweet"]');
       if (!tweetContainer) {
         await new Promise(resolve => setTimeout(resolve, 100));
         retries++;
@@ -203,7 +254,8 @@ export const extractTweetData = async () => {
 };
 
 // Function to extract article data
-export const extractArticleData = () => {
+const extractArticleData = (baseElement: HTMLElement = document.body) => {
+  
   try {
     let title = '';
     let image = '';
@@ -213,6 +265,12 @@ export const extractArticleData = () => {
     // Extract title
     const titleSelectors = [
       'h1',
+      'h2',
+      'h3',
+      'h4',
+      'h5',
+      'h6',
+      'p',
       'article h1',
       'meta[property="og:title"]',
       'meta[name="twitter:title"]',
@@ -220,7 +278,7 @@ export const extractArticleData = () => {
     ];
 
     for (const selector of titleSelectors) {
-      const element = document.querySelector(selector);
+      const element = baseElement.querySelector(selector);
       if (element) {
         title = element instanceof HTMLMetaElement 
           ? element.getAttribute('content') || ''
@@ -229,36 +287,14 @@ export const extractArticleData = () => {
       }
     }
 
-    // Extract image
-    const imageSelectors = [
-      'meta[property="og:image"]',
-      'meta[name="twitter:image"]',
-      'link[rel="image_src"]',
-      'article img',
-      '.article-content img',
-      '.post-content img'
-    ];
+    if (!title && baseElement !== document.body) {
+      title = baseElement.textContent?.slice(0, 32) || document.title;
+    }
 
-    for (const selector of imageSelectors) {
-      const element = document.querySelector(selector);
-      if (element) {
-        let imgSrc = element instanceof HTMLMetaElement 
-          ? element.getAttribute('content') || ''
-          : element.getAttribute('src') || '';
-        
-        if (imgSrc) {
-          try {
-            if (!imgSrc.startsWith('http')) {
-              imgSrc = new URL(imgSrc, window.location.origin).href;
-            }
-            image = imgSrc;
-            break;
-          } catch (e) {
-            console.warn('Invalid image URL:', imgSrc);
-            continue;
-          }
-        }
-      }
+    image = extractImage(baseElement);
+
+    if (!image && baseElement !== document.body) {
+      image = extractImage(document.body);
     }
 
     // Extract description
@@ -268,11 +304,13 @@ export const extractArticleData = () => {
       'meta[name="twitter:description"]',
       'article p',
       '.article-content p',
-      '.post-content p'
+      '.post-content p',
+      'p',
+      'div'
     ];
 
     for (const selector of descriptionSelectors) {
-      const element = document.querySelector(selector);
+      const element = baseElement.querySelector(selector);
       if (element) {
         description = element instanceof HTMLMetaElement 
           ? element.getAttribute('content') || ''
@@ -281,10 +319,14 @@ export const extractArticleData = () => {
       }
     }
 
+    if (!description && baseElement !== document.body) {
+      description = baseElement.innerText || baseElement.textContent || '';
+    }
+
     // Get canonical URL
     try {
-      const canonicalUrl = document.querySelector('link[rel="canonical"]')?.getAttribute('href');
-      const ogUrl = document.querySelector('meta[property="og:url"]')?.getAttribute('content');
+      const canonicalUrl = document.body.querySelector('link[rel="canonical"]')?.getAttribute('href');
+      const ogUrl = document.body.querySelector('meta[property="og:url"]')?.getAttribute('content');
       
       if (canonicalUrl) {
         url = new URL(canonicalUrl, window.location.origin).href;
