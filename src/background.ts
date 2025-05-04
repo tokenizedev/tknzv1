@@ -16,6 +16,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 // Track content script status per tab
 const contentScriptStatus = new Map();
 
+let lastMessage: any = null;
 // Handle messages from content script
 chrome.runtime.onMessage.addListener((message: any, sender, sendResponse) => {
   // Determine target tab: either provided in message (from popup) or sender.tab (from content script)
@@ -46,7 +47,7 @@ chrome.runtime.onMessage.addListener((message: any, sender, sendResponse) => {
   // Handle user content selection from page
   else if (message.type === 'CONTENT_SELECTED') {
     const content = message.content;
-    chrome.storage.local.set({ selectedContent: content }, () => {
+    chrome.storage.local.set({ selectedContent: JSON.stringify(content) }, () => {
       chrome.action.openPopup().catch(err => console.error('Failed to open popup:', err));
     });
   }
