@@ -323,6 +323,10 @@ export const CoinCreator: React.FC = () => {
 
   return (
     <div className="space-y-6 py-6">
+      {/* Main TKNZ token contract address display */}
+      <div className="bg-cyber-dark border border-cyber-green/30 px-2 py-1 rounded-sm font-terminal text-xs text-cyber-green">
+        Main TKNZ Token Address: AfyDiEptGHEDgD69y56XjNSbTs23LaF1YHANVKnWpump
+      </div>
       {(error || walletError) && (
         <div className="terminal-window p-4 flex items-start space-x-2">
           <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5 text-cyber-pink" />
