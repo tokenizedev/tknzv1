@@ -1,5 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, addDoc } from 'firebase/firestore';
+import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import { v4 as uuidv4 } from "uuid";
 
 // Replace these with your own Firebase config values
 const firebaseConfig = {
@@ -14,6 +16,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
+const storage = getStorage(app);
 
 /**
  * Simple helper function to log event data into Firestore.
@@ -28,4 +31,56 @@ export async function logEventToFirestore(eventName: string, data: Record<string
   } catch (error) {
     console.error('Error logging event to Firestore:', error);
   }
-} 
+}
+
+/**
+ * Uploads an image file to Firebase Storage
+ * @param file The file to upload
+ * @param onProgress Progress callback function
+ * @returns Promise with download URL
+ */
+export const uploadImageToFirebase = async (
+  file: File, 
+  onProgress: (progress: number) => void
+): Promise<string> => {
+  try {
+    // Create a unique file name
+    const fileName = `token_images/${uuidv4()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+    const storageRef = ref(storage, fileName);
+    
+    // Start upload with progress tracking
+    const uploadTask = uploadBytesResumable(storageRef, file);
+    
+    return new Promise((resolve, reject) => {
+      uploadTask.on(
+        "state_changed",
+        (snapshot) => {
+          // Track upload progress
+          const progress = Math.round(
+            (snapshot.bytesTransferred / snapshot.totalBytes) * 100
+          );
+          onProgress(progress);
+        },
+        (error) => {
+          console.error("Upload failed:", error);
+          reject(error);
+        },
+        async () => {
+          // Upload completed successfully
+          try {
+            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+            resolve(downloadURL);
+          } catch (error) {
+            console.error("Failed to get download URL:", error);
+            reject(error);
+          }
+        }
+      );
+    });
+  } catch (error) {
+    console.error("Upload setup failed:", error);
+    throw error;
+  }
+};
+
+export default storage; 
