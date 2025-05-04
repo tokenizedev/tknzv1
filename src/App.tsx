@@ -1,11 +1,10 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { Coins as Coin, Wallet, RefreshCw, Sidebar, X, Zap, Code, Shield, ExternalLink, Copy, AlertTriangle, Search, ArrowUpDown } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
+import { Wallet, RefreshCw, Sidebar, X } from 'lucide-react';
 import { useStore } from './store';
 import { WalletSetup } from './components/WalletSetup';
 import { CoinCreator } from './components/CoinCreator';
 import { WalletPageCyber } from './components/WalletPageCyber';
 import { VersionCheck } from './components/VersionCheck';
-import { Leaderboard } from './components/Leaderboard';
 import { Loader } from './components/Loader';
 
 interface AppProps { isSidebar?: boolean; }
@@ -23,10 +22,9 @@ function App({ isSidebar = false }: AppProps = {}) {
   
   const [loading, setLoading] = useState(true);
   const [showWallet, setShowWallet] = useState(false);
-  const [showLeaderboard, setShowLeaderboard] = useState(false);
   
   // Add this for cypherpunk animation effects
-  const [animateZap, setAnimateZap] = useState(false);
+  const [_animateZap, setAnimateZap] = useState(false);
   
   const [glitching, setGlitching] = useState(false);
   const mainAreaRef = useRef<HTMLDivElement>(null);
@@ -42,15 +40,6 @@ function App({ isSidebar = false }: AppProps = {}) {
     
     return () => clearInterval(glitchInterval);
   }, []);
-
-  // Mock leaderboard data
-  const leaderboardData = [
-    { rank: 1, token: 'AfyD', mc: 358576.00, creator: 'TKNZ...STEM', launched: 'less than a minute ago' },
-    { rank: 2, token: 'BRNz', mc: 4484.78, creator: 'CTzA...uXvZ', launched: 'less than a minute ago' },
-    { rank: 3, token: 'HagB', mc: 4359.05, creator: 'L6XU...eFEX', launched: 'less than a minute ago' },
-    { rank: 4, token: 'EPSL', mc: 4354.24, creator: 'FL8o...4jRd', launched: 'less than a minute ago' },
-    { rank: 5, token: 'CMzF', mc: 4354.22, creator: 'CTzA...uXvZ', launched: 'less than a minute ago' },
-  ];
 
   // Open the Chrome extension side panel for the current tab
   const openSidebar = async () => {
@@ -197,7 +186,6 @@ function App({ isSidebar = false }: AppProps = {}) {
                 }`}
                 onClick={() => {
                   setShowWallet(!showWallet);
-                  setShowLeaderboard(false);
                 }}
                 title="View Wallet"
               >
