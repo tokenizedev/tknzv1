@@ -366,60 +366,104 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({ isSidebar = false }) =
   }
 
   return (
-    <div className="space-y-6 py-6">
-      {/* Main TKNZ token contract address display - simplified */}
-      <div className="bg-black border border-cyber-green/50 px-3 py-2 rounded-sm font-terminal text-xs flex items-center">
-        <div className="w-2 h-2 bg-cyber-green rounded-full mr-2 animate-pulse"></div>
-        <span className="text-cyber-green/90 mr-2">TKNZ:</span>
-        <a 
-          href="https://birdeye.so/token/AfyDiEptGHEDgD69y56XjNSbTs23LaF1YHANVKnWpump" 
-          target="_blank" 
-          rel="noopener noreferrer"
-          className="text-cyber-green/80 hover:text-cyber-purple truncate font-mono"
-          title="View on Birdeye"
-        >
-          AfyDiEptGHEDgD69y56XjNSbTs23LaF1YHANVKnWpump
-        </a>
-      </div>
-
-      {/* Split button for Select Content and Memier */}
-      <div className="flex justify-end mb-2 mt-2">
+    <div className="py-2">
+      {/* Compact header with logo, address dropdown, and action buttons */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center">
+          <span className="text-cyber-green font-terminal text-xl mr-2">TKNZ</span>
+          <div className="relative group">
+            <button className="text-cyber-green/70 hover:text-cyber-green flex items-center font-terminal text-xs">
+              <div className="w-2 h-2 bg-cyber-green rounded-full mr-1 animate-pulse"></div>
+              <span className="truncate max-w-[60px] md:max-w-[120px]">AfyDiEpt...</span>
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                width="16" 
+                height="16" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                strokeWidth="2" 
+                className="w-3 h-3 ml-1"
+              >
+                <path d="M6 9l6 6 6-6" />
+              </svg>
+            </button>
+            <div className="absolute left-0 top-full mt-1 hidden group-hover:block z-10">
+              <div className="bg-black border border-cyber-green/50 rounded-sm p-2 shadow-lg font-terminal text-xs min-w-[240px]">
+                <div className="flex items-center mb-1">
+                  <span className="text-cyber-green">Token Address:</span>
+                </div>
+                <a 
+                  href="https://birdeye.so/token/AfyDiEptGHEDgD69y56XjNSbTs23LaF1YHANVKnWpump" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-cyber-green/80 hover:text-cyber-purple truncate font-mono text-xs break-all"
+                >
+                  AfyDiEptGHEDgD69y56XjNSbTs23LaF1YHANVKnWpump
+                </a>
+                <div className="mt-2 pt-1 border-t border-cyber-green/20 flex space-x-2">
+                  <a 
+                    href="https://birdeye.so/token/AfyDiEptGHEDgD69y56XjNSbTs23LaF1YHANVKnWpump" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-cyber-green/80 hover:text-cyber-purple text-xs flex items-center"
+                  >
+                    <span className="w-1 h-1 bg-cyber-green rounded-full mr-1"></span>
+                    Birdeye
+                  </a>
+                  <a 
+                    href="https://dexscreener.com/solana/AfyDiEptGHEDgD69y56XjNSbTs23LaF1YHANVKnWpump" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-cyber-green/80 hover:text-cyber-purple text-xs flex items-center"
+                  >
+                    <span className="w-1 h-1 bg-cyber-green rounded-full mr-1"></span>
+                    Dexscreener
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
         <div className="inline-flex rounded-sm overflow-hidden">
           <button
             onClick={handleSelectContent}
             title="Select content to tokenize"
-            className="bg-black border border-cyber-green/70 hover:bg-cyber-green/10 text-cyber-green px-4 py-2 font-terminal text-sm flex items-center border-r-0"
+            className="bg-black border border-cyber-green/70 hover:bg-cyber-green/10 text-cyber-green px-3 py-1 font-terminal text-xs flex items-center border-r-0"
           >
-            <Target className="w-4 h-4 mr-1" />
+            <Target className="w-3 h-3 mr-1" />
             <span className="uppercase">Select</span>
           </button>
           <button
             onClick={() => generateSuggestions(articleData)}
             disabled={isGenerating || websiteUrl.includes('tknz.fun')}
-            className="bg-black border border-cyber-green/70 hover:bg-cyber-green/10 text-cyber-green px-3 py-2 font-terminal text-sm flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bg-black border border-cyber-green/70 hover:bg-cyber-green/10 text-cyber-green px-2 py-1 font-terminal text-xs flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isGenerating ? (
-              <Terminal className="w-4 h-4 animate-pulse" />
+              <Terminal className="w-3 h-3 animate-pulse" />
             ) : (
-              <Sparkles className="w-4 h-4" />
+              <Sparkles className="w-3 h-3" />
             )}
             <span className="sr-only">MEMIER</span>
           </button>
         </div>
       </div>
+      
       {(error || walletError) && (
-        <div className="terminal-window p-4 flex items-start space-x-2">
-          <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5 text-cyber-pink" />
+        <div className="terminal-window p-3 flex items-start space-x-2 mb-3">
+          <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-cyber-pink" />
           <div>
-            <p className="text-sm text-cyber-pink font-terminal">ERROR_CODE: 0xE1A2</p>
-            <p className="text-sm text-left font-terminal text-cyber-pink">{error || walletError}</p>
+            <p className="text-xs text-cyber-pink font-terminal">ERROR_CODE: 0xE1A2</p>
+            <p className="text-xs text-left font-terminal text-cyber-pink">{error || walletError}</p>
           </div>
         </div>
       )}
 
-      <div className="space-y-4 mt-4">
-        <div className="flex items-center justify-between border-b border-cyber-green/30 pb-2">
-          <h3 className="font-terminal text-cyber-green text-lg uppercase tracking-wide">Token Details</h3>
+      {/* Token details section - directly start form */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between border-b border-cyber-green/30 pb-1 mb-3">
+          <h3 className="font-terminal text-cyber-green text-base uppercase tracking-wide">Token Details</h3>
         </div>
 
         <div className="space-y-4">
