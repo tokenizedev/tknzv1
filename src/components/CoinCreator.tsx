@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Image, Type, FileText, Send, Loader2, AlertCircle, Globe, Sparkles, DollarSign, Hand as BrandX, GitBranch as BrandTelegram, Terminal, Zap } from 'lucide-react';
 import { useStore } from '../store';
+import { TerminalLoader } from './TerminalLoader';
 
 interface ArticleData {
   title: string
@@ -21,30 +22,6 @@ const MOCK_ARTICLE_DATA: ArticleData = {
   url: "https://example.com/bitcoin-ath",
   xUrl: "https://x.com/bitcoin",
   isXPost: false
-};
-
-// Terminal loading animation component
-const TerminalLoading: React.FC<{ text: string; progress: number }> = ({ text, progress }) => {
-  return (
-    <div className="w-full space-y-1">
-      <div className="flex items-center justify-between mb-1">
-        <span className="font-terminal text-xs text-cyber-green">{text}</span>
-        <span className="font-terminal text-xs text-cyber-green">{Math.round(progress)}%</span>
-      </div>
-      <div className="w-full bg-cyber-dark border border-cyber-green/30 h-2 overflow-hidden">
-        <div 
-          className="h-full bg-cyber-green transition-all duration-300"
-          style={{ width: `${progress}%` }}
-        ></div>
-      </div>
-      <div className="font-terminal text-xs text-cyber-green/60 font-mono">
-        {Array.from({ length: Math.floor(progress / 10) }).map((_, i) => (
-          <span key={i} className="opacity-70">█</span>
-        ))}
-        <span className="animate-terminal-cursor">_</span>
-      </div>
-    </div>
-  );
 };
 
 export const CoinCreator: React.FC = () => {
@@ -529,7 +506,7 @@ export const CoinCreator: React.FC = () => {
                 <span className="font-terminal text-sm">CREATING COIN...</span>
                 <Terminal className="w-4 h-4 animate-pulse" />
               </div>
-              <TerminalLoading text="Initializing transaction..." progress={loadingProgress} />
+              <TerminalLoader text="Initializing transaction..." progress={loadingProgress} />
             </div>
           ) : (
             <div className="flex items-center justify-center space-x-2">
