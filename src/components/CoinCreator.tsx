@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Image, Type, FileText, Send, Loader2, AlertCircle, Globe, Sparkles, DollarSign, Hand as BrandX, GitBranch as BrandTelegram, Terminal, Zap, Target, X } from 'lucide-react';
+import { Image, Type, FileText, Send, Loader2, AlertCircle, Globe, Sparkles, DollarSign, Hand as BrandX, GitBranch as BrandTelegram, Terminal, Zap, Target, X, Upload } from 'lucide-react';
 import { useStore } from '../store';
 import { TerminalLoader } from './TerminalLoader';
+import { uploadImageToFirebase } from '../firebase';
 
 interface ArticleData {
   title: string
@@ -54,6 +55,11 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({ isSidebar = false }) =
     address: string;
     pumpUrl: string;
   } | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
   // Handle content selection toggle: directly ask content script to start selection mode
   const handleSelectContent = async () => {
     try {
@@ -365,6 +371,40 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({ isSidebar = false }) =
     setError(null);
   };
 
+  const handleImageUpload = async (file: File) => {
+    if (!file) return;
+    
+    setImageFile(file);
+    setIsUploading(true);
+    setUploadProgress(0);
+    setError(null);
+    
+    try {
+      // Create a local preview immediately
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const localPreview = e.target?.result as string;
+        // Just for preview - we'll update with the real URL after upload
+        setImageUrl(localPreview);
+      };
+      reader.readAsDataURL(file);
+      
+      // Upload to Firebase
+      const downloadURL = await uploadImageToFirebase(file, (progress) => {
+        setUploadProgress(progress);
+      });
+      
+      // Set the permanent image URL from Firebase
+      setImageUrl(downloadURL);
+      setIsUploading(false);
+      
+    } catch (error) {
+      console.error('Upload error:', error);
+      setError('Failed to upload image. Please try again.');
+      setIsUploading(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-[400px]">
@@ -526,15 +566,74 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({ isSidebar = false }) =
           <div className="space-y-2">
             <label className="flex items-center text-sm font-terminal text-cyber-pink">
               <Image className="w-4 h-4 mr-2" />
-              Image URL
+              Image Upload / URL
             </label>
-            <input
-              type="url"
-              value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
-              className="input-field font-terminal"
-              placeholder="Enter image URL"
-            />
+            <div className="flex flex-col space-y-2">
+              <div className="relative">
+                <input
+                  type="url"
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                  className="input-field font-terminal pr-10"
+                  placeholder="Enter image URL or upload file"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 text-cyber-green hover:text-cyber-purple"
+                  title="Upload an image"
+                >
+                  <Upload className="w-4 h-4" />
+                </button>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  className="hidden"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      handleImageUpload(file);
+                    }
+                  }}
+                />
+              </div>
+              
+              {/* Image preview and upload progress */}
+              {imageUrl && (
+                <div className="mt-2 relative">
+                  <div className="border border-cyber-green/30 rounded-sm overflow-hidden" style={{ maxHeight: '120px' }}>
+                    <img 
+                      src={imageUrl} 
+                      alt="Token preview" 
+                      className="object-contain w-full max-h-[120px]"
+                      onError={(e) => {
+                        e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0yNCAxaDtgTWFnZSBub3QgZm91bmQiIHN0eWxlPSJmaWxsOiMwMGZmNDE7Zm9udC1mYW1pbHk6bW9ub3NwYWNlO2ZvbnQtc2l6ZToxMHB4OyIvPjwvc3ZnPg==';
+                      }}
+                    />
+                  </div>
+                  {isUploading && (
+                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                      <div className="w-full max-w-[80%]">
+                        <div className="font-terminal text-xs text-cyber-green mb-1">Uploading: {uploadProgress}%</div>
+                        <div className="w-full bg-cyber-green/20 h-1 rounded-sm overflow-hidden">
+                          <div 
+                            className="bg-cyber-green h-full transition-all duration-200"
+                            style={{ width: `${uploadProgress}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              {imageFile && !isUploading && (
+                <div className="text-xs text-cyber-green font-terminal">
+                  {imageFile.name} ({Math.round(imageFile.size / 1024)} KB)
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="space-y-2">
