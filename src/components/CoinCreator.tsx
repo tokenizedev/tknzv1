@@ -94,6 +94,29 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({ isSidebar = false }) =
     });
   }
 
+  // Fix for TypeScript error - ensure ArticleData has all required properties
+  const ensureArticleData = (data: any): ArticleData => {
+    // If data is null or undefined, return a default ArticleData object
+    if (!data) {
+      return {
+        title: '',
+        image: '',
+        description: '',
+        url: '',
+        isXPost: false
+      };
+    }
+    
+    // Return data with defaults for any missing properties
+    return {
+      title: data.title || '',
+      image: data.image || '',
+      description: data.description || '',
+      url: data.url || '',
+      isXPost: data.isXPost || false
+    };
+  };
+
   const requiredBalance = investmentAmount + 0.03;
 
   // Progress animation effect for the terminal loading
@@ -195,7 +218,8 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({ isSidebar = false }) =
           setImageUrl(data.image);
           await generateSuggestions(data, 0);
         } else {
-          const articleData = await getLocalStorageData() || await useStore.getState().getArticleData();
+          const rawData = await getLocalStorageData() || await useStore.getState().getArticleData();
+          const articleData = ensureArticleData(rawData);
           await generateSuggestions(articleData, 0);
         }
       } catch (error) {
@@ -235,7 +259,8 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({ isSidebar = false }) =
       try {
         setError(null);
         setIsLoading(true);
-        const article = await useStore.getState().getArticleData();
+        const rawData = await useStore.getState().getArticleData();
+        const article = ensureArticleData(rawData);
         await generateSuggestions(article, 0);
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Failed to extract page data';
@@ -343,8 +368,23 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({ isSidebar = false }) =
   return (
     <div className="space-y-6 py-6">
       {/* Main TKNZ token contract address display */}
-      <div className="bg-cyber-dark border border-cyber-green/30 px-2 py-1 rounded-sm font-terminal text-xs text-cyber-green">
-        Main TKNZ Token Address: AfyDiEptGHEDgD69y56XjNSbTs23LaF1YHANVKnWpump
+      <div className="bg-cyber-dark border border-cyber-green/30 px-3 py-2 rounded-sm font-terminal text-xs flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <div className="flex h-4 w-4 items-center justify-center bg-cyber-green/20 rounded-full">
+            <span className="animate-ping absolute h-3 w-3 rounded-full bg-cyber-green/40"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-cyber-green"></span>
+          </div>
+          <span className="text-cyber-green">TKNZ Token Address:</span>
+        </div>
+        <div className="flex items-center">
+          <code className="text-cyber-green/90 tracking-tight">AfyDiEptGHEDgD69y56XjNSbTs23LaF1YHANVKnWpump</code>
+          <div className="ml-2 text-xs text-cyber-purple flex items-center" title="Verified Secure Contract">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+              <path d="M9 12l2 2 4-4" />
+            </svg>
+          </div>
+        </div>
       </div>
       {(error || walletError) && (
         <div className="terminal-window p-4 flex items-start space-x-2">
@@ -360,9 +400,10 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({ isSidebar = false }) =
       <div className="flex justify-end mb-2">
         <button
           onClick={handleSelectContent}
-          className="bg-cyber-dark border border-cyber-green/30 hover:bg-cyber-green/10 text-cyber-green px-3 py-1 rounded-sm font-terminal text-sm"
+          className="bg-black border border-cyber-green/70 hover:bg-cyber-green/10 text-cyber-green px-4 py-2 rounded-sm font-terminal text-sm flex items-center space-x-2 hover:shadow-[0_0_8px_rgba(0,255,144,0.3)]"
         >
-          Select Page Content
+          <FileText className="w-4 h-4 mr-1" />
+          <span className="uppercase tracking-wider">Select Content</span>
         </button>
       </div>
       <div className="space-y-4">
@@ -565,7 +606,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({ isSidebar = false }) =
               <TerminalLoader text="Initializing transaction..." progress={loadingProgress} />
             </div>
           ) : (
-            <div className="flex items-center justify-center space-x-2">
+            <div className="flex items-center justify-center space-x-2 w-full h-full">
               <Zap className="w-5 h-5" />
               <span>CREATE MEME COIN</span>
             </div>
