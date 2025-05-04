@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Image, Type, FileText, Send, Loader2, AlertCircle, Globe, Sparkles, DollarSign, Hand as BrandX, GitBranch as BrandTelegram, Terminal, Zap, Target } from 'lucide-react';
+import { Image, Type, FileText, Send, Loader2, AlertCircle, Globe, Sparkles, DollarSign, Hand as BrandX, GitBranch as BrandTelegram, Terminal, Zap, Target, X } from 'lucide-react';
 import { useStore } from '../store';
 import { TerminalLoader } from './TerminalLoader';
 
@@ -347,6 +347,24 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({ isSidebar = false }) =
     }
   };
 
+  const clearForm = () => {
+    setArticleData({
+      title: '',
+      image: '',
+      description: '',
+      url: '',
+      isXPost: false
+    });
+    setCoinName('');
+    setTicker('');
+    setDescription('');
+    setImageUrl('');
+    setWebsiteUrl('');
+    setXUrl('');
+    setTelegramUrl('');
+    setError(null);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-[400px]">
@@ -438,7 +456,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({ isSidebar = false }) =
           <button
             onClick={() => generateSuggestions(articleData)}
             disabled={isGenerating || websiteUrl.includes('tknz.fun')}
-            className="bg-black border border-cyber-green/70 hover:bg-cyber-green/10 text-cyber-green px-2 py-1 font-terminal text-xs flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bg-black border border-cyber-green/70 hover:bg-cyber-green/10 text-cyber-green px-2 py-1 font-terminal text-xs flex items-center disabled:opacity-50 disabled:cursor-not-allowed border-r-0"
           >
             {isGenerating ? (
               <Terminal className="w-3 h-3 animate-pulse" />
@@ -446,6 +464,14 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({ isSidebar = false }) =
               <Sparkles className="w-3 h-3" />
             )}
             <span className="sr-only">MEMIER</span>
+          </button>
+          <button
+            onClick={clearForm}
+            title="Clear form and start fresh"
+            className="bg-black border border-cyber-green/70 hover:bg-cyber-green/10 text-cyber-green px-2 py-1 font-terminal text-xs flex items-center"
+          >
+            <X className="w-3 h-3" />
+            <span className="sr-only">Clear</span>
           </button>
         </div>
       </div>
