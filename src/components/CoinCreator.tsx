@@ -72,15 +72,27 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({ isSidebar = false }) =
       window.close();
     }
   };
-  // Load selected content if any
-  useEffect(() => {
-    chrome.storage.local.get('selectedContent', (data) => {
-      if (data.selectedContent) {
-        setDescription(data.selectedContent);
-        chrome.storage.local.remove('selectedContent');
-      }
+
+  function getLocalStorageData() {
+    return new Promise((resolve, _reject) => {
+      chrome.storage.local.get('selectedContent', async ({ selectedContent }) => {
+        try {
+          if (selectedContent && typeof selectedContent === 'string') {
+            chrome.storage.local.remove('selectedContent');
+            resolve(JSON.parse(selectedContent) as ArticleData);
+          } else if (selectedContent && typeof selectedContent === 'object') {
+            chrome.storage.local.remove('selectedContent');
+            resolve(selectedContent as ArticleData);
+          } else {
+            console.log('No selected content found');
+            resolve(null);
+          }
+        } catch (e) {
+          console.error('Failed to parse selected content:', e);
+        }
+      });
     });
-  }, []);
+  }
 
   const requiredBalance = investmentAmount + 0.03;
 
@@ -183,7 +195,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({ isSidebar = false }) =
           setImageUrl(data.image);
           await generateSuggestions(data, 0);
         } else {
-          const articleData = await useStore.getState().getArticleData();
+          const articleData = await getLocalStorageData() || await useStore.getState().getArticleData();
           await generateSuggestions(articleData, 0);
         }
       } catch (error) {
