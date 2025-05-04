@@ -203,20 +203,6 @@ function App({ isSidebar = false }: AppProps = {}) {
               >
                 <Wallet className="w-4 h-4" />
               </button>
-              <button 
-                className={`p-2 rounded-sm transition-all duration-200 ${
-                  showLeaderboard 
-                    ? 'bg-cyber-green/20 border border-cyber-green/50 text-cyber-green' 
-                    : 'bg-cyber-dark border border-cyber-green/30 hover:bg-cyber-green/10 text-cyber-green'
-                }`}
-                onClick={() => {
-                  setShowLeaderboard(!showLeaderboard);
-                  setShowWallet(false);
-                }}
-                title="View Leaderboard"
-              >
-                <ArrowUpDown className="w-4 h-4" />
-              </button>
             </div>
           </div>
         )}
@@ -239,10 +225,6 @@ function App({ isSidebar = false }: AppProps = {}) {
         {/* Main content */}
         {!wallet ? (
           <WalletSetup />
-        ) : showLeaderboard ? (
-          <div className="py-6">
-            <Leaderboard leaderboardData={leaderboardData} />
-          </div>
         ) : showWallet ? (
           <WalletPageCyber />
         ) : !isLatestVersion ? (
