@@ -5,7 +5,7 @@ import { WalletSetup } from './components/WalletSetup';
 import { CoinCreator } from './components/CoinCreator';
 import { WalletPageCyber } from './components/WalletPageCyber';
 import { VersionCheck } from './components/VersionCheck';
-import { Leaderboard } from './components/Leaderboard';
+import { SwapPage } from './components/SwapPage';
 import { Loader } from './components/Loader';
 
 interface AppProps { isSidebar?: boolean; }
@@ -23,7 +23,7 @@ function App({ isSidebar = false }: AppProps = {}) {
   
   const [loading, setLoading] = useState(true);
   const [showWallet, setShowWallet] = useState(false);
-  const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [showSwap, setShowSwap] = useState(false);
   
   // Add this for cypherpunk animation effects
   const [animateZap, setAnimateZap] = useState(false);
@@ -189,31 +189,48 @@ function App({ isSidebar = false }: AppProps = {}) {
                   <X className="w-4 h-4" />
                 </button>
               )}
-              <button 
+              {/* Create Token */}
+              <button
                 className={`p-2 rounded-sm transition-all duration-200 ${
-                  showWallet 
-                    ? 'bg-cyber-green/20 border border-cyber-green/50 text-cyber-green' 
+                  !showWallet && !showSwap
+                    ? 'bg-cyber-green/20 border border-cyber-green/50 text-cyber-green'
                     : 'bg-cyber-dark border border-cyber-green/30 hover:bg-cyber-green/10 text-cyber-green'
                 }`}
                 onClick={() => {
-                  setShowWallet(!showWallet);
-                  setShowLeaderboard(false);
+                  setShowWallet(false);
+                  setShowSwap(false);
+                }}
+                title="Create Token"
+              >
+                <Code className="w-4 h-4" />
+              </button>
+              {/* View Wallet */}
+              <button
+                className={`p-2 rounded-sm transition-all duration-200 ${
+                  showWallet
+                    ? 'bg-cyber-green/20 border border-cyber-green/50 text-cyber-green'
+                    : 'bg-cyber-dark border border-cyber-green/30 hover:bg-cyber-green/10 text-cyber-green'
+                }`}
+                onClick={() => {
+                  setShowWallet(true);
+                  setShowSwap(false);
                 }}
                 title="View Wallet"
               >
                 <Wallet className="w-4 h-4" />
               </button>
-              <button 
+              {/* Swap Tokens */}
+              <button
                 className={`p-2 rounded-sm transition-all duration-200 ${
-                  showLeaderboard 
-                    ? 'bg-cyber-green/20 border border-cyber-green/50 text-cyber-green' 
+                  showSwap
+                    ? 'bg-cyber-green/20 border border-cyber-green/50 text-cyber-green'
                     : 'bg-cyber-dark border border-cyber-green/30 hover:bg-cyber-green/10 text-cyber-green'
                 }`}
                 onClick={() => {
-                  setShowLeaderboard(!showLeaderboard);
+                  setShowSwap(true);
                   setShowWallet(false);
                 }}
-                title="View Leaderboard"
+                title="Swap Tokens"
               >
                 <ArrowUpDown className="w-4 h-4" />
               </button>
@@ -239,9 +256,9 @@ function App({ isSidebar = false }: AppProps = {}) {
         {/* Main content */}
         {!wallet ? (
           <WalletSetup />
-        ) : showLeaderboard ? (
+        ) : showSwap ? (
           <div className="py-6">
-            <Leaderboard leaderboardData={leaderboardData} />
+            <SwapPage />
           </div>
         ) : showWallet ? (
           <WalletPageCyber />
