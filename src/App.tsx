@@ -218,7 +218,7 @@ function App({ isSidebar = false }: AppProps = {}) {
         ) : !isLatestVersion ? (
           <VersionCheck updateAvailable={updateAvailable || ''} />
         ) : (
-          <CoinCreator />
+          <CoinCreator isSidebar={isSidebar} />
         )}
         
         {/* Subtle floating particles */}
