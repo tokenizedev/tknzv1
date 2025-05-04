@@ -343,6 +343,7 @@ export const CoinCreator: React.FC = () => {
               value={coinName}
               onChange={(e) => setCoinName(e.target.value)}
               className="input-field font-terminal"
+              maxLength={32}
               placeholder="Enter coin name"
             />
           </div>
@@ -357,8 +358,8 @@ export const CoinCreator: React.FC = () => {
               value={ticker}
               onChange={(e) => setTicker(e.target.value.toUpperCase())}
               className="input-field font-terminal"
-              maxLength={15}
-              placeholder="Enter ticker (max 15 chars)"
+              maxLength={10}
+              placeholder="Enter ticker (max 10 chars)"
             />
           </div>
 
