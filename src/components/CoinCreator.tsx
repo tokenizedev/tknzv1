@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Image, Type, FileText, Send, Loader2, AlertCircle, Globe, Sparkles, DollarSign, Hand as BrandX, GitBranch as BrandTelegram, Terminal, Zap } from 'lucide-react';
+import { Image, Type, FileText, Send, Loader2, AlertCircle, Globe, Sparkles, DollarSign, Hand as BrandX, GitBranch as BrandTelegram, Terminal, Zap, Target } from 'lucide-react';
 import { useStore } from '../store';
 import { TerminalLoader } from './TerminalLoader';
 
@@ -367,23 +367,44 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({ isSidebar = false }) =
 
   return (
     <div className="space-y-6 py-6">
-      {/* Main TKNZ token contract address display */}
-      <div className="bg-cyber-dark border border-cyber-green/30 px-3 py-2 rounded-sm font-terminal text-xs flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <div className="flex h-4 w-4 items-center justify-center bg-cyber-green/20 rounded-full">
-            <span className="animate-ping absolute h-3 w-3 rounded-full bg-cyber-green/40"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-cyber-green"></span>
-          </div>
-          <span className="text-cyber-green">TKNZ Token Address:</span>
-        </div>
-        <div className="flex items-center">
-          <code className="text-cyber-green/90 tracking-tight">AfyDiEptGHEDgD69y56XjNSbTs23LaF1YHANVKnWpump</code>
-          <div className="ml-2 text-xs text-cyber-purple flex items-center" title="Verified Secure Contract">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-              <path d="M9 12l2 2 4-4" />
-            </svg>
-          </div>
+      {/* Main TKNZ token contract address display - simplified */}
+      <div className="bg-black border border-cyber-green/50 px-3 py-2 rounded-sm font-terminal text-xs flex items-center">
+        <div className="w-2 h-2 bg-cyber-green rounded-full mr-2 animate-pulse"></div>
+        <span className="text-cyber-green/90 mr-2">TKNZ:</span>
+        <a 
+          href="https://birdeye.so/token/AfyDiEptGHEDgD69y56XjNSbTs23LaF1YHANVKnWpump" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="text-cyber-green/80 hover:text-cyber-purple truncate font-mono"
+          title="View on Birdeye"
+        >
+          AfyDiEptGHEDgD69y56XjNSbTs23LaF1YHANVKnWpump
+        </a>
+      </div>
+
+      {/* Split button for Select Content and Memier */}
+      <div className="flex justify-end mb-2 mt-2">
+        <div className="inline-flex rounded-sm overflow-hidden">
+          <button
+            onClick={handleSelectContent}
+            title="Select content to tokenize"
+            className="bg-black border border-cyber-green/70 hover:bg-cyber-green/10 text-cyber-green px-4 py-2 font-terminal text-sm flex items-center border-r-0"
+          >
+            <Target className="w-4 h-4 mr-1" />
+            <span className="uppercase">Select</span>
+          </button>
+          <button
+            onClick={() => generateSuggestions(articleData)}
+            disabled={isGenerating || websiteUrl.includes('tknz.fun')}
+            className="bg-black border border-cyber-green/70 hover:bg-cyber-green/10 text-cyber-green px-3 py-2 font-terminal text-sm flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isGenerating ? (
+              <Terminal className="w-4 h-4 animate-pulse" />
+            ) : (
+              <Sparkles className="w-4 h-4" />
+            )}
+            <span className="sr-only">MEMIER</span>
+          </button>
         </div>
       </div>
       {(error || walletError) && (
@@ -396,36 +417,9 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({ isSidebar = false }) =
         </div>
       )}
 
-      {/* Content selection toggle */}
-      <div className="flex justify-end mb-2">
-        <button
-          onClick={handleSelectContent}
-          className="bg-black border border-cyber-green/70 hover:bg-cyber-green/10 text-cyber-green px-4 py-2 rounded-sm font-terminal text-sm flex items-center space-x-2 hover:shadow-[0_0_8px_rgba(0,255,144,0.3)]"
-        >
-          <FileText className="w-4 h-4 mr-1" />
-          <span className="uppercase tracking-wider">Select Content</span>
-        </button>
-      </div>
-      <div className="space-y-4">
+      <div className="space-y-4 mt-4">
         <div className="flex items-center justify-between border-b border-cyber-green/30 pb-2">
           <h3 className="font-terminal text-cyber-green text-lg uppercase tracking-wide">Token Details</h3>
-          <button
-            onClick={() => generateSuggestions(articleData)}
-            disabled={isGenerating || websiteUrl.includes('tknz.fun')}
-            className="flex items-center space-x-2 px-4 py-1.5 bg-cyber-black border border-cyber-purple text-cyber-purple rounded-sm hover:bg-cyber-purple/10 transition-all duration-200 font-terminal tracking-wider disabled:opacity-50 disabled:cursor-not-allowed uppercase text-sm"
-          >
-            {isGenerating ? (
-              <>
-                <Terminal className="w-4 h-4 animate-pulse mr-1" />
-                <span className="animate-pulse">GENERATING...</span>
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-4 h-4 mr-1" />
-                <span>MEMIER!!</span>
-              </>
-            )}
-          </button>
         </div>
 
         <div className="space-y-4">
