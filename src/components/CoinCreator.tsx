@@ -24,7 +24,10 @@ const MOCK_ARTICLE_DATA: ArticleData = {
   isXPost: false
 };
 
-export const CoinCreator: React.FC = () => {
+interface CoinCreatorProps {
+  isSidebar?: boolean;
+}
+export const CoinCreator: React.FC<CoinCreatorProps> = ({ isSidebar = false }) => {
   const { balance, error: walletError, investmentAmount: defaultInvestment, addCreatedCoin, createCoin } = useStore();
   const [articleData, setArticleData] = useState<ArticleData>({
     title: '',
@@ -51,6 +54,33 @@ export const CoinCreator: React.FC = () => {
     address: string;
     pumpUrl: string;
   } | null>(null);
+  // Handle content selection toggle: directly ask content script to start selection mode
+  const handleSelectContent = async () => {
+    try {
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      const tabId = tabs[0]?.id;
+      if (tabId) {
+        // Send message directly to content script
+        chrome.tabs.sendMessage(tabId, { type: 'START_SELECT_MODE' });
+      } else {
+        console.error('No active tab found for content selection');
+      }
+    } catch (e) {
+      console.error('Failed to send START_SELECT_MODE message:', e);
+    }
+    if (!isSidebar) {
+      window.close();
+    }
+  };
+  // Load selected content if any
+  useEffect(() => {
+    chrome.storage.local.get('selectedContent', (data) => {
+      if (data.selectedContent) {
+        setDescription(data.selectedContent);
+        chrome.storage.local.remove('selectedContent');
+      }
+    });
+  }, []);
 
   const requiredBalance = investmentAmount + 0.03;
 
@@ -300,6 +330,10 @@ export const CoinCreator: React.FC = () => {
 
   return (
     <div className="space-y-6 py-6">
+      {/* Main TKNZ token contract address display */}
+      <div className="bg-cyber-dark border border-cyber-green/30 px-2 py-1 rounded-sm font-terminal text-xs text-cyber-green">
+        Main TKNZ Token Address: AfyDiEptGHEDgD69y56XjNSbTs23LaF1YHANVKnWpump
+      </div>
       {(error || walletError) && (
         <div className="terminal-window p-4 flex items-start space-x-2">
           <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5 text-cyber-pink" />
@@ -310,6 +344,15 @@ export const CoinCreator: React.FC = () => {
         </div>
       )}
 
+      {/* Content selection toggle */}
+      <div className="flex justify-end mb-2">
+        <button
+          onClick={handleSelectContent}
+          className="bg-cyber-dark border border-cyber-green/30 hover:bg-cyber-green/10 text-cyber-green px-3 py-1 rounded-sm font-terminal text-sm"
+        >
+          Select Page Content
+        </button>
+      </div>
       <div className="space-y-4">
         <div className="flex items-center justify-between border-b border-cyber-green/30 pb-2">
           <h3 className="font-terminal text-cyber-green text-lg uppercase tracking-wide">Token Details</h3>
