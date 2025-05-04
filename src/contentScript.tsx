@@ -9,6 +9,102 @@ function startSelectionMode() {
   const isXPost = getIsXPost();
   const selectors = (isXPost ? ['article[data-testid="tweet"]'] : ['div, p']).join(',');
 
+  // Add stylesheet for better styling
+  const styleEl = document.createElement('style');
+  styleEl.id = 'tknz-selection-style';
+  styleEl.textContent = `
+    .tknz-highlight {
+      outline: 2px solid rgba(0, 255, 144, 0.7) !important;
+      outline-offset: 2px !important;
+      box-shadow: 0 0 15px rgba(0, 255, 144, 0.3), inset 0 0 8px rgba(0, 255, 144, 0.2) !important;
+      transition: all 0.2s ease-out !important;
+      position: relative !important;
+      z-index: 999 !important;
+    }
+    .tknz-select-btn {
+      position: absolute !important;
+      z-index: 2147483647 !important;
+      background: linear-gradient(135deg, rgba(0, 0, 0, 0.8) 0%, rgba(20, 20, 20, 0.9) 100%) !important;
+      color: rgb(0, 255, 144) !important;
+      border: 1px solid rgba(0, 255, 144, 0.7) !important;
+      border-radius: 4px !important;
+      padding: 4px 8px !important;
+      font-family: 'Courier New', monospace !important;
+      font-size: 12px !important;
+      font-weight: bold !important;
+      letter-spacing: 0.5px !important;
+      text-transform: uppercase !important;
+      cursor: pointer !important;
+      transition: all 0.2s ease !important;
+      text-shadow: 0 0 5px rgba(0, 255, 144, 0.7) !important;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.5), 0 0 5px rgba(0, 255, 144, 0.3) !important;
+      backdrop-filter: blur(4px) !important;
+      display: flex !important;
+      align-items: center !important;
+      gap: 4px !important;
+    }
+    .tknz-select-btn:hover {
+      background: rgba(0, 255, 144, 0.2) !important;
+      box-shadow: 0 0 15px rgba(0, 255, 144, 0.5) !important;
+      transform: translateY(-1px) !important;
+    }
+    .tknz-select-btn::before {
+      content: "" !important;
+      display: inline-block !important;
+      width: 8px !important;
+      height: 8px !important;
+      background: rgb(0, 255, 144) !important;
+      border-radius: 50% !important;
+      animation: tknz-pulse 1.5s infinite !important;
+    }
+    .tknz-overlay {
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      background: rgba(0, 0, 0, 0.3) !important;
+      z-index: 2147483646 !important;
+      pointer-events: none !important;
+      backdrop-filter: blur(1px) !important;
+    }
+    .tknz-instructions {
+      position: fixed !important;
+      top: 20px !important;
+      left: 50% !important;
+      transform: translateX(-50%) !important;
+      background: rgba(0, 0, 0, 0.8) !important;
+      color: rgb(0, 255, 144) !important;
+      border: 1px solid rgba(0, 255, 144, 0.7) !important;
+      border-radius: 4px !important;
+      padding: 10px 20px !important;
+      font-family: 'Courier New', monospace !important;
+      font-size: 14px !important;
+      z-index: 2147483647 !important;
+      text-align: center !important;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.6), 0 0 10px rgba(0, 255, 144, 0.3) !important;
+      pointer-events: none !important;
+      max-width: 80% !important;
+    }
+    @keyframes tknz-pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.5; }
+      100% { opacity: 1; }
+    }
+  `;
+  document.head.appendChild(styleEl);
+  
+  // Add overlay
+  const overlay = document.createElement('div');
+  overlay.className = 'tknz-overlay';
+  document.body.appendChild(overlay);
+  
+  // Add instructions
+  const instructions = document.createElement('div');
+  instructions.className = 'tknz-instructions';
+  instructions.textContent = 'Hover over content to select for tokenization. Press ESC to cancel.';
+  document.body.appendChild(instructions);
+
   const onMouseEnter = (e: Event) => {
     const el = e.currentTarget as HTMLElement;
     // if already showing select button for this element, skip to prevent duplicates
@@ -17,25 +113,30 @@ function startSelectionMode() {
     }
     // store original outline
     highlightMap.set(el, el.style.outline);
-    el.style.outline = '2px solid #00ff41';
+    
+    // Add highlight class instead of direct style manipulation
+    el.classList.add('tknz-highlight');
+    
     // create select button
     const btn = document.createElement('button');
+    btn.className = 'tknz-select-btn';
+    btn.textContent = 'Tokenize';
     
-    btn.textContent = 'Select';
+    // Position button at the top right corner of the element
+    const rect = el.getBoundingClientRect();
     Object.assign(btn.style, {
-      position: 'absolute',
-      zIndex: 999999,
-      top: `${el.getBoundingClientRect().top + window.scrollY}px`,
-      left: `${el.getBoundingClientRect().left + window.scrollX}px`,
-      background: '#00ff41',
-      color: '#000',
-      border: 'none',
-      padding: '2px 4px',
-      cursor: 'pointer'
+      top: `${rect.top + window.scrollY}px`,
+      right: `${window.innerWidth - rect.right - window.scrollX}px`,
     });
+    
     document.body.appendChild(btn);
     buttonMap.set(el, btn);
-    btn.addEventListener('click', () => selectElement(el));
+    
+    // Ensure click event is properly attached
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation(); // Prevent event bubbling
+      selectElement(el);
+    });
   }
 
   const onMouseLeave = (e: Event) => {
@@ -47,14 +148,12 @@ function startSelectionMode() {
     if (btn && related && (btn === related || btn.contains(related))) {
       return;
     }
-    // restore outline
-    const orig = highlightMap.get(el);
-    if (orig !== undefined) {
-      el.style.outline = orig;
-    }
+    // restore outline and remove highlight class
+    el.classList.remove('tknz-highlight');
     // remove button
     if (btn) {
       btn.remove();
+      buttonMap.delete(el);
     }
   }
 
@@ -67,13 +166,30 @@ function startSelectionMode() {
   };
 
   const cleanup = () => {
+    // Remove style and overlay elements
+    document.querySelectorAll('#tknz-selection-style, .tknz-overlay, .tknz-instructions').forEach(el => el.remove());
+    
+    // Remove event listeners and classes
     document.querySelectorAll(selectors).forEach(el => {
       el.removeEventListener('mouseenter', onMouseEnter);
       el.removeEventListener('mouseleave', onMouseLeave);
+      el.classList.remove('tknz-highlight');
       const btn = buttonMap.get(el as HTMLElement);
       if (btn) btn.remove();
     });
+    
+    // WeakMap doesn't have a clear method, but we can set references to null
+    // which will allow garbage collection when no longer referenced
   };
+
+  // Add escape key handler
+  const handleEscape = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      cleanup();
+      document.removeEventListener('keydown', handleEscape);
+    }
+  };
+  document.addEventListener('keydown', handleEscape);
 
   // Attach listeners to all divs with sufficient text
   document.querySelectorAll(selectors).forEach(el => {
@@ -168,7 +284,7 @@ const extractTweetData = async (tweetContainer: HTMLElement | null = null, baseE
     let retries = 0;
     
     while (!tweetContainer && retries < 10) {
-      tweetContainer = baseElement.querySelector('article[data-testid="tweet"]');
+      tweetContainer = baseElement.querySelector('article[data-testid="tweet"]') as HTMLElement;
       if (!tweetContainer) {
         await new Promise(resolve => setTimeout(resolve, 100));
         retries++;
@@ -199,7 +315,7 @@ const extractTweetData = async (tweetContainer: HTMLElement | null = null, baseE
       windowWidth: tweetContainer.offsetWidth,
       windowHeight: tweetContainer.offsetHeight,
       onclone: (clonedDoc) => {
-        const clone = clonedDoc.querySelector('article[data-testid="tweet"]');
+        const clone = clonedDoc.querySelector('article[data-testid="tweet"]') as HTMLElement;
         if (clone) {
           // Remove interactive elements from screenshot
           const unwantedElements = clone.querySelectorAll('[role="button"], [data-testid="caret"]');
@@ -216,15 +332,15 @@ const extractTweetData = async (tweetContainer: HTMLElement | null = null, baseE
           // Style all text elements
           const textElements = clone.querySelectorAll('div, span, p');
           textElements.forEach(el => {
-            el.style.color = '#ffffff';
+            (el as HTMLElement).style.color = '#ffffff';
           });
 
           // Ensure images are fully visible
           const images = clone.querySelectorAll('img');
           images.forEach(img => {
-            img.style.maxWidth = '100%';
-            img.style.height = 'auto';
-            img.style.objectFit = 'contain';
+            (img as HTMLImageElement).style.maxWidth = '100%';
+            (img as HTMLImageElement).style.height = 'auto';
+            (img as HTMLImageElement).style.objectFit = 'contain';
           });
         }
       }
@@ -237,7 +353,8 @@ const extractTweetData = async (tweetContainer: HTMLElement | null = null, baseE
       tweetImage,
       description: tweetText,
       url: window.location.href,
-      xUrl: window.location.href
+      xUrl: window.location.href,
+      isXPost: true
     };
   } catch (error) {
     // Suppress error logs during testing
@@ -248,7 +365,8 @@ const extractTweetData = async (tweetContainer: HTMLElement | null = null, baseE
       image: '',
       description: '',
       url: window.location.href,
-      xUrl: window.location.href
+      xUrl: window.location.href,
+      isXPost: true
     };
   }
 };
@@ -341,7 +459,8 @@ const extractArticleData = (baseElement: HTMLElement = document.body) => {
       title: title || document.title || 'Untitled Article',
       image,
       description,
-      url
+      url,
+      isXPost: false
     };
   } catch (error) {
     // Suppress error logs during testing
@@ -352,7 +471,8 @@ const extractArticleData = (baseElement: HTMLElement = document.body) => {
       title: document.title || 'Untitled Article',
       image: '',
       description: '',
-      url: window.location.href
+      url: window.location.href,
+      isXPost: false
     };
   }
 };
