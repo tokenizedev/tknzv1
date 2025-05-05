@@ -5,7 +5,7 @@ interface LoaderProps {
     isSidebar?: boolean;
 }
 
-export const Loader: React.FC<LoaderProps> = ({ isSidebar = false }) => {
+export const Loader: React.FC<LoaderProps> = ({ isSidebar = false, isChild = false }) => {
     const [dots, setDots] = useState(0);
     const [isVisible, setIsVisible] = useState(false);
     
@@ -24,24 +24,9 @@ export const Loader: React.FC<LoaderProps> = ({ isSidebar = false }) => {
     return (
         <>
             {/* Placeholder fixed header to match App component */}
-            <header className="fixed top-0 left-0 right-0 z-20 nav-placeholder nav-animated nav-glow">
-                <div className="border-b border-cyber-green/20 bg-cyber-black/90 backdrop-blur-sm">
-                    <div className="flex items-center h-14">
-                        {/* Empty placeholder matching the layout of the actual header */}
-                        <div className="px-5 flex-none">
-                            <h1 className="leaderboard-title text-2xl tracking-widest opacity-0">TKNZ</h1>
-                        </div>
-                        <div className="ml-auto flex h-full">
-                            <div className="border-l border-r border-cyber-green/20 px-4 flex items-center opacity-0"></div>
-                            <div className="flex h-full opacity-0"></div>
-                        </div>
-                    </div>
-                </div>
-                {/* Empty wallet drawer placeholder to reserve space */}
-                <div className="h-0 overflow-hidden border-b border-cyber-green/20 bg-cyber-black/80 backdrop-blur-md opacity-0"></div>
-            </header>
             
-            <main className="overflow-auto px-4 relative" style={{ height: '100%' }}>
+            
+            <main className="overflow-auto px-4 relative" style={{ height: '90%', marginTop: isChild ? '10px' : '56px' }}>
                 {/* Main loading container */}
                 <div 
                     className={`flex flex-col items-center justify-center h-full relative overflow-hidden opacity-0 ${isVisible ? 'animate-fade-scale-in' : ''}`}
