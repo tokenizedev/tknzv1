@@ -547,7 +547,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   }, [isCarouselOpen, articleData.images, carouselIndex]);
 
   if (isLoading) {
-    return <Loader isSidebar={isSidebar} />;
+    return <Loader className="absolute h-full" isChild={true} isSidebar={isSidebar} />;
   }
 
   return (
