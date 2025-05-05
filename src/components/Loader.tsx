@@ -7,28 +7,45 @@ interface LoaderProps {
 
 export const Loader: React.FC<LoaderProps> = ({ isSidebar = false }) => {
     const [dots, setDots] = useState(0);
+    const [isVisible, setIsVisible] = useState(false);
     
     useEffect(() => {
+        // Start the dots animation
         const interval = setInterval(() => {
             setDots(prev => (prev + 1) % 4);
         }, 350);
+        
+        // Trigger the appearance animation
+        setIsVisible(true);
         
         return () => clearInterval(interval);
     }, []);
 
     return (
-        <div className={`w-full h-full flex flex-col items-center justify-center bg-cyber-black relative overflow-hidden`} style={{ minWidth: isSidebar ? '100%' : '390px', height: isSidebar ? '100%' : '500px' }}>
+        <div 
+            className={`flex flex-col items-center justify-center bg-cyber-black relative overflow-hidden opacity-0 ${isVisible ? 'animate-fade-scale-in' : ''}`} 
+            style={{ 
+                width: isSidebar ? '100%' : '368px', 
+                height: isSidebar ? '100%' : '528px',
+                maxWidth: isSidebar ? '100%' : '368px',
+                maxHeight: isSidebar ? '100%' : '528px',
+            }}
+        >
             {/* Grid overlay for cyberpunk effect */}
             <div className="absolute inset-0 grid grid-cols-[repeat(40,1fr)] grid-rows-[repeat(60,1fr)] opacity-20 pointer-events-none">
                 {Array.from({ length: 60 }).map((_, rowIndex) => (
-                    Array.from({ length: 40 }).map((_, colIndex) => (
-                        <div key={`${rowIndex}-${colIndex}`} className="border-[0.5px] border-cyber-green/10"></div>
-                    ))
+                    React.createElement(
+                        React.Fragment, 
+                        { key: `row-${rowIndex}` },
+                        Array.from({ length: 40 }).map((_, colIndex) => (
+                            <div key={`${rowIndex}-${colIndex}`} className="border-[0.5px] border-cyber-green/10"></div>
+                        ))
+                    )
                 ))}
             </div>
             
             {/* Main loading container */}
-            <div className="relative z-10 flex flex-col items-center gap-6">
+            <div className="relative z-10 flex flex-col items-center gap-6 opacity-0 animate-fade-in-delayed">
                 {/* Logo */}
                 <div className="text-cyber-green font-bold text-4xl font-terminal tracking-widest mb-2">TKNZ</div>
                 
