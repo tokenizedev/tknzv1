@@ -35,6 +35,11 @@ function App({ isSidebar = false }: AppProps = {}) {
   const [creationProgress, setCreationProgress] = useState(0);
   const [newCoinAddress, setNewCoinAddress] = useState<string | null>(null);
   
+  // Animation state for nav components
+  const [navAnimated, setNavAnimated] = useState(false);
+  const [logoAnimated, setLogoAnimated] = useState(false);
+  const [controlsAnimated, setControlsAnimated] = useState(false);
+  
   // Wallet address and copy handler
   const address = wallet?.publicKey.toString() || '';
   const truncatedAddress = address ? `${address.slice(0,4)}...${address.slice(-4)}` : '';
@@ -58,6 +63,32 @@ function App({ isSidebar = false }: AppProps = {}) {
     }, 10000);
     
     return () => clearInterval(glitchInterval);
+  }, []);
+
+  // Sequential animation for nav elements when component mounts
+  useEffect(() => {
+    // Main nav animation
+    const navTimer = setTimeout(() => {
+      setNavAnimated(true);
+      
+      // Logo animation with slight delay
+      setTimeout(() => {
+        setLogoAnimated(true);
+        
+        // Controls animation follows
+        setTimeout(() => {
+          setControlsAnimated(true);
+          
+          // Trigger a subtle glitch when animations complete
+          setTimeout(() => {
+            setGlitching(true);
+            setTimeout(() => setGlitching(false), 150);
+          }, 400);
+        }, 150);
+      }, 100);
+    }, 300);
+    
+    return () => clearTimeout(navTimer);
   }, []);
 
   // Open the Chrome extension side panel for the current tab
@@ -201,19 +232,25 @@ function App({ isSidebar = false }: AppProps = {}) {
         ))}
       </div>
       
-      {/* Streamlined cyberpunk header */}
-      <header className="sticky top-0 z-10">
-        <div className="border-b border-cyber-green/20 bg-cyber-black/90 backdrop-blur-sm">
+      {/* Streamlined cyberpunk header with slide-down animation */}
+      <header className={`sticky top-0 z-10 ${navAnimated ? 'nav-animated nav-glow' : 'opacity-0'}`}>
+        <div className={`border-b border-cyber-green/20 bg-cyber-black/90 backdrop-blur-sm ${navAnimated ? 'nav-border-animated border-highlight' : ''}`}>
           <div className="flex items-center h-14">
-            {/* Logo with more breathing room */}
-            <div className="px-5 flex-none">
-              <h1 className="leaderboard-title text-2xl tracking-widest">TKNZ</h1>
+            {/* Logo with sequential animation */}
+            <div className={`px-5 flex-none transition-all duration-300 ${logoAnimated ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'}`}>
+              <h1 className="leaderboard-title text-2xl tracking-widest">
+                {/* Individual letter animation */}
+                <span className="inline-block" style={{ animationDelay: '0.1s', animation: logoAnimated ? 'float 3s ease-in-out infinite' : 'none' }}>T</span>
+                <span className="inline-block" style={{ animationDelay: '0.2s', animation: logoAnimated ? 'float 3s ease-in-out infinite' : 'none' }}>K</span>
+                <span className="inline-block" style={{ animationDelay: '0.3s', animation: logoAnimated ? 'float 3s ease-in-out infinite' : 'none' }}>N</span>
+                <span className="inline-block" style={{ animationDelay: '0.4s', animation: logoAnimated ? 'float 3s ease-in-out infinite' : 'none' }}>Z</span>
+              </h1>
             </div>
             
             {wallet && (
               <>
-                {/* SOL balance indicator */}
-                <div className="ml-auto flex h-full">
+                {/* SOL balance indicator with sequential animation */}
+                <div className={`ml-auto flex h-full transition-all duration-500 ${controlsAnimated ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-10'}`}>
                   <div className="border-l border-r border-cyber-green/20 px-4 flex items-center">
                     <div className="flex flex-col items-end mr-2">
                       <div className="font-terminal text-sm text-cyber-green tabular-nums">
@@ -229,7 +266,7 @@ function App({ isSidebar = false }: AppProps = {}) {
                     </button>
                   </div>
                   
-                  {/* Wallet controls - simplified */}
+                  {/* Wallet controls with sequential animation */}
                   <button 
                     onClick={toggleWalletDrawer}
                     className="border-r border-cyber-green/20 w-14 h-full flex items-center justify-center hover:bg-cyber-green/10 transition-colors relative"
@@ -247,7 +284,7 @@ function App({ isSidebar = false }: AppProps = {}) {
                     )}
                   </button>
                   
-                  {/* Control buttons */}
+                  {/* Control buttons with sequential animation */}
                   <div className="flex h-full">
                     {!isSidebar ? (
                       <button
@@ -284,9 +321,9 @@ function App({ isSidebar = false }: AppProps = {}) {
           </div>
         </div>
 
-        {/* Wallet drawer - simplified */}
+        {/* Wallet drawer with slide animation */}
         <div className={`overflow-hidden transition-all duration-200 border-b border-cyber-green/20 bg-cyber-black/80 backdrop-blur-md ${
-          showWalletDrawer ? 'max-h-12' : 'max-h-0'
+          showWalletDrawer ? 'max-h-12 nav-drawer-animated nav-border-animated' : 'max-h-0'
         }`}>
           <div className="flex items-center px-5 h-12">
             {/* Full wallet address */}
