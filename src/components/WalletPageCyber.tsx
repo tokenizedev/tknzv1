@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { Copy, AlertTriangle, ExternalLink, Coins, RefreshCw, DollarSign, Wifi } from 'lucide-react';
+import { Copy, AlertTriangle, ExternalLink, Coins, RefreshCw, DollarSign, Wifi, ChevronUp, ChevronDown } from 'lucide-react';
 import { useStore } from '../store';
+import { CreatedCoin } from '../types';
 
 // Network environment indicator component
 const NetworkIndicator: React.FC = () => {
@@ -27,6 +28,8 @@ interface WalletPageCyberProps {
   highlightCoinAddress?: string | null;
 }
 
+const ITEMS_PER_PAGE = 3;
+
 export const WalletPageCyber: React.FC<WalletPageCyberProps> = ({ highlightCoinAddress }) => {
   const { wallet, balance, createdCoins, getBalance, isRefreshing, investmentAmount, setInvestmentAmount } = useStore();
   const [showPrivateKey, setShowPrivateKey] = useState(false);
@@ -34,6 +37,8 @@ export const WalletPageCyber: React.FC<WalletPageCyberProps> = ({ highlightCoinA
   const [animateZap, setAnimateZap] = useState(false);
   const [inputValue, setInputValue] = useState(investmentAmount.toString());
   const [highlightedCoin, setHighlightedCoin] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const coinsListRef = useRef<HTMLDivElement>(null); // Ref for scrolling
 
   // Scroll to highlighted coin when it changes
   useEffect(() => {
@@ -53,6 +58,17 @@ export const WalletPageCyber: React.FC<WalletPageCyberProps> = ({ highlightCoinA
   useEffect(() => {
     setInputValue(investmentAmount.toString());
   }, [investmentAmount]);
+
+  // Reset pagination if highlighted coin changes or list length changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [highlightCoinAddress, createdCoins.length]);
+  
+  // Calculate pagination
+  const totalPages = Math.ceil(createdCoins.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const displayedCoins = createdCoins.slice(startIndex, endIndex);
 
   if (!wallet) return null;
 
@@ -87,8 +103,15 @@ export const WalletPageCyber: React.FC<WalletPageCyberProps> = ({ highlightCoinA
     getBalance();
     setTimeout(() => setAnimateZap(false), 1500);
   };
-    
-    
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+      // Smooth scroll to the top of the list container
+      coinsListRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
   return (
     <div className="py-6 space-y-4">
         {/* Wallet page styled as a terminal */}
@@ -178,7 +201,7 @@ export const WalletPageCyber: React.FC<WalletPageCyberProps> = ({ highlightCoinA
             </p>
         </div>
 
-        {/* Created Coins Section - now with highlighting */}
+        {/* Created Coins Section - now with pagination and max height */}
         {createdCoins && createdCoins.length > 0 && (
             <div className="crypto-card">
                 <div className="crypto-card-header">
@@ -188,8 +211,9 @@ export const WalletPageCyber: React.FC<WalletPageCyberProps> = ({ highlightCoinA
                     </h2>
                     <Coins className="w-5 h-5 text-cyber-purple" />
                 </div>
-                <div className="p-4 space-y-3">
-                    {createdCoins.map((coin) => {
+                {/* Container with max-height and overflow */}
+                <div ref={coinsListRef} className="p-4 space-y-3 max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-cyber-green/50 scrollbar-track-cyber-black">
+                    {displayedCoins.map((coin) => { // Use displayedCoins
                         const isHighlighted = coin.address === highlightedCoin;
                         return (
                             <div 
@@ -250,6 +274,30 @@ export const WalletPageCyber: React.FC<WalletPageCyberProps> = ({ highlightCoinA
                         );
                     })}
                 </div>
+                 {/* Pagination Controls */}
+                 {totalPages > 1 && (
+                    <div className="flex justify-between items-center p-2 border-t border-cyber-green/30">
+                        <button 
+                            onClick={() => handlePageChange(currentPage - 1)}
+                            disabled={currentPage === 1}
+                            className="p-2 text-cyber-green disabled:text-gray-600 hover:text-cyber-green-dark disabled:opacity-50 transition-colors"
+                            title="Previous Page"
+                        >
+                            <ChevronUp className="w-5 h-5" />
+                        </button>
+                        <span className="text-xs font-terminal text-white/70">
+                            Page {currentPage} of {totalPages}
+                        </span>
+                        <button 
+                            onClick={() => handlePageChange(currentPage + 1)}
+                            disabled={currentPage === totalPages}
+                            className="p-2 text-cyber-green disabled:text-gray-600 hover:text-cyber-green-dark disabled:opacity-50 transition-colors"
+                            title="Next Page"
+                        >
+                            <ChevronDown className="w-5 h-5" />
+                        </button>
+                    </div>
+                )}
             </div>
         )}
 
