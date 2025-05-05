@@ -90,6 +90,31 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
       document.head.removeChild(styleEl);
     };
   }, []);
+  
+  // Listen for selectedContent in local storage when in side panel to refresh content
+  useEffect(() => {
+    if (!isSidebar || !chrome?.storage) return;
+    const handleStorageChange = (changes: { [key: string]: chrome.storage.StorageChange }, area: string) => {
+      if (area === 'local' && changes.selectedContent) {
+        const newVal = changes.selectedContent.newValue;
+        let data: any;
+        try {
+          data = typeof newVal === 'string' ? JSON.parse(newVal) : newVal;
+        } catch (e) {
+          console.error('Failed to parse selectedContent from storage:', e);
+          data = newVal;
+        }
+        // Remove the key so it doesn't re-trigger
+        chrome.storage.local.remove('selectedContent');
+        const article = ensureArticleData(data);
+        generateSuggestions(article, 0);
+      }
+    };
+    chrome.storage.onChanged.addListener(handleStorageChange);
+    return () => {
+      chrome.storage.onChanged.removeListener(handleStorageChange);
+    };
+  }, [isSidebar]);
 
   const { balance, error: walletError, investmentAmount: defaultInvestment, addCreatedCoin, createCoin } = useStore();
   const [articleData, setArticleData] = useState<ArticleData>({
@@ -388,6 +413,29 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
     };
   }, []);
 
+  // Listen for selectedContent in local storage when in side panel to refresh content
+  useEffect(() => {
+    if (!isSidebar || !chrome?.storage) return;
+    const handleStorageChange = (changes: { [key: string]: chrome.storage.StorageChange }, area: string) => {
+      if (area === 'local' && changes.selectedContent) {
+        const newVal = changes.selectedContent.newValue;
+        let data: any;
+        try {
+          data = typeof newVal === 'string' ? JSON.parse(newVal) : newVal;
+        } catch (e) {
+          console.error('Failed to parse selectedContent from storage:', e);
+          data = newVal;
+        }
+        // Remove the key so it doesn't re-trigger
+        chrome.storage.local.remove('selectedContent');
+        const article = ensureArticleData(data);
+        generateSuggestions(article, 0);
+      }
+    };
+    chrome.storage.onChanged.addListener(handleStorageChange);
+    return () => chrome.storage.onChanged.removeListener(handleStorageChange);
+  }, [isSidebar]);
+  
   const innerHandleSubmit = async () => {
     setIsCreating(true);
     
