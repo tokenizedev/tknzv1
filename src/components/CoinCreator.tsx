@@ -6,6 +6,7 @@ import { TerminalLoader } from './TerminalLoader';
 interface ArticleData {
   title: string
   primaryImage: string
+  image: string
   images: string[]
   description: string
   url: string
@@ -19,6 +20,7 @@ const DEV_MODE = process.env.NODE_ENV === 'development' && !chrome?.tabs;
 const MOCK_ARTICLE_DATA: ArticleData = {
   title: "Bitcoin Reaches New All-Time High",
   primaryImage: "https://images.unsplash.com/photo-1518546305927-5a555bb7020d?w=800",
+  image: "https://images.unsplash.com/photo-1518546305927-5a555bb7020d?w=800",
   images: ["https://images.unsplash.com/photo-1518546305927-5a555bb7020d?w=800"],
   description: "The world's largest cryptocurrency by market cap has reached a new milestone...",
   url: "https://example.com/bitcoin-ath",
@@ -28,6 +30,8 @@ const MOCK_ARTICLE_DATA: ArticleData = {
 
 interface CoinCreatorProps {
   isSidebar?: boolean;
+  onCreationStart?: () => void;
+  onCreationComplete?: (coinAddress: string) => void;
 }
 
 // CSS for animations
@@ -68,7 +72,11 @@ const carouselAnimationStyles = `
   }
 `;
 
-export const CoinCreator: React.FC<CoinCreatorProps> = ({ isSidebar = false }) => {
+export const CoinCreator: React.FC<CoinCreatorProps> = ({ 
+  isSidebar = false, 
+  onCreationStart, 
+  onCreationComplete 
+}) => {
   useEffect(() => {
     // Add animation styles
     const styleEl = document.createElement('style');
@@ -84,6 +92,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({ isSidebar = false }) =
   const [articleData, setArticleData] = useState<ArticleData>({
     title: '',
     primaryImage: '',
+    image: '',
     images: [],
     description: '',
     url: '',
@@ -165,6 +174,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({ isSidebar = false }) =
       return {
         title: '',
         primaryImage: '',
+        image: '',
         images: [],
         description: '',
         url: '',
@@ -172,11 +182,15 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({ isSidebar = false }) =
       };
     }
     
+    // Make sure we have both image properties for compatibility
+    const primaryImage = data.primaryImage || data.image || '';
+    
     // Return data with defaults for any missing properties
     return {
       title: data.title || '',
-      primaryImage: data.primaryImage || data.image || '',
-      images: data.images || (data.primaryImage || data.image ? [data.primaryImage || data.image] : []),
+      primaryImage: primaryImage,
+      image: primaryImage, // Set both image properties to the same value
+      images: data.images || (primaryImage ? [primaryImage] : []),
       description: data.description || '',
       url: data.url || '',
       isXPost: data.isXPost || false
@@ -242,7 +256,14 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({ isSidebar = false }) =
         setXUrl('https://x.com/tknzfun');
         return;
       }
-      const tokenCreationData = await useStore.getState().getTokenCreationData(article, level)
+
+      // Make sure article has the 'image' property before passing to API
+      const apiArticle = {
+        ...article,
+        image: article.primaryImage // Ensure it has the image property
+      };
+
+      const tokenCreationData = await useStore.getState().getTokenCreationData(apiArticle, level);
       const { token } = tokenCreationData;
       const { name } = token;
       
@@ -370,6 +391,14 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({ isSidebar = false }) =
       return;
     }
 
+    // Notify parent component that creation is starting
+    if (onCreationStart) {
+      onCreationStart();
+      // We'll let the parent component handle the UI now
+      return;
+    }
+
+    // Otherwise, use the existing UI
     setIsCreating(true);
     setLoadingProgress(0);
     setError(null);
@@ -409,13 +438,27 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({ isSidebar = false }) =
       });
 
       setCreatedCoin(response);
+
+      // Notify parent component that creation is complete
+      if (onCreationComplete) {
+        onCreationComplete(response.address);
+      }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to create coin';
       setError(`Failed to create coin: ${errorMessage}`);
+      // Reset creation state on error
+      if (onCreationStart) {
+        // Wait a moment to show the error before resetting
+        setTimeout(() => {
+          setIsCreating(false);
+        }, 3000);
+      }
     } finally {
-      setTimeout(() => {
-        setIsCreating(false);
-      }, 500);
+      if (!onCreationStart) {
+        setTimeout(() => {
+          setIsCreating(false);
+        }, 500);
+      }
     }
   };
 
@@ -423,6 +466,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({ isSidebar = false }) =
     setArticleData({
       title: '',
       primaryImage: '',
+      image: '',
       images: [],
       description: '',
       url: '',
@@ -463,6 +507,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({ isSidebar = false }) =
           return {
             ...prev,
             primaryImage: localPreview,
+            image: localPreview,
             images: newImages
           };
         });

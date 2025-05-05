@@ -23,12 +23,32 @@ const NetworkIndicator: React.FC = () => {
   );
 };
 
-export const WalletPageCyber: React.FC = () => {
+interface WalletPageCyberProps {
+  highlightCoinAddress?: string | null;
+}
+
+export const WalletPageCyber: React.FC<WalletPageCyberProps> = ({ highlightCoinAddress }) => {
   const { wallet, balance, createdCoins, getBalance, isRefreshing, investmentAmount, setInvestmentAmount } = useStore();
   const [showPrivateKey, setShowPrivateKey] = useState(false);
   const [copied, setCopied] = useState(false);
   const [animateZap, setAnimateZap] = useState(false);
   const [inputValue, setInputValue] = useState(investmentAmount.toString());
+  const [highlightedCoin, setHighlightedCoin] = useState<string | null>(null);
+
+  // Scroll to highlighted coin when it changes
+  useEffect(() => {
+    if (highlightCoinAddress) {
+      setHighlightedCoin(highlightCoinAddress);
+      
+      // Wait for render to complete
+      setTimeout(() => {
+        const element = document.getElementById(`coin-${highlightCoinAddress}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
+    }
+  }, [highlightCoinAddress]);
 
   useEffect(() => {
     setInputValue(investmentAmount.toString());
@@ -158,7 +178,7 @@ export const WalletPageCyber: React.FC = () => {
             </p>
         </div>
 
-        {/* Created Coins Section */}
+        {/* Created Coins Section - now with highlighting */}
         {createdCoins && createdCoins.length > 0 && (
             <div className="crypto-card">
                 <div className="crypto-card-header">
@@ -169,41 +189,66 @@ export const WalletPageCyber: React.FC = () => {
                     <Coins className="w-5 h-5 text-cyber-purple" />
                 </div>
                 <div className="p-4 space-y-3">
-                    {createdCoins.map((coin) => (
-                        <div key={coin.address} className="bg-cyber-dark/80 border border-cyber-green/30 rounded-md p-3 space-y-3 hover:border-cyber-green/60 transition-all">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <div className="font-terminal text-cyber-purple">{coin.name}</div>
-                                    <div className="text-sm text-white/70 font-terminal">{coin.ticker}</div>
+                    {createdCoins.map((coin) => {
+                        const isHighlighted = coin.address === highlightedCoin;
+                        return (
+                            <div 
+                                id={`coin-${coin.address}`}
+                                key={coin.address} 
+                                className={`${
+                                    isHighlighted 
+                                        ? 'bg-cyber-green/10 border-cyber-green border-2 shadow-neon-green' 
+                                        : 'bg-cyber-dark/80 border border-cyber-green/30 hover:border-cyber-green/60'
+                                } rounded-md p-3 space-y-3 transition-all duration-300 relative`}
+                            >
+                                {isHighlighted && (
+                                    <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 bg-cyber-black border border-cyber-green px-2 py-0.5 text-xs font-terminal text-cyber-green">
+                                        NEW TOKEN
+                                    </div>
+                                )}
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <div className={`font-terminal ${isHighlighted ? 'text-cyber-green font-bold' : 'text-cyber-purple'}`}>
+                                            {coin.name}
+                                        </div>
+                                        <div className="text-sm text-white/70 font-terminal">{coin.ticker}</div>
+                                    </div>
+                                    <div className="text-right">
+                                        <div className="font-terminal text-cyber-green">{coin.balance.toFixed(2)}</div>
+                                        <div className="text-sm text-white/70 font-terminal">tokens</div>
+                                    </div>
                                 </div>
-                                <div className="text-right">
-                                    <div className="font-terminal text-cyber-green">{coin.balance.toFixed(2)}</div>
-                                    <div className="text-sm text-white/70 font-terminal">tokens</div>
+                                <div className="flex items-center space-x-2">
+                                    <a
+                                        href={coin.pumpUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className={`flex-1 px-3 py-2 ${
+                                            isHighlighted
+                                                ? 'bg-cyber-purple/20 border border-cyber-purple text-cyber-green'
+                                                : 'bg-cyber-black border border-cyber-purple/50 text-cyber-purple'
+                                        } rounded-sm hover:bg-cyber-purple/10 hover:border-cyber-purple 
+                                        transition-all duration-200 text-sm font-terminal text-center uppercase tracking-wide`}
+                                    >
+                                        View on Pump.fun
+                                    </a>
+                                    <a
+                                        href={`https://solscan.io/token/${coin.address}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className={`p-2 ${
+                                            isHighlighted 
+                                                ? 'border border-cyber-green bg-cyber-green/10'
+                                                : 'border border-cyber-green/30 hover:bg-cyber-green/10'
+                                        } rounded-sm transition-colors`}
+                                        title="View on Solscan"
+                                    >
+                                        <ExternalLink className="w-4 h-4 text-cyber-green" />
+                                    </a>
                                 </div>
                             </div>
-                            <div className="flex items-center space-x-2">
-                                <a
-                                    href={coin.pumpUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex-1 px-3 py-2 bg-cyber-black border border-cyber-purple/50 text-cyber-purple rounded-sm
-                                            hover:bg-cyber-purple/10 hover:border-cyber-purple transition-all duration-200 
-                                            text-sm font-terminal text-center uppercase tracking-wide"
-                                >
-                                    View on Pump.fun
-                                </a>
-                                <a
-                                    href={`https://solscan.io/token/${coin.address}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="p-2 border border-cyber-green/30 hover:bg-cyber-green/10 rounded-sm transition-colors"
-                                    title="View on Solscan"
-                                >
-                                    <ExternalLink className="w-4 h-4 text-cyber-green" />
-                                </a>
-                            </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             </div>
         )}
