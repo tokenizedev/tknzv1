@@ -467,6 +467,7 @@ export const extractTweetData = async (
 // Function to extract article data
 export const extractArticleData = (baseElement: HTMLElement = document.body) => {
   // Derive origin for relative URL resolution
+  console.log('baseElement', baseElement);
   let origin: string;
   try {
     origin = new URL(window.location.href).origin;
@@ -485,38 +486,27 @@ export const extractArticleData = (baseElement: HTMLElement = document.body) => 
 
   // Description: <p> > meta description > empty
   let description = '';
-  const p = baseElement.querySelector('p');
-  if (p?.textContent?.trim()) {
+  const p = baseElement.querySelector('p,div,section,article');
+  if (baseElement.tagName.toLowerCase() === 'body') {
+    description = document.head.querySelector('meta[name="description"]')?.getAttribute('content') || '';
+  } else if (p?.textContent?.trim()) {
     description = p.textContent.trim();
   } else {
-    description = document.head.querySelector('meta[name="description"]')?.getAttribute('content') || '';
+    description = baseElement.textContent?.trim() || '';
   }
 
-  // Image: og:image > twitter:image > first <img>
-  let image = '';
-  const ogImg = document.head.querySelector('meta[property="og:image"]')?.getAttribute('content');
-  const twImg = document.head.querySelector('meta[name="twitter:image"]')?.getAttribute('content');
-  if (ogImg) {
-    image = ogImg;
-  } else if (twImg) {
-    image = twImg;
-  } else {
-    const imgEl = baseElement.querySelector('img');
-    const raw = imgEl?.getAttribute('src') || '';
-    if (raw.startsWith('http')) {
-      image = raw;
-    } else if (raw) {
-      image = new URL(raw, origin).href;
-    }
-  }
+  const contentImages = extractImages(baseElement)
+  const featuredImage = contentImages[0] || ''
+  
 
   const url = window.location.href;
   return {
     title: title || 'Untitled Article',
-    image: image || '',
+    image: featuredImage || '',
     description: description || '',
     url,
-    isXPost: false
+    isXPost: false,
+    images: contentImages
   };
 };
 
