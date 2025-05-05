@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { Image, Type, FileText, Send, Loader2, AlertCircle, Globe, Sparkles, DollarSign, Hand as BrandX, GitBranch as BrandTelegram, Terminal, Zap, Target, X, Upload } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Image, Type, FileText, Send, Loader2, AlertCircle, Globe, Sparkles, DollarSign, Hand as BrandX, GitBranch as BrandTelegram, Terminal, Zap, Target, X, Upload, ChevronLeft, ChevronRight, CheckCircle, Copy, ExternalLink, Hash } from 'lucide-react';
 import { useStore } from '../store';
 import { TerminalLoader } from './TerminalLoader';
+import { uploadImageToFirebase } from '../firebase';
 
 interface ArticleData {
   title: string
-  image: string
+  primaryImage: string
+  images: string[]
   description: string
   url: string
   author?: string
@@ -17,7 +19,8 @@ const DEV_MODE = process.env.NODE_ENV === 'development' && !chrome?.tabs;
 
 const MOCK_ARTICLE_DATA: ArticleData = {
   title: "Bitcoin Reaches New All-Time High",
-  image: "https://images.unsplash.com/photo-1518546305927-5a555bb7020d?w=800",
+  primaryImage: "https://images.unsplash.com/photo-1518546305927-5a555bb7020d?w=800",
+  images: ["https://images.unsplash.com/photo-1518546305927-5a555bb7020d?w=800"],
   description: "The world's largest cryptocurrency by market cap has reached a new milestone...",
   url: "https://example.com/bitcoin-ath",
   xUrl: "https://x.com/bitcoin",
@@ -27,11 +30,62 @@ const MOCK_ARTICLE_DATA: ArticleData = {
 interface CoinCreatorProps {
   isSidebar?: boolean;
 }
+
+// CSS for animations
+const carouselAnimationStyles = `
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  
+  @keyframes fadeInUp {
+    from { 
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to { 
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes fadeInOut {
+    0% { opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+  
+  .animate-fadeIn {
+    animation: fadeIn 0.2s ease-out forwards;
+  }
+  
+  .animate-fadeInUp {
+    animation: fadeInUp 0.3s ease-out forwards;
+  }
+  
+  .animate-fadeInOut {
+    animation: fadeInOut 2s ease-out forwards;
+  }
+`;
+
 export const CoinCreator: React.FC<CoinCreatorProps> = ({ isSidebar = false }) => {
+  useEffect(() => {
+    // Add animation styles
+    const styleEl = document.createElement('style');
+    styleEl.textContent = carouselAnimationStyles;
+    document.head.appendChild(styleEl);
+    
+    return () => {
+      document.head.removeChild(styleEl);
+    };
+  }, []);
+
   const { balance, error: walletError, investmentAmount: defaultInvestment, addCreatedCoin, createCoin } = useStore();
   const [articleData, setArticleData] = useState<ArticleData>({
     title: '',
-    image: '',
+    primaryImage: '',
+    images: [],
     description: '',
     url: '',
     isXPost: false
@@ -58,6 +112,12 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({ isSidebar = false }) =
   const [isUploading, setIsUploading] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  // State for image carousel
+  const [isCarouselOpen, setIsCarouselOpen] = useState(false);
+  const [carouselIndex, setCarouselIndex] = useState(0);
+  const [copySuccess, setCopySuccess] = useState<string | null>(null);
+  const carouselRef = useRef<HTMLDivElement>(null);
 
   // Handle content selection toggle: directly ask content script to start selection mode
   const handleSelectContent = async () => {
@@ -105,7 +165,8 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({ isSidebar = false }) =
     if (!data) {
       return {
         title: '',
-        image: '',
+        primaryImage: '',
+        images: [],
         description: '',
         url: '',
         isXPost: false
@@ -115,7 +176,8 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({ isSidebar = false }) =
     // Return data with defaults for any missing properties
     return {
       title: data.title || '',
-      image: data.image || '',
+      primaryImage: data.primaryImage || data.image || '',
+      images: data.images || (data.primaryImage || data.image ? [data.primaryImage || data.image] : []),
       description: data.description || '',
       url: data.url || '',
       isXPost: data.isXPost || false
@@ -196,7 +258,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({ isSidebar = false }) =
       }
 
       setArticleData(article);
-      setImageUrl(article.image);
+      setImageUrl(article.primaryImage);
       setCoinName(token.name);
       setTicker(token.ticker);
       setDescription(token.description);
@@ -220,7 +282,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({ isSidebar = false }) =
           data = MOCK_ARTICLE_DATA;
           setArticleData(data);
           setWebsiteUrl(data.url);
-          setImageUrl(data.image);
+          setImageUrl(data.primaryImage);
           await generateSuggestions(data, 0);
         } else {
           const rawData = await getLocalStorageData() || await useStore.getState().getArticleData();
@@ -361,7 +423,8 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({ isSidebar = false }) =
   const clearForm = () => {
     setArticleData({
       title: '',
-      image: '',
+      primaryImage: '',
+      images: [],
       description: '',
       url: '',
       isXPost: false
@@ -377,19 +440,113 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({ isSidebar = false }) =
   };
 
   // Handle local image upload: convert to data URL for preview
-  const handleImageUpload = (file: File) => {
+  const handleImageUpload = async (file: File) => {
     if (!file) return;
+    
     setImageFile(file);
-    setIsUploading(false);
-    setUploadProgress(100);
+    setIsUploading(true);
+    setUploadProgress(0);
     setError(null);
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const localPreview = e.target?.result as string;
-      setImageUrl(localPreview);
-    };
-    reader.readAsDataURL(file);
+    
+    try {
+      // Create a local preview immediately
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const localPreview = e.target?.result as string;
+        // Just for preview - we'll update with the real URL after upload
+        setImageUrl(localPreview);
+        
+        // Add to images array temporarily
+        setArticleData(prev => {
+          // Create a new images array
+          const newImages = [...prev.images];
+          
+          // Try to prevent adding duplicate data URIs
+          if (!newImages.some(img => img.startsWith('data:') && img.length > 1000)) {
+            newImages.unshift(localPreview);
+          }
+          
+          return {
+            ...prev,
+            primaryImage: localPreview,
+            images: newImages
+          };
+        });
+      };
+      reader.readAsDataURL(file);
+      
+      // Upload to Firebase
+      const downloadURL = await uploadImageToFirebase(file, (progress) => {
+        setUploadProgress(progress);
+      });
+      
+      // Set the permanent image URL from Firebase
+      setImageUrl(downloadURL);
+      
+      // Update the image arrays with the permanent URL
+      setArticleData(prev => {
+        // Replace data URL with permanent URL
+        const newImages = prev.images.map(img => 
+          img === prev.primaryImage ? downloadURL : img
+        );
+        
+        // Ensure the URL is in the array
+        if (!newImages.includes(downloadURL)) {
+          newImages.unshift(downloadURL);
+        }
+        
+        return {
+          ...prev,
+          primaryImage: downloadURL,
+          images: newImages
+        };
+      });
+      
+      setIsUploading(false);
+    } catch (error) {
+      console.error('Upload error:', error);
+      setError('Failed to upload image. Please try again.');
+      setIsUploading(false);
+    }
   };
+
+  // Copy image URL to clipboard
+  const copyImageUrl = (url: string) => {
+    navigator.clipboard.writeText(url).then(() => {
+      setCopySuccess('URL copied to clipboard!');
+      setTimeout(() => {
+        setCopySuccess(null);
+      }, 2000);
+    }).catch(err => {
+      console.error('Failed to copy URL:', err);
+      setCopySuccess('Failed to copy URL');
+      setTimeout(() => {
+        setCopySuccess(null);
+      }, 2000);
+    });
+  };
+
+  // Add this at the very end of the file, just before the export statement
+  // Add keydown handler for carousel
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!isCarouselOpen) return;
+      
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        setCarouselIndex(prev => (prev - 1 + articleData.images.length) % articleData.images.length);
+      } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        setCarouselIndex(prev => (prev + 1) % articleData.images.length);
+      } else if (e.key === 'Escape') {
+        setIsCarouselOpen(false);
+      } else if (e.key === 'Enter') {
+        setImageUrl(articleData.images[carouselIndex]);
+        setIsCarouselOpen(false);
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isCarouselOpen, articleData.images, carouselIndex]);
 
   if (isLoading) {
     return (
@@ -559,7 +716,10 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({ isSidebar = false }) =
                 <input
                   type="url"
                   value={imageUrl}
-                  onChange={(e) => { setImageUrl(e.target.value); setImageFile(null); }}
+                  onChange={(e) => {
+                    setImageUrl(e.target.value);
+                    setImageFile(null);
+                  }}
                   className="input-field font-terminal pr-10"
                   placeholder="Enter image URL or upload file"
                 />
@@ -587,8 +747,8 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({ isSidebar = false }) =
               
               {/* Image preview and upload progress */}
               {imageUrl && (
-                <div className="mt-2 relative">
-                  <div className="border border-cyber-green/30 rounded-sm overflow-hidden" style={{ maxHeight: '120px' }}>
+                <div className="mt-2 relative group">
+                  <div className="border border-cyber-green/30 rounded-sm overflow-hidden bg-black/20" style={{ maxHeight: '120px' }}>
                     <img 
                       src={imageUrl} 
                       alt="Token preview" 
@@ -598,9 +758,36 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({ isSidebar = false }) =
                       }}
                     />
                   </div>
+                  
+                  {/* Hover overlay with actions */}
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-200">
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => copyImageUrl(imageUrl)}
+                        className="bg-black/70 hover:bg-cyber-green/20 text-cyber-green p-1.5 rounded transition-all duration-200"
+                        title="Copy image URL"
+                      >
+                        <Copy className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          // Find current image index, or default to 0
+                          const currentIndex = articleData.images.findIndex(img => img === imageUrl);
+                          setCarouselIndex(currentIndex !== -1 ? currentIndex : 0);
+                          setIsCarouselOpen(true);
+                        }}
+                        className="bg-black/70 hover:bg-cyber-green/20 text-cyber-green p-1.5 rounded transition-all duration-200"
+                        title="Browse all images"
+                      >
+                        <Image className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {/* Upload progress overlay */}
                   {isUploading && (
-                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                      <div className="w-full max-w-[80%]">
+                    <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
+                      <div className="w-full max-w-[80%] text-center">
                         <div className="font-terminal text-xs text-cyber-green mb-1">Uploading: {uploadProgress}%</div>
                         <div className="w-full bg-cyber-green/20 h-1 rounded-sm overflow-hidden">
                           <div 
@@ -609,6 +796,14 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({ isSidebar = false }) =
                           ></div>
                         </div>
                       </div>
+                    </div>
+                  )}
+                  
+                  {/* Multiple images indicator */}
+                  {!isUploading && articleData.images.length > 1 && (
+                    <div className="absolute bottom-1 right-1 bg-black/70 text-cyber-green text-xs font-terminal px-1.5 py-0.5 rounded border border-cyber-green/40 flex items-center opacity-70 group-hover:opacity-0 transition-opacity duration-200">
+                      <Image className="w-3 h-3 mr-1" />
+                      {articleData.images.length} images
                     </div>
                   )}
                 </div>
@@ -762,8 +957,161 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({ isSidebar = false }) =
           )}
         </button>
       </div>
+
+      {/* Image Carousel Modal */}
+      {isCarouselOpen && articleData.images.length > 0 && (
+        <div 
+          className="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4 font-terminal animate-fadeIn"
+          onClick={() => setIsCarouselOpen(false)}
+        >
+          <div 
+            ref={carouselRef}
+            className="bg-cyber-dark border border-cyber-green/50 rounded-md max-w-2xl w-full relative shadow-lg shadow-cyber-green/20 overflow-hidden animate-fadeInUp"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header with counter and controls */}
+            <div className="flex items-center justify-between bg-black/60 p-3 border-b border-cyber-green/30">
+              <div className="flex items-center space-x-3">
+                <span className="text-cyber-green flex items-center">
+                  <Hash className="w-4 h-4 mr-1" />
+                  <span>{carouselIndex + 1}/{articleData.images.length}</span>
+                </span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => copyImageUrl(articleData.images[carouselIndex])}
+                  className="bg-black/50 hover:bg-cyber-green/20 text-cyber-green p-1.5 rounded-sm transition-all duration-200 flex items-center"
+                  title="Copy image URL"
+                >
+                  <Copy className="w-4 h-4" />
+                </button>
+                <a
+                  href={articleData.images[carouselIndex]}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-black/50 hover:bg-cyber-green/20 text-cyber-green p-1.5 rounded-sm transition-all duration-200 flex items-center"
+                  title="Open image in new tab"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+                <button
+                  onClick={() => setIsCarouselOpen(false)}
+                  className="bg-black/50 hover:bg-cyber-pink/20 text-cyber-pink p-1.5 rounded-sm transition-all duration-200"
+                  title="Close carousel"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Image container */}
+            <div className="relative">
+              <div className="bg-black/40 aspect-video flex items-center justify-center p-2 min-h-[300px]">
+                <img 
+                  src={articleData.images[carouselIndex]} 
+                  alt={`Image option ${carouselIndex + 1}`}
+                  className="max-h-[60vh] max-w-full object-contain block"
+                  onError={(e) => {
+                    e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0yNCAxaDtgTWFnZSBub3QgZm91bmQiIHN0eWxlPSJmaWxsOiMwMGZmNDE7Zm9udC1mYW1pbHk6bW9ub3NwYWNlO2ZvbnQtc2l6ZToxMHB4OyIvPjwvc3ZnPg=='; 
+                  }} 
+                />
+              </div>
+              
+              {/* Navigation controls */}
+              {articleData.images.length > 1 && (
+                <>
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCarouselIndex(prev => (prev - 1 + articleData.images.length) % articleData.images.length);
+                    }}
+                    className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/70 text-cyber-green hover:bg-black/90 hover:text-cyber-purple p-2 rounded-full transition-all duration-200 border border-cyber-green/30"
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </button>
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCarouselIndex(prev => (prev + 1) % articleData.images.length);
+                    }}
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/70 text-cyber-green hover:bg-black/90 hover:text-cyber-purple p-2 rounded-full transition-all duration-200 border border-cyber-green/30"
+                  >
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
+                </>
+              )}
+            </div>
+
+            {/* Thumbnail strip */}
+            {articleData.images.length > 1 && (
+              <div className="bg-black/80 border-t border-cyber-green/20 p-2 overflow-x-auto">
+                <div className="flex space-x-2">
+                  {articleData.images.map((img, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setCarouselIndex(idx)}
+                      className={`relative flex-shrink-0 w-16 h-16 border-2 transition-all duration-200 ${
+                        idx === carouselIndex 
+                          ? 'border-cyber-green shadow-lg shadow-cyber-green/30' 
+                          : 'border-cyber-green/30 hover:border-cyber-green/60'
+                      }`}
+                    >
+                      <img 
+                        src={img} 
+                        alt={`Thumbnail ${idx + 1}`}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0yNCAxaDtgTWFnZSBub3QgZm91bmQiIHN0eWxlPSJmaWxsOiMwMGZmNDE7Zm9udC1mYW1pbHk6bW9ub3NwYWNlO2ZvbnQtc2l6ZToxMHB4OyIvPjwvc3ZnPg=='; 
+                        }}
+                      />
+                      {idx === carouselIndex && (
+                        <div className="absolute inset-0 border-2 border-cyber-green/70 bg-cyber-green/10" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Footer with actions */}
+            <div className="flex justify-between items-center bg-black/60 p-3 border-t border-cyber-green/30">
+              <button
+                onClick={() => {
+                  setImageUrl(articleData.images[carouselIndex]);
+                  setIsCarouselOpen(false);
+                }}
+                className="bg-cyber-green/20 hover:bg-cyber-green/30 text-cyber-green py-2 px-4 rounded-sm transition-all duration-200 flex items-center space-x-2 border border-cyber-green/50"
+              >
+                <CheckCircle className="w-4 h-4" />
+                <span>Use This Image</span>
+              </button>
+              <div className="text-xs text-cyber-green/80">
+                {articleData.images[carouselIndex]?.slice(0, 40)}...
+              </div>
+            </div>
+
+            {/* Copy success toast */}
+            {copySuccess && (
+              <div className="absolute top-2 left-1/2 transform -translate-x-1/2 bg-black/90 text-cyber-green text-sm py-2 px-4 rounded border border-cyber-green/50 animate-fadeInOut flex items-center">
+                <CheckCircle className="w-4 h-4 mr-2" />
+                {copySuccess}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Copy success toast outside the modal */}
+      {copySuccess && !isCarouselOpen && (
+        <div className="fixed top-4 right-4 bg-black/90 text-cyber-green text-sm py-2 px-4 rounded border border-cyber-green/50 animate-fadeInOut flex items-center z-50">
+          <CheckCircle className="w-4 h-4 mr-2" />
+          {copySuccess}
+        </div>
+      )}
     </div>
   );
 };
+
+
 
 export default CoinCreator;
