@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Image, Type, FileText, Send, Loader2, AlertCircle, Globe, Sparkles, DollarSign, Hand as BrandX, GitBranch as BrandTelegram, Terminal, Zap, Target, X, Upload } from 'lucide-react';
 import { useStore } from '../store';
 import { TerminalLoader } from './TerminalLoader';
-import { uploadImageToFirebase } from '../firebase';
 
 interface ArticleData {
   title: string
@@ -321,16 +320,22 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({ isSidebar = false }) =
         setLoadingProgress(prev => Math.min(prev + Math.random() * 15, 95));
       }
 
-      const response = await createCoin({
+      // Prepare parameters, supporting either a URL or local file blob
+      const params: any = {
         name: coinName,
         ticker: ticker,
         description: description,
-        imageUrl: imageUrl,
         websiteUrl: websiteUrl,
         twitter: xUrl,
         telegram: telegramUrl,
         investmentAmount: investmentAmount
-      });
+      };
+      if (imageFile) {
+        params.imageFile = imageFile;
+      } else {
+        params.imageUrl = imageUrl;
+      }
+      const response = await createCoin(params);
 
       setLoadingProgress(100);
       
@@ -371,38 +376,19 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({ isSidebar = false }) =
     setError(null);
   };
 
-  const handleImageUpload = async (file: File) => {
+  // Handle local image upload: convert to data URL for preview
+  const handleImageUpload = (file: File) => {
     if (!file) return;
-    
     setImageFile(file);
-    setIsUploading(true);
-    setUploadProgress(0);
+    setIsUploading(false);
+    setUploadProgress(100);
     setError(null);
-    
-    try {
-      // Create a local preview immediately
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const localPreview = e.target?.result as string;
-        // Just for preview - we'll update with the real URL after upload
-        setImageUrl(localPreview);
-      };
-      reader.readAsDataURL(file);
-      
-      // Upload to Firebase
-      const downloadURL = await uploadImageToFirebase(file, (progress) => {
-        setUploadProgress(progress);
-      });
-      
-      // Set the permanent image URL from Firebase
-      setImageUrl(downloadURL);
-      setIsUploading(false);
-      
-    } catch (error) {
-      console.error('Upload error:', error);
-      setError('Failed to upload image. Please try again.');
-      setIsUploading(false);
-    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const localPreview = e.target?.result as string;
+      setImageUrl(localPreview);
+    };
+    reader.readAsDataURL(file);
   };
 
   if (isLoading) {
@@ -573,7 +559,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({ isSidebar = false }) =
                 <input
                   type="url"
                   value={imageUrl}
-                  onChange={(e) => setImageUrl(e.target.value)}
+                  onChange={(e) => { setImageUrl(e.target.value); setImageFile(null); }}
                   className="input-field font-terminal pr-10"
                   placeholder="Enter image URL or upload file"
                 />
