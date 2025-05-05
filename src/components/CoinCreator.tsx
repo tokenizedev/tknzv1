@@ -31,8 +31,9 @@ const MOCK_ARTICLE_DATA: ArticleData = {
 
 interface CoinCreatorProps {
   isSidebar?: boolean;
-  onCreationStart?: () => void;
+  onCreationStart?: (innerHandleSubmit: () => Promise<void>) => Promise<void>;
   onCreationComplete?: (coinAddress: string) => void;
+  onCreationError?: (errorMessage: string) => void;
 }
 
 // CSS for animations
