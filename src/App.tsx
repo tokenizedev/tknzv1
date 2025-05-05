@@ -133,7 +133,8 @@ function App({ isSidebar = false }: AppProps = {}) {
       
       if (tab?.id != null) {
         if (isSidebar) {
-          window.close()
+          chrome.tabs.sendMessage(tab.id, { type: 'SIDE_PANEL_CLOSED' });
+          window.close();
         } else {
           await chrome.sidePanel.setOptions({ tabId: tab.id, enabled: false });
           // Open the extension popup
