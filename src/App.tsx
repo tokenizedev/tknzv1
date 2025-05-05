@@ -275,6 +275,17 @@ function App({ isSidebar = false }: AppProps = {}) {
                   
                   {/* Wallet controls with sequential animation */}
                   <button 
+                    className={`h-full w-14 transition-colors flex items-center justify-center ${
+                      showWallet 
+                        ? 'bg-cyber-green/20 text-cyber-green' 
+                        : 'hover:bg-cyber-green/10 text-cyber-green/80 hover:text-cyber-green'
+                    }`}
+                    onClick={() => setShowWallet(!showWallet)}
+                    title="View Wallet"
+                  >
+                    <Wallet className="w-4 h-4" />
+                  </button>
+                  <button 
                     onClick={toggleWalletDrawer}
                     className="border-r border-cyber-green/20 w-14 h-full flex items-center justify-center hover:bg-cyber-green/10 transition-colors relative"
                     title="Toggle wallet address"
@@ -310,17 +321,6 @@ function App({ isSidebar = false }: AppProps = {}) {
                         <X className="w-4 h-4 text-cyber-green/80 hover:text-cyber-green" />
                       </button>
                     )}
-                    <button 
-                      className={`h-full w-14 transition-colors flex items-center justify-center ${
-                        showWallet 
-                          ? 'bg-cyber-green/20 text-cyber-green' 
-                          : 'hover:bg-cyber-green/10 text-cyber-green/80 hover:text-cyber-green'
-                      }`}
-                      onClick={() => setShowWallet(!showWallet)}
-                      title="View Wallet"
-                    >
-                      <Wallet className="w-4 h-4" />
-                    </button>
                   </div>
                 </div>
               </>
