@@ -46,6 +46,11 @@ export default {
         'typing-delay-1': 'typing 3s 1s steps(40, end)',
         'typing-delay-2': 'typing 3s 2s steps(40, end)',
         'blink-code': 'blink-code 1.5s infinite',
+        // Scale-in animation for loader
+        'scale-in': 'scale-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+        'scale-in-delayed': 'scale-in 0.5s 0.1s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+        'fade-scale-in': 'fade-scale-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+        'fade-in-delayed': 'fade-in 0.4s 0.2s ease-out forwards',
       },
       keyframes: {
         glow: {
@@ -93,6 +98,20 @@ export default {
         'blink-code': {
           '0%, 100%': { 'box-shadow': '0 0 15px rgba(0, 255, 65, 0.7)' },
           '50%': { 'box-shadow': '0 0 5px rgba(0, 255, 65, 0.3)' }
+        },
+        // Scale-in animation keyframes
+        'scale-in': {
+          '0%': { transform: 'scale(0.9)', opacity: '0' },
+          '100%': { transform: 'scale(1)', opacity: '1' }
+        },
+        'fade-scale-in': {
+          '0%': { transform: 'scale(0.95)', opacity: '0' },
+          '30%': { opacity: '0.5' },
+          '100%': { transform: 'scale(1)', opacity: '1' }
+        },
+        'fade-in': {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' }
         },
       },
       backgroundImage: {
