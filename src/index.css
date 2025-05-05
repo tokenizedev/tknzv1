@@ -30,7 +30,7 @@
 @layer base {
   body {
     @apply antialiased bg-cyber-black text-white;
-    overflow-y: hidden;
+    overflow: hidden;
     background-size: 50px 50px;
     background-image: 
       radial-gradient(circle, rgba(0, 255, 65, 0.03) 1px, transparent 1px),
@@ -161,7 +161,7 @@
   /* Default popup size: fixed height */
   height: 600px;
   max-height: 600px;
-  overflow-y: hidden;
+  overflow: hidden;
   position: relative;
 }
 
