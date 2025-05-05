@@ -91,31 +91,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
     };
   }, []);
   
-  // Listen for selectedContent in local storage when in side panel to refresh content
-  useEffect(() => {
-    if (!isSidebar || !chrome?.storage) return;
-    const handleStorageChange = (changes: { [key: string]: chrome.storage.StorageChange }, area: string) => {
-      if (area === 'local' && changes.selectedContent) {
-        const newVal = changes.selectedContent.newValue;
-        let data: any;
-        try {
-          data = typeof newVal === 'string' ? JSON.parse(newVal) : newVal;
-        } catch (e) {
-          console.error('Failed to parse selectedContent from storage:', e);
-          data = newVal;
-        }
-        // Remove the key so it doesn't re-trigger
-        chrome.storage.local.remove('selectedContent');
-        const article = ensureArticleData(data);
-        generateSuggestions(article, 0);
-      }
-    };
-    chrome.storage.onChanged.addListener(handleStorageChange);
-    return () => {
-      chrome.storage.onChanged.removeListener(handleStorageChange);
-    };
-  }, [isSidebar]);
-
+  
   const { balance, error: walletError, investmentAmount: defaultInvestment, addCreatedCoin, createCoin } = useStore();
   const [articleData, setArticleData] = useState<ArticleData>({
     title: '',
@@ -162,7 +138,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
       const tabId = tabs[0]?.id;
       if (tabId) {
         // Send message directly to content script
-        chrome.tabs.sendMessage(tabId, { type: 'START_SELECT_MODE' });
+        chrome.tabs.sendMessage(tabId, { type: 'START_SELECT_MODE', isSidebar });
       } else {
         console.error('No active tab found for content selection');
       }
@@ -428,8 +404,12 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
         }
         // Remove the key so it doesn't re-trigger
         chrome.storage.local.remove('selectedContent');
+        
         const article = ensureArticleData(data);
-        generateSuggestions(article, 0);
+
+        if (article.url && article.description && article.title) {
+          generateSuggestions(article, 0);
+        }
       }
     };
     chrome.storage.onChanged.addListener(handleStorageChange);
