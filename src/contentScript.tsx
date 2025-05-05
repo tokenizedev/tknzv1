@@ -92,14 +92,8 @@ export const extractImages = (baseElement: HTMLElement = document.body): string[
   return Array.from(images);
 }
 
-// Legacy function for backward compatibility
-const extractImage = (baseElement: HTMLElement = document.body): string => {
-  const images = extractImages(baseElement);
-  return images.length > 0 ? images[0] : '';
-};
-
 // Selection mode: highlight divs and allow user to select content
-function startSelectionMode() {
+function startSelectionMode(isSidebar: boolean) {
   const highlightMap = new WeakMap();
   const buttonMap = new WeakMap();
   const isXPost = getIsXPost();
@@ -231,7 +225,7 @@ function startSelectionMode() {
     // Ensure click event is properly attached
     btn.addEventListener('click', function(e) {
       e.stopPropagation(); // Prevent event bubbling
-      selectElement(el);
+      selectElement(el, isSidebar);
     });
   }
 
@@ -253,10 +247,13 @@ function startSelectionMode() {
     }
   }
 
-  const selectElement = (el: HTMLElement) => {
+  const selectElement = (el: HTMLElement, isSidebar: boolean) => {
     cleanup();
     
-    extractContent(el).then(content => {
+    extractContent(el).then(async content => {
+      if (!isSidebar) {
+        chrome.runtime.sendMessage({ type: 'SIDE_PANEL_CLOSED' });
+      }
       chrome.runtime.sendMessage({ type: 'CONTENT_SELECTED', content });
     });    
   };
@@ -308,8 +305,12 @@ const initialize = () => {
   // Set up message listener
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.type === 'START_SELECT_MODE') {
-      startSelectionMode();
+      startSelectionMode(request.isSidebar);
       return true;
+    }
+    if (request.type === 'SIDE_PANEL_CLOSED') {
+      cleanup();
+      chrome.runtime.sendMessage({ type: 'SIDE_PANEL_CLOSED' });
     }
     if (request.type === 'GET_ARTICLE_DATA') {
       extractContent().then(sendResponse);
@@ -472,15 +473,6 @@ export const extractTweetData = async (
 
 // Function to extract article data
 export const extractArticleData = (baseElement: HTMLElement = document.body) => {
-  // Derive origin for relative URL resolution
-  console.log('baseElement', baseElement);
-  let origin: string;
-  try {
-    origin = new URL(window.location.href).origin;
-  } catch {
-    origin = (window.location as any).origin || '';
-  }
-
   // Title: <h1> > og:title > twitter:title > document.title > default
   const h1 = baseElement.querySelector('h1');
   let title = h1?.textContent?.trim() || '';
