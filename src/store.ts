@@ -111,7 +111,6 @@ export const useStore = create<WalletState>((set, get) => ({
 
   migrateLocalStorageToFirestore: async (wallet: Keypair) => {
     if (!wallet) return; // Should not happen if called after wallet init
-    console.log('migrateLocalStorageToFirestore:wallet', wallet)
     set({ migrationStatus: 'running' });
     const walletAddress = wallet.publicKey.toString();
     let migrationError: string | null = null;
