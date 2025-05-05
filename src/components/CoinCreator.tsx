@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Image, Type, FileText, Send, Loader2, AlertCircle, Globe, Sparkles, DollarSign, Hand as BrandX, GitBranch as BrandTelegram, Terminal, Zap, Target, X, Upload, ChevronLeft, ChevronRight, CheckCircle, Copy, ExternalLink, Hash } from 'lucide-react';
 import { useStore } from '../store';
 import { TerminalLoader } from './TerminalLoader';
+import { Loader } from './Loader';
 
 interface ArticleData {
   title: string
@@ -559,21 +560,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   }, [isCarouselOpen, articleData.images, carouselIndex]);
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-[400px]">
-        <div className="relative">
-          <div className="w-12 h-12 border-2 border-cyber-green rounded-full animate-spin relative">
-            <div className="absolute top-0 left-0 w-3 h-3 bg-cyber-purple rounded-full animate-pulse-fast"></div>
-          </div>
-          <div className="absolute inset-0 flex items-center justify-center">
-            <Terminal className="w-6 h-6 text-cyber-green animate-pulse" />
-          </div>
-          <div className="absolute -bottom-6 w-full text-center text-cyber-green text-xs animate-pulse font-terminal">
-            LOADING
-          </div>
-        </div>
-      </div>
-    );
+    return <Loader isSidebar={isSidebar} />;
   }
 
   return (
