@@ -1006,14 +1006,19 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({ isSidebar = false }) =
 
             {/* Image container */}
             <div className="relative">
-              <div className="bg-black/40 aspect-video flex items-center justify-center p-2 min-h-[300px]">
+              <div className="bg-black/40 aspect-video flex items-center justify-center p-4 min-h-[300px] overflow-hidden">
                 <img 
                   src={articleData.images[carouselIndex]} 
                   alt={`Image option ${carouselIndex + 1}`}
-                  className="max-h-[60vh] max-w-full object-contain block"
+                  className="max-h-[60vh] max-w-full object-contain block mx-auto my-auto shadow-lg shadow-black/20"
                   onError={(e) => {
                     e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0yNCAxaDtgTWFnZSBub3QgZm91bmQiIHN0eWxlPSJmaWxsOiMwMGZmNDE7Zm9udC1mYW1pbHk6bW9ub3NwYWNlO2ZvbnQtc2l6ZToxMHB4OyIvPjwvc3ZnPg=='; 
                   }} 
+                  style={{
+                    maxWidth: '90%',
+                    maxHeight: '90%',
+                    objectFit: 'contain',
+                  }}
                 />
               </div>
               
@@ -1080,13 +1085,13 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({ isSidebar = false }) =
                   setImageUrl(articleData.images[carouselIndex]);
                   setIsCarouselOpen(false);
                 }}
-                className="bg-cyber-green/20 hover:bg-cyber-green/30 text-cyber-green py-2 px-4 rounded-sm transition-all duration-200 flex items-center space-x-2 border border-cyber-green/50"
+                className="bg-cyber-green text-black font-medium py-2 px-6 rounded transition-all duration-200 flex items-center space-x-2 hover:bg-cyber-green/90 shadow-md shadow-cyber-green/20"
               >
                 <CheckCircle className="w-4 h-4" />
                 <span>Use This Image</span>
               </button>
-              <div className="text-xs text-cyber-green/80">
-                {articleData.images[carouselIndex]?.slice(0, 40)}...
+              <div className="flex-1 text-xs text-cyber-green/80 text-center truncate max-w-[250px] ml-4">
+                {articleData.images[carouselIndex]?.slice(0, 30)}...
               </div>
             </div>
 
