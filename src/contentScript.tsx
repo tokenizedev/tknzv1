@@ -362,33 +362,6 @@ export const extractTweetData = async (
     // Get tweet author
     const authorName = tweetContainer.querySelector('div[data-testid="User-Name"] span')?.textContent || '';
 
-    // Get tweet specific URL from the timestamp link
-    let tweetUrl = window.location.href; // Default to page URL
-    // Find the timestamp link which usually contains "/status/" in its href
-    const timeElements = tweetContainer.querySelectorAll('time');
-    let tweetLinkElement: HTMLAnchorElement | null = null;
-
-    timeElements.forEach(timeEl => {
-      const anchor = timeEl.closest('a[role="link"][href*="/status/"]') as HTMLAnchorElement | null;
-      if (anchor) {
-        tweetLinkElement = anchor;
-        return; // Found the likely correct link
-      }
-    });
-
-    // Fallback if the time element structure isn't found
-    if (!tweetLinkElement) {
-       tweetLinkElement = tweetContainer.querySelector('a[role="link"][href*="/status/"]');
-    }
-
-    if (tweetLinkElement && tweetLinkElement.hasAttribute('href')) {
-      const href = tweetLinkElement.getAttribute('href');
-      if (href) {
-        // Ensure it's an absolute URL
-        tweetUrl = href.startsWith('http') ? href : new URL(href, window.location.origin).href;
-      }
-    }
-
     // Take screenshot of the tweet
     const canvas = await html2canvas(tweetContainer, {
       backgroundColor: '#1a1a1a', // Dark background
@@ -443,8 +416,8 @@ export const extractTweetData = async (
       image: screenshotUrl,
       tweetImage: tweetImage,
       authorName,
-      url: tweetUrl,
-      xUrl: tweetUrl,
+      url: window.location.href,
+      xUrl: window.location.href,
       isXPost: true,
       images: allImages
     };
