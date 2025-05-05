@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -144,7 +143,6 @@
   h1, h2, h3, h4, h5, h6 {
     @apply font-bold text-cyber-green;
     text-shadow: 0 0 5px theme('colors.cyber-green'), 0 0 10px rgba(0, 255, 65, 0.5);
-    font-family: 'VT323', monospace;
     letter-spacing: 2px;
   }
   
