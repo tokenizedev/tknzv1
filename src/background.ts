@@ -54,14 +54,18 @@ chrome.runtime.onMessage.addListener((message: any, sender, sendResponse) => {
   // Handle user content selection from page
   else if (message.type === 'CONTENT_SELECTED') {
     const content = message.content;
+    console.log('sidePanelStatus', sidePanelStatus);
+    console.trace();
     chrome.storage.local.set({ selectedContent: JSON.stringify(content) }, () => {
-      // Only open popup if side panel is not open for this tab
       if (!sidePanelStatus.get(targetTabId)) {
         chrome.action.openPopup().catch(err => console.error('Failed to open popup:', err));
       }
     });
   }
-  
+  if (message.type === 'SIDE_PANEL_CLOSED') {
+    console.log('SIDE_PANEL_CLOSED', targetTabId);
+    sidePanelStatus.delete(targetTabId);
+  }
   return true;
 });
 
