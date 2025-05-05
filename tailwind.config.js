@@ -39,6 +39,13 @@ export default {
         'terminal-cursor': 'terminal_blink 1s step-end infinite',
         'matrix-code': 'matrix 20s linear infinite',
         'scanline': 'scanline 2s linear infinite',
+        // New animations for loading screen
+        'spin-slow': 'spin 8s linear infinite',
+        'spin-reverse-slow': 'spin 6s linear infinite reverse',
+        'typing': 'typing 3s steps(40, end)',
+        'typing-delay-1': 'typing 3s 1s steps(40, end)',
+        'typing-delay-2': 'typing 3s 2s steps(40, end)',
+        'blink-code': 'blink-code 1.5s infinite',
       },
       keyframes: {
         glow: {
@@ -78,6 +85,15 @@ export default {
           '0%': { transform: 'translateY(0%)' },
           '100%': { transform: 'translateY(100%)' },
         },
+        // New keyframes for loading screen
+        typing: {
+          'from': { width: '0' },
+          'to': { width: '100%' }
+        },
+        'blink-code': {
+          '0%, 100%': { 'box-shadow': '0 0 15px rgba(0, 255, 65, 0.7)' },
+          '50%': { 'box-shadow': '0 0 5px rgba(0, 255, 65, 0.3)' }
+        },
       },
       backgroundImage: {
         'cyber-grid': 'linear-gradient(rgba(0, 255, 65, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 255, 65, 0.05) 1px, transparent 1px)', 
@@ -85,6 +101,7 @@ export default {
         'hash-pattern': 'url("data:image/svg+xml,%3Csvg width=\'100\' height=\'20\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Ctext x=\'0\' y=\'15\' fill=\'rgba(0,255,65,0.05)\' font-size=\'8\' font-family=\'monospace\'%3Ea1b2c3d4e5f6a7b8%3C/text%3E%3C/svg%3E")',
         'terminal-gradient': 'linear-gradient(to bottom, rgba(0,0,0,0.9) 0%, rgba(0,20,10,0.9) 100%)',
         'leaderboard-border': 'linear-gradient(90deg, rgba(0,255,65,0.1) 0%, rgba(0,255,65,0.3) 10%, rgba(0,255,65,0.3) 90%, rgba(0,255,65,0.1) 100%)',
+        'cyberpunk-radial': 'radial-gradient(circle at center, rgba(0,255,65,0.2) 0%, transparent 70%)',
       },
       boxShadow: {
         'neon-green': '0 0 5px rgba(0, 255, 65, 0.5)',
@@ -93,6 +110,7 @@ export default {
         'neon-purple': '0 0 5px rgba(213, 126, 235, 0.5)',
         'terminal': '0 0 10px rgba(0, 255, 65, 0.3), inset 0 0 2px rgba(0, 255, 65, 0.5)',
         'leaderboard': '0 0 15px rgba(0, 0, 0, 0.7), 0 0 5px rgba(0, 255, 65, 0.3)',
+        'pulse-green': '0 0 5px rgba(0, 255, 65, 0.7), 0 0 15px rgba(0, 255, 65, 0.5)',
       },
       borderWidth: {
         '1': '1px',
