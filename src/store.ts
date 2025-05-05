@@ -1,79 +1,17 @@
 import { create } from 'zustand';
 import { Keypair, VersionedTransaction } from '@solana/web3.js';
-import { logEventToFirestore } from './firebase';
+import { 
+  logEventToFirestore, 
+  getCreatedCoins, 
+  addCreatedCoinToFirestore 
+} from './firebase';
 import { APP_VERSION } from './config/version';
 import { storage } from './utils/storage';
 import { createConnection, web3Connection } from './utils/connection';
 const DEV_MODE = process.env.NODE_ENV === 'development' && !chrome?.tabs;
 import { compareVersions } from 'compare-versions'
+import { WalletState, CreatedCoin, ArticleData, CoinCreationParams, TokenCreationData } from './types';
 
-interface CreatedCoin {
-  address: string;
-  name: string;
-  ticker: string;
-  pumpUrl: string;
-  balance: number;
-}
-
-interface CoinCreationParams {
-  name: string;
-  ticker: string;
-  description: string;
-  // Provide either an image URL or a local file blob
-  imageUrl?: string;
-  imageFile?: Blob;
-  websiteUrl: string;
-  twitter?: string;
-  telegram?: string;
-  investmentAmount: number;
-}
-
-//make a tyhpe for this data
-interface TokenCreationData {
-  article: {
-    title: string;
-    image: string;
-    description: string;
-    url: string;
-    isXPost: boolean;
-  };
-  token: {
-    name: string;
-    ticker: string;
-    description: string;
-  };
-}
-
-interface WalletState {
-  wallet: Keypair | null;
-  balance: number;
-  error: string | null;
-  createdCoins: CreatedCoin[];
-  isRefreshing: boolean;
-  investmentAmount: number;
-  isLatestVersion: boolean;
-  updateAvailable: string | null;
-  initializeWallet: () => Promise<void>;
-  getBalance: () => Promise<void>;
-  addCreatedCoin: (coin: CreatedCoin) => Promise<void>;
-  setInvestmentAmount: (amount: number) => Promise<void>;
-  updateCoinBalance: (address: string, balance: number) => Promise<void>;
-  refreshTokenBalances: () => Promise<void>;
-  createCoin: (params: CoinCreationParams) => Promise<{ address: string; pumpUrl: string; }>;
-  getArticleData: () => Promise<ArticleData>;
-  getTokenCreationData: (article: ArticleData, level: number) => Promise<TokenCreationData>;
-  checkVersion: () => Promise<void>;
-}
-
-interface ArticleData {
-  title: string
-  image: string
-  description: string
-  url: string
-  author?: string
-  xUrl?: string,
-  isXPost: boolean
-}
 
 const TOKEN_CREATION_API_URL = 'https://tknz.fun/.netlify/functions/article-token';
 const APP_VERSION_API_URL = 'https://tknz.fun/.netlify/functions/version';
@@ -102,7 +40,6 @@ export const useStore = create<WalletState>((set, get) => ({
       set({ error: null });
 
       const stored = await storage.get('walletSecret');
-      const storedCoins = await storage.get('createdCoins');
       const storedInvestment = await storage.get('investmentAmount');
       let wallet: Keypair;
       
@@ -124,9 +61,12 @@ export const useStore = create<WalletState>((set, get) => ({
         });
       }
       
+      // Fetch created coins from Firestore
+      const fetchedCoins = await getCreatedCoins(wallet.publicKey.toString());
+      
       set({ 
         wallet,
-        createdCoins: storedCoins.createdCoins || [],
+        createdCoins: fetchedCoins || [],
         investmentAmount: storedInvestment.investmentAmount || 0
       });
 
@@ -195,9 +135,12 @@ export const useStore = create<WalletState>((set, get) => ({
 
   addCreatedCoin: async (coin: CreatedCoin) => {
     try {
-      const { createdCoins } = get();
+      const { wallet, createdCoins } = get();
+      if (!wallet) throw new Error('Wallet not initialized when adding coin');
+
       const updatedCoins = [...createdCoins, coin];
-      await storage.set({ createdCoins: updatedCoins });
+      // Save to Firestore instead of local storage
+      await addCreatedCoinToFirestore(wallet.publicKey.toString(), coin);
       set({ createdCoins: updatedCoins });
     } catch (error) {
       console.error('Failed to add created coin:', error);
@@ -221,7 +164,6 @@ export const useStore = create<WalletState>((set, get) => ({
       const updatedCoins = createdCoins.map(coin => 
         coin.address === address ? { ...coin, balance } : coin
       );
-      await storage.set({ createdCoins: updatedCoins });
       set({ createdCoins: updatedCoins });
     } catch (error) {
       console.error('Failed to update coin balance:', error);
@@ -249,7 +191,6 @@ export const useStore = create<WalletState>((set, get) => ({
         return balanceInfo ? { ...coin, balance: balanceInfo.balance } : coin;
       });
 
-      await storage.set({ createdCoins: updatedCoins });
       set({ createdCoins: updatedCoins });
     } catch (error) {
       console.error('Failed to refresh token balances:', error);
@@ -269,7 +210,7 @@ export const useStore = create<WalletState>((set, get) => ({
     } catch (error) {
       console.error('Version check failed:', error);
       // Fail safe - assume current version is latest if check fails
-      set({ isLatestVersion });
+      set({ isLatestVersion: true });
     }
   },
 
@@ -299,20 +240,24 @@ export const useStore = create<WalletState>((set, get) => ({
     return response;
   },
 
-  getTokenCreationData: async (article: ArticleData, level: number = 1) => {
-    const _article = {
-      ...article,
-    }
-
-    delete _article.images
-    delete _article.image
+  getTokenCreationData: async (article: ArticleData, level: number = 1): Promise<TokenCreationData> => {
+    // Construct payload carefully, omitting image/images
+    const payloadArticle = {
+      title: article.title,
+      description: article.description,
+      url: article.url,
+      isXPost: article.isXPost,
+      author: article.author,
+      xUrl: article.xUrl,
+    };
 
     const response = await fetch(TOKEN_CREATION_API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ article: _article, level })
+      // Send the cleaned payload
+      body: JSON.stringify({ article: payloadArticle, level })
     })
 
     if (!response.ok) {
