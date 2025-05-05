@@ -6,14 +6,18 @@ const getIsXPost = () => window.location.hostname === 'x.com' || window.location
 // Function to extract multiple images from an element or page
 export const extractImages = (baseElement: HTMLElement = document.body): string[] => {
   const images: Set<string> = new Set(); // Use a Set to avoid duplicates
-  
+  // Base URL for resolving relative image URLs; use full href for accurate origin and path
+  const baseUrl = window.location.href;
   // Check if baseElement itself is an image
-  if (baseElement instanceof HTMLImageElement && baseElement.src) {
-    try {
-      const absoluteUrl = new URL(baseElement.src, window.location.origin).href;
-      images.add(absoluteUrl);
-    } catch (e) {
-      console.warn('Invalid base element image URL:', baseElement.src);
+  if (baseElement instanceof HTMLImageElement) {
+    const srcAttr = baseElement.getAttribute('src');
+    if (srcAttr) {
+      try {
+        const absoluteUrl = new URL(srcAttr, baseUrl).href;
+        images.add(absoluteUrl);
+      } catch (e) {
+        console.warn('Invalid base element image URL:', srcAttr);
+      }
     }
   }
   
@@ -38,7 +42,7 @@ export const extractImages = (baseElement: HTMLElement = document.body): string[
       
       if (imgSrc) {
         try {
-          const absoluteUrl = new URL(imgSrc, window.location.origin).href;
+          const absoluteUrl = new URL(imgSrc, baseUrl).href;
           images.add(absoluteUrl);
         } catch (e) {
           console.warn('Invalid meta image URL:', imgSrc);
@@ -59,24 +63,26 @@ export const extractImages = (baseElement: HTMLElement = document.body): string[
   for (const selector of imgSelectors) {
     const elements = baseElement.querySelectorAll(selector);
     elements.forEach(element => {
-      if (element instanceof HTMLImageElement && element.src) {
+      if (element instanceof HTMLImageElement) {
+        const srcAttr = element.getAttribute('src');
+        if (!srcAttr) return;
         // Ignore tiny images (icons, spacers, etc.)
         const isLargeEnough = (
-          element.naturalWidth > 80 || 
-          element.naturalHeight > 80 || 
-          element.width > 80 || 
-          element.height > 80 || 
+          element.naturalWidth > 80 ||
+          element.naturalHeight > 80 ||
+          element.width > 80 ||
+          element.height > 80 ||
           // If dimensions aren't available yet, check CSS
           parseInt(getComputedStyle(element).width) > 80 ||
           parseInt(getComputedStyle(element).height) > 80
         );
-        
+
         if (isLargeEnough || selector.includes('article')) { // Always include article images
           try {
-            const absoluteUrl = new URL(element.src, window.location.origin).href;
+            const absoluteUrl = new URL(srcAttr, baseUrl).href;
             images.add(absoluteUrl);
           } catch (e) {
-            console.warn('Invalid content image URL:', element.src);
+            console.warn('Invalid content image URL:', srcAttr);
           }
         }
       }
