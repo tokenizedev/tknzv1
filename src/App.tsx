@@ -1,11 +1,12 @@
 import { useEffect, useState, useRef } from 'react';
-import { Wallet, RefreshCw, Sidebar, X, Copy, ChevronDown, ChevronUp, Menu, CheckCircle } from 'lucide-react';
+import { Wallet, RefreshCw, Sidebar, X, Copy, ChevronDown, ChevronUp, Menu, CheckCircle, Terminal } from 'lucide-react';
 import { useStore } from './store';
 import { WalletSetup } from './components/WalletSetup';
 import { CoinCreator } from './components/CoinCreator';
 import { WalletPageCyber } from './components/WalletPageCyber';
 import { VersionCheck } from './components/VersionCheck';
 import { Loader } from './components/Loader';
+import { TokenCreationProgress } from './components/TokenCreationProgress';
 
 interface AppProps { isSidebar?: boolean; }
 function App({ isSidebar = false }: AppProps = {}) {
@@ -17,7 +18,7 @@ function App({ isSidebar = false }: AppProps = {}) {
     isRefreshing, 
     isLatestVersion,
     updateAvailable,
-    checkVersion 
+    checkVersion
   } = useStore();
   
   const [loading, setLoading] = useState(true);
@@ -30,6 +31,9 @@ function App({ isSidebar = false }: AppProps = {}) {
   const [glitching, setGlitching] = useState(false);
   const mainAreaRef = useRef<HTMLDivElement>(null);
   const [copyConfirm, setCopyConfirm] = useState(false);
+  const [isCreatingCoin, setIsCreatingCoin] = useState(false);
+  const [creationProgress, setCreationProgress] = useState(0);
+  const [newCoinAddress, setNewCoinAddress] = useState<string | null>(null);
   
   // Wallet address and copy handler
   const address = wallet?.publicKey.toString() || '';
@@ -106,6 +110,48 @@ function App({ isSidebar = false }: AppProps = {}) {
     // Add a glitch effect when toggling
     setGlitching(true);
     setTimeout(() => setGlitching(false), 200);
+  };
+
+  // Function to handle coin creation state
+  const handleCoinCreationStart = () => {
+    setIsCreatingCoin(true);
+    setCreationProgress(0);
+    
+    // Start the animation
+    const interval = setInterval(() => {
+      setCreationProgress(prev => {
+        if (prev >= 95) {
+          clearInterval(interval);
+          return prev;
+        }
+        return prev + Math.random() * 2;
+      });
+    }, 150);
+    
+    // Add a subtle glitch effect
+    setGlitching(true);
+    setTimeout(() => setGlitching(false), 200);
+  };
+  
+  // Function to handle coin creation completion
+  const handleCoinCreationComplete = (coinAddress: string) => {
+    setCreationProgress(100);
+    // Store the new coin address for highlighting
+    setNewCoinAddress(coinAddress);
+    
+    // Flash a glitch effect
+    setGlitching(true);
+    setTimeout(() => {
+      setGlitching(false);
+      // Transition to wallet view
+      setShowWallet(true);
+      // Reset creation state after transition
+      setTimeout(() => {
+        setIsCreatingCoin(false);
+        // Keep the address for highlighting for a while
+        setTimeout(() => setNewCoinAddress(null), 5000);
+      }, 300);
+    }, 200);
   };
 
   useEffect(() => {
@@ -276,15 +322,22 @@ function App({ isSidebar = false }: AppProps = {}) {
           <div className={`absolute inset-0 bg-cyber-green/5 opacity-0 ${glitching ? 'animate-flicker' : ''}`}></div>
         </div>
 
-        {/* Main content */}
+        {/* Conditional rendering of main content */}
         {!wallet ? (
           <WalletSetup />
+        ) : isCreatingCoin ? (
+          /* Using our new TokenCreationProgress component */
+          <TokenCreationProgress progress={creationProgress} />
         ) : showWallet ? (
-          <WalletPageCyber />
+          <WalletPageCyber highlightCoinAddress={newCoinAddress} />
         ) : !isLatestVersion ? (
           <VersionCheck updateAvailable={updateAvailable || ''} />
         ) : (
-          <CoinCreator isSidebar={isSidebar} />
+          <CoinCreator 
+            isSidebar={isSidebar} 
+            onCreationStart={handleCoinCreationStart}
+            onCreationComplete={handleCoinCreationComplete}
+          />
         )}
         
         {/* Subtle floating particles */}
