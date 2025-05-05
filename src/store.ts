@@ -236,10 +236,25 @@ export const useStore = create<WalletState>((set, get) => ({
       const { wallet, createdCoins } = get();
       if (!wallet) throw new Error('Wallet not initialized when adding coin');
 
-      const updatedCoins = [...createdCoins, coin];
-      // Save to Firestore instead of local storage
-      await addCreatedCoinToFirestore(wallet.publicKey.toString(), coin);
-      set({ createdCoins: updatedCoins });
+      // Add the new coin (potentially without createdAt yet)
+      let updatedCoins = [...createdCoins, { ...coin, createdAt: new Date() }]; // Add with client date temporarily
+      
+      // Sort immediately after adding
+      updatedCoins.sort((a, b) => {
+        const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return timeB - timeA; // Descending order
+      });
+      
+      set({ createdCoins: updatedCoins }); // Update state optimistically
+
+      // Save to Firestore (which adds server timestamp)
+      await addCreatedCoinToFirestore(wallet.publicKey.toString(), coin); 
+      
+      // Optionally re-fetch to get server timestamp, or rely on next refresh
+      // const refreshedCoins = await getCreatedCoins(wallet.publicKey.toString());
+      // set({ createdCoins: refreshedCoins });
+
     } catch (error) {
       console.error('Failed to add created coin:', error);
       throw error;
@@ -259,9 +274,11 @@ export const useStore = create<WalletState>((set, get) => ({
   updateCoinBalance: async (address: string, balance: number) => {
     try {
       const { createdCoins } = get();
+      // Keep the existing order when updating balance
       const updatedCoins = createdCoins.map(coin => 
         coin.address === address ? { ...coin, balance } : coin
       );
+      // No need to sort here as order doesn't change
       set({ createdCoins: updatedCoins });
     } catch (error) {
       console.error('Failed to update coin balance:', error);
@@ -284,11 +301,13 @@ export const useStore = create<WalletState>((set, get) => ({
 
       const balances = await Promise.all(balancePromises);
       
+      // Keep the existing order when updating balances
       const updatedCoins = createdCoins.map(coin => {
         const balanceInfo = balances.find(b => b.address === coin.address);
         return balanceInfo ? { ...coin, balance: balanceInfo.balance } : coin;
       });
 
+      // No need to sort here as order doesn't change
       set({ createdCoins: updatedCoins });
     } catch (error) {
       console.error('Failed to refresh token balances:', error);
