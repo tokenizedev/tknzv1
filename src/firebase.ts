@@ -1,7 +1,8 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, addDoc } from 'firebase/firestore';
+import { getFirestore, collection, addDoc, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { v4 as uuidv4 } from "uuid";
+import type { CreatedCoin } from './types'; // Assuming CreatedCoin type is exported from store
 
 // Replace these with your own Firebase config values
 const firebaseConfig = {
@@ -26,10 +27,48 @@ export async function logEventToFirestore(eventName: string, data: Record<string
     await addDoc(collection(db, 'events'), {
       eventName,
       ...data,
-      timestamp: new Date()
+      timestamp: new Date() // Use client-side timestamp for events
     });
   } catch (error) {
     console.error('Error logging event to Firestore:', error);
+  }
+}
+
+/**
+ * Fetches created coins for a specific wallet address from Firestore.
+ */
+export async function getCreatedCoins(walletAddress: string): Promise<CreatedCoin[]> {
+  try {
+    const coinsRef = collection(db, 'createdCoins');
+    const q = query(coinsRef, where('walletAddress', '==', walletAddress));
+    const querySnapshot = await getDocs(q);
+    const coins: CreatedCoin[] = [];
+    querySnapshot.forEach((doc) => {
+      // We assume the document data matches the CreatedCoin structure
+      // Perform type assertion carefully, or add validation
+      coins.push(doc.data() as CreatedCoin);
+    });
+    return coins;
+  } catch (error) {
+    console.error('Error fetching created coins from Firestore:', error);
+    // Return empty array or re-throw, depending on desired error handling
+    return []; 
+  }
+}
+
+/**
+ * Adds a newly created coin record to Firestore.
+ */
+export async function addCreatedCoinToFirestore(walletAddress: string, coin: CreatedCoin): Promise<void> {
+  try {
+    await addDoc(collection(db, 'createdCoins'), {
+      walletAddress, // Store the wallet address with the coin data
+      ...coin,
+      createdAt: serverTimestamp() code// Use server-side timestamp for creation time
+    });
+  } catch (error) {
+    console.error('Error adding created coin to Firestore:', error);
+    throw error; // Re-throw the error to be handled by the caller
   }
 }
 
