@@ -42,7 +42,7 @@ function App({ isSidebar = false }: AppProps = {}) {
   
   // Wallet address and copy handler
   const address = wallet?.publicKey.toString() || '';
-  const truncatedAddress = address ? `${address.slice(0,4)}...${address.slice(-4)}` : '';
+  
   const copyAddress = async () => {
     try {
       await navigator.clipboard.writeText(address);
@@ -201,12 +201,6 @@ function App({ isSidebar = false }: AppProps = {}) {
     init();
   }, [initializeWallet, checkVersion]);
 
-  if (loading) {
-    return (
-      <Loader isSidebar={isSidebar} />
-    );
-  }
-
   return (
     <div className={`${isSidebar ? 'w-full h-full ' : 'w-[400px] h-[600px] '}bg-cyber-black bg-binary-pattern binary-overlay`}>
       {/* Background crypto pattern */}
@@ -239,169 +233,179 @@ function App({ isSidebar = false }: AppProps = {}) {
         ))}
       </div>
       
-      {/* Streamlined cyberpunk header with slide-down animation */}
-      <header className={`sticky top-0 z-10 ${navAnimated ? 'nav-animated nav-glow' : 'opacity-0'}`}>
-        <div className={`border-b border-cyber-green/20 bg-cyber-black/90 backdrop-blur-sm ${navAnimated ? 'nav-border-animated border-highlight' : ''}`}>
-          <div className="flex items-center h-14">
-            {/* Logo with sequential animation */}
-            <div className={`px-5 flex-none transition-all duration-300 ${logoAnimated ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'}`}>
-              <h1 className="leaderboard-title text-2xl tracking-widest">
-                {/* Individual letter animation */}
-                <span className="inline-block" style={{ animationDelay: '0.1s', animation: logoAnimated ? 'float 3s ease-in-out infinite' : 'none' }}>T</span>
-                <span className="inline-block" style={{ animationDelay: '0.2s', animation: logoAnimated ? 'float 3s ease-in-out infinite' : 'none' }}>K</span>
-                <span className="inline-block" style={{ animationDelay: '0.3s', animation: logoAnimated ? 'float 3s ease-in-out infinite' : 'none' }}>N</span>
-                <span className="inline-block" style={{ animationDelay: '0.4s', animation: logoAnimated ? 'float 3s ease-in-out infinite' : 'none' }}>Z</span>
-              </h1>
-            </div>
-            
-            {wallet && (
-              <>
-                {/* SOL balance indicator with sequential animation */}
-                <div className={`ml-auto flex h-full transition-all duration-500 ${controlsAnimated ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-10'}`}>
-                  <div className="border-l border-r border-cyber-green/20 px-4 flex items-center">
-                    <div className="flex flex-col items-end mr-2">
-                      <div className="font-terminal text-sm text-cyber-green tabular-nums">
-                        {balance.toFixed(2)} <span className="text-cyber-green/70">SOL</span>
+      {loading ? (
+        <Loader isSidebar={isSidebar} />
+      ) : (
+        <>
+          {/* Streamlined cyberpunk header with slide-down animation */}
+          <header className="fixed top-0 left-0 right-0 z-20 nav-placeholder nav-animated nav-glow">
+            <div className={`border-b border-cyber-green/20 bg-cyber-black/90 backdrop-blur-sm ${navAnimated ? 'nav-border-animated border-highlight' : ''}`}>
+              <div className="flex items-center h-14">
+                {/* Logo with sequential animation */}
+                <div className={`px-5 flex-none transition-all duration-300 ${logoAnimated ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'}`}>
+                  <h1 className="leaderboard-title text-2xl tracking-widest">
+                    {/* Individual letter animation */}
+                    <span className="inline-block" style={{ animationDelay: '0.1s', animation: logoAnimated ? 'float 3s ease-in-out infinite' : 'none' }}>T</span>
+                    <span className="inline-block" style={{ animationDelay: '0.2s', animation: logoAnimated ? 'float 3s ease-in-out infinite' : 'none' }}>K</span>
+                    <span className="inline-block" style={{ animationDelay: '0.3s', animation: logoAnimated ? 'float 3s ease-in-out infinite' : 'none' }}>N</span>
+                    <span className="inline-block" style={{ animationDelay: '0.4s', animation: logoAnimated ? 'float 3s ease-in-out infinite' : 'none' }}>Z</span>
+                  </h1>
+                </div>
+                
+                {wallet && (
+                  <>
+                    {/* SOL balance indicator with sequential animation */}
+                    <div className={`ml-auto flex h-full transition-all duration-500 ${controlsAnimated ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-10'}`}>
+                      <div className="border-l border-r border-cyber-green/20 px-4 flex items-center">
+                        <div className="flex flex-col items-end mr-2">
+                          <div className="font-terminal text-sm text-cyber-green tabular-nums">
+                            {balance.toFixed(2)} <span className="text-cyber-green/70">SOL</span>
+                          </div>
+                        </div>
+                        <button
+                          onClick={triggerBalanceEffect}
+                          disabled={isRefreshing}
+                          className="p-1.5 hover:bg-cyber-green/10 rounded-full"
+                        >
+                          <RefreshCw className={`w-3.5 h-3.5 text-cyber-green/80 hover:text-cyber-green ${isRefreshing ? 'animate-cyber-spin' : ''}`} />
+                        </button>
+                      </div>
+                      
+                      {/* Wallet controls with sequential animation */}
+                      <button 
+                        className={`h-full w-14 transition-colors flex items-center justify-center ${
+                          showWallet 
+                            ? 'bg-cyber-green/20 text-cyber-green' 
+                            : 'hover:bg-cyber-green/10 text-cyber-green/80 hover:text-cyber-green'
+                        }`}
+                        onClick={() => setShowWallet(!showWallet)}
+                        title="View Wallet"
+                      >
+                        <Wallet className="w-4 h-4" />
+                      </button>
+                      <button 
+                        onClick={toggleWalletDrawer}
+                        className="border-r border-cyber-green/20 w-14 h-full flex items-center justify-center hover:bg-cyber-green/10 transition-colors relative"
+                        title="Toggle wallet address"
+                      >
+                        {copyConfirm ? (
+                          <div className="absolute inset-0 flex items-center justify-center bg-cyber-green/10 text-cyber-green animate-pulse-fast">
+                            <CheckCircle className="w-4 h-4" />
+                          </div>
+                        ) : (
+                          <Copy className="w-4 h-4 text-cyber-green/80 hover:text-cyber-green" onClick={(e) => {
+                            e.stopPropagation();
+                            copyAddress();
+                          }} />
+                        )}
+                      </button>
+                      
+                      {/* Control buttons with sequential animation */}
+                      <div className="flex h-full">
+                        {!isSidebar ? (
+                          <button
+                            onClick={openSidebar}
+                            className="border-r border-cyber-green/20 h-full w-14 flex items-center justify-center hover:bg-cyber-green/10 transition-colors"
+                            title="Open Sidebar"
+                          >
+                            <Sidebar className="w-4 h-4 text-cyber-green/80 hover:text-cyber-green" />
+                          </button>
+                        ) : (
+                          <button
+                            onClick={closeSidebar}
+                            className="border-r border-cyber-green/20 h-full w-14 flex items-center justify-center hover:bg-cyber-green/10 transition-colors"
+                            title="Close Sidebar"
+                          >
+                            <X className="w-4 h-4 text-cyber-green/80 hover:text-cyber-green" />
+                          </button>
+                        )}
                       </div>
                     </div>
-                    <button
-                      onClick={triggerBalanceEffect}
-                      disabled={isRefreshing}
-                      className="p-1.5 hover:bg-cyber-green/10 rounded-full"
-                    >
-                      <RefreshCw className={`w-3.5 h-3.5 text-cyber-green/80 hover:text-cyber-green ${isRefreshing ? 'animate-cyber-spin' : ''}`} />
-                    </button>
-                  </div>
-                  
-                  {/* Wallet controls with sequential animation */}
-                  <button 
-                    className={`h-full w-14 transition-colors flex items-center justify-center ${
-                      showWallet 
-                        ? 'bg-cyber-green/20 text-cyber-green' 
-                        : 'hover:bg-cyber-green/10 text-cyber-green/80 hover:text-cyber-green'
-                    }`}
-                    onClick={() => setShowWallet(!showWallet)}
-                    title="View Wallet"
-                  >
-                    <Wallet className="w-4 h-4" />
-                  </button>
-                  <button 
-                    onClick={toggleWalletDrawer}
-                    className="border-r border-cyber-green/20 w-14 h-full flex items-center justify-center hover:bg-cyber-green/10 transition-colors relative"
-                    title="Toggle wallet address"
-                  >
-                    {copyConfirm ? (
-                      <div className="absolute inset-0 flex items-center justify-center bg-cyber-green/10 text-cyber-green animate-pulse-fast">
-                        <CheckCircle className="w-4 h-4" />
-                      </div>
-                    ) : (
-                      <Copy className="w-4 h-4 text-cyber-green/80 hover:text-cyber-green" onClick={(e) => {
-                        e.stopPropagation();
-                        copyAddress();
-                      }} />
-                    )}
-                  </button>
-                  
-                  {/* Control buttons with sequential animation */}
-                  <div className="flex h-full">
-                    {!isSidebar ? (
-                      <button
-                        onClick={openSidebar}
-                        className="border-r border-cyber-green/20 h-full w-14 flex items-center justify-center hover:bg-cyber-green/10 transition-colors"
-                        title="Open Sidebar"
-                      >
-                        <Sidebar className="w-4 h-4 text-cyber-green/80 hover:text-cyber-green" />
-                      </button>
-                    ) : (
-                      <button
-                        onClick={closeSidebar}
-                        className="border-r border-cyber-green/20 h-full w-14 flex items-center justify-center hover:bg-cyber-green/10 transition-colors"
-                        title="Close Sidebar"
-                      >
-                        <X className="w-4 h-4 text-cyber-green/80 hover:text-cyber-green" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Wallet drawer with slide animation */}
-        <div className={`overflow-hidden transition-all duration-200 border-b border-cyber-green/20 bg-cyber-black/80 backdrop-blur-md ${
-          showWalletDrawer ? 'max-h-12 nav-drawer-animated nav-border-animated' : 'max-h-0'
-        }`}>
-          <div className="flex items-center px-5 h-12">
-            {/* Full wallet address */}
-            <div className="font-terminal text-xs text-cyber-green/90 flex-1 truncate">
-              {address}
+                  </>
+                )}
+              </div>
             </div>
-            <button
-              onClick={copyAddress}
-              className="ml-2 p-1.5 hover:bg-cyber-green/10 rounded-sm transition-colors text-cyber-green/80 hover:text-cyber-green relative"
-              title="Copy address"
-            >
-              {copyConfirm ? (
-                <CheckCircle className="w-3.5 h-3.5 text-cyber-green animate-pulse-fast" />
-              ) : (
-                <Copy className="w-3.5 h-3.5" />
-              )}
-            </button>
-          </div>
-        </div>
-      </header>
-      
-      <main 
-        className={`overflow-auto px-4 relative ${glitching ? 'animate-glitch' : ''}`} 
-        style={{ height: `calc(100% - ${showWalletDrawer ? '104px' : '56px'})` }}
-        ref={mainAreaRef}
-      >
-        {/* CRT screen effect - subtle for cypherpunk */}
-        <div className="absolute inset-0 pointer-events-none">
-          {/* Scanlines */}
-          <div className="absolute inset-0 bg-[linear-gradient(transparent_50%,rgba(0,255,65,0.02)_50%)] bg-[length:100%_4px] opacity-20"></div>
-          
-          {/* Screen flicker */}
-          <div className={`absolute inset-0 bg-cyber-green/5 opacity-0 ${glitching ? 'animate-flicker' : ''}`}></div>
-        </div>
 
-        {/* Conditional rendering of main content */}
-        {!wallet ? (
-          <WalletSetup />
-        ) : isCreatingCoin ? (
-          /* Using our new TokenCreationProgress component */
-          <TokenCreationProgress progress={creationProgress} />
-        ) : showWallet ? (
-          <WalletPageCyber highlightCoinAddress={newCoinAddress} />
-        ) : !isLatestVersion ? (
-          <VersionCheck updateAvailable={updateAvailable || ''} />
-        ) : (
-          <CoinCreator 
-            isSidebar={isSidebar} 
-            onCreationStart={handleCoinCreationStart}
-            onCreationComplete={handleCoinCreationComplete}
-            onCreationError={handleCoinCreationError}
-          />
-        )}
-        
-        {/* Subtle floating particles */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          {[...Array(6)].map((_, i) => (
-            <div 
-              key={i}
-              className="absolute w-1 h-1 rounded-full opacity-20"
-              style={{
-                backgroundColor: i % 2 === 0 ? '#00ff41' : '#ff00ff',
-                top: `${Math.random() * 100}%`,
-                left: `${Math.random() * 100}%`,
-                animation: `float ${3 + Math.random() * 7}s linear infinite`,
-                boxShadow: `0 0 3px ${i % 2 === 0 ? '#00ff41' : '#ff00ff'}`
-              }}
-            />
-          ))}
-        </div>
-      </main>
+            {/* Wallet drawer with slide animation */}
+            <div className={`overflow-hidden transition-all duration-200 border-b border-cyber-green/20 bg-cyber-black/80 backdrop-blur-md ${
+              showWalletDrawer ? 'max-h-12 nav-drawer-animated nav-border-animated' : 'max-h-0'
+            }`}>
+              <div className="flex items-center px-5 h-12">
+                {/* Full wallet address */}
+                <div className="font-terminal text-xs text-cyber-green/90 flex-1 truncate">
+                  {address}
+                </div>
+                <button
+                  onClick={copyAddress}
+                  className="ml-2 p-1.5 hover:bg-cyber-green/10 rounded-sm transition-colors text-cyber-green/80 hover:text-cyber-green relative"
+                  title="Copy address"
+                >
+                  {copyConfirm ? (
+                    <CheckCircle className="w-3.5 h-3.5 text-cyber-green animate-pulse-fast" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5" />
+                  )}
+                </button>
+              </div>
+            </div>
+          </header>
+          
+          <main 
+            className={`overflow-auto px-4 relative main-content-transition ${glitching ? 'animate-glitch' : ''}`}
+            style={{ 
+              height: '100%', 
+              paddingTop: showWalletDrawer ? '56px' : '0',
+              transition: 'padding-top 0.3s ease-out'
+            }}
+            ref={mainAreaRef}
+          >
+            {/* CRT screen effect - subtle for cypherpunk */}
+            <div className="absolute inset-0 pointer-events-none">
+              {/* Scanlines */}
+              <div className="absolute inset-0 bg-[linear-gradient(transparent_50%,rgba(0,255,65,0.02)_50%)] bg-[length:100%_4px] opacity-20"></div>
+              
+              {/* Screen flicker */}
+              <div className={`absolute inset-0 bg-cyber-green/5 opacity-0 ${glitching ? 'animate-flicker' : ''}`}></div>
+            </div>
+
+            {/* Conditional rendering of main content */}
+            {!wallet ? (
+              <WalletSetup />
+            ) : isCreatingCoin ? (
+              /* Using our new TokenCreationProgress component */
+              <TokenCreationProgress progress={creationProgress} />
+            ) : showWallet ? (
+              <WalletPageCyber highlightCoinAddress={newCoinAddress} />
+            ) : !isLatestVersion ? (
+              <VersionCheck updateAvailable={updateAvailable || ''} />
+            ) : (
+              <CoinCreator 
+                isSidebar={isSidebar} 
+                onCreationStart={handleCoinCreationStart}
+                onCreationComplete={handleCoinCreationComplete}
+                onCreationError={handleCoinCreationError}
+              />
+            )}
+            
+            {/* Subtle floating particles */}
+            <div className="absolute inset-0 pointer-events-none overflow-hidden">
+              {[...Array(6)].map((_, i) => (
+                <div 
+                  key={i}
+                  className="absolute w-1 h-1 rounded-full opacity-20"
+                  style={{
+                    backgroundColor: i % 2 === 0 ? '#00ff41' : '#ff00ff',
+                    top: `${Math.random() * 100}%`,
+                    left: `${Math.random() * 100}%`,
+                    animation: `float ${3 + Math.random() * 7}s linear infinite`,
+                    boxShadow: `0 0 3px ${i % 2 === 0 ? '#00ff41' : '#ff00ff'}`
+                  }}
+                />
+              ))}
+            </div>
+          </main>
+        </>
+      )}
     </div>
   );
 }
