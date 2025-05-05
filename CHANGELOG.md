@@ -2,6 +2,109 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.4.0](https://tokenizedev///compare/v0.3.3...v0.4.0) (2025-05-05)
+
+
+### ⚠ BREAKING CHANGES
+
+* **WalletPageCyber:** Pagination functionality has been introduced in the Created Coins Section. Users will now see a limited number of coins per page, with navigation controls to move between pages.
+* **store:** This feature introduces a new migration process for local coins to Firestore.
+* **components:** The behavior of the 'CoinCreator' component has changed to include error handling for coin creation. Users implementing this component will need to pass a function to the 'onCreationStart' prop to handle the submission logic.
+* **components:** The structure of the ArticleData interface has been updated to include a new 'images' property as an array of image URLs.
+* **components:** This feature introduces a breaking change as it alters the behavior of the CoinCreator component by adding a new function for resetting form fields and state.
+* **contentScript:** The function
+* **contentScript:** This feature introduces a new behavior for selecting content in the content script.
+* **components:** The `CoinCreator` component now includes a `TerminalLoading` component for better loading animation and progress visualization.
+
+### Features
+
+* Add dynamic class handling based on sidebar mode and pass the sidebar mode to App component ([c4030a4](https://tokenizedev///commit/c4030a4b0013ac795591ce24c9d89287e4cd17c2))
+* Add Firebase Storage functionality and image upload capability ([4d5b758](https://tokenizedev///commit/4d5b7588b688bf9690488a8f30fe86c3dc5b34d5))
+* Add fixed header and empty wallet drawer placeholders in Loader component ([02eff4a](https://tokenizedev///commit/02eff4a97ee7c17cec858ac5335088accf75d941))
+* Add functionality to extract image and content based on website type ([246ec48](https://tokenizedev///commit/246ec4862b7d5f261cf37e2eda796ca39d3d11b6))
+* Add JSON.stringify for selected content in chrome storage ([e215a91](https://tokenizedev///commit/e215a9135bd056abacdf4e0ba791a6e463e1ca7d))
+* add VITE_ENV option to .env.example ([8d7974d](https://tokenizedev///commit/8d7974d68ea35df9d39b70453d695c9ab8cbe7b4))
+* **App:** add CheckCircle icon to lucide-react imports ([493a26b](https://tokenizedev///commit/493a26bb9b8f8830acb73fe5b7c163aae1e75817))
+* **App:** Add ChevronDown, ChevronUp, and Menu icons to lucide-react library ([2ff6151](https://tokenizedev///commit/2ff6151be066bb649b4b6ba7448fafa7081656df))
+* **app:** add copy functionality for wallet address ([f33f7f5](https://tokenizedev///commit/f33f7f5cda4f6583ce85a32e185d6412f7f2716e))
+* **App:** Add error handling for coin creation process ([e75a2b1](https://tokenizedev///commit/e75a2b1854a74147e5e88794eb723232fb395563))
+* **App:** Add new features and animations for coin balance and leaderboard ([b7ff7cd](https://tokenizedev///commit/b7ff7cd410f00370d8b9f762acb3b7640fc92922))
+* **App:** add new Wallet button with sequential animation ([3e9f99e](https://tokenizedev///commit/3e9f99ece2ad1fcfc02505051aacf764a8536424))
+* **App:** Add sequential animations to display nav components ([fed83bc](https://tokenizedev///commit/fed83bc0b52b9d65f9a45c5bc537bab1df920f83))
+* **App:** Add streamlined cyberpunk header with slide-down animation ([6d6b62a](https://tokenizedev///commit/6d6b62a15cc4d4d1833598e0085e4a81d717b603))
+* **App:** implement new feature to toggle Leaderboard view ([635f8f2](https://tokenizedev///commit/635f8f2281915e8b0103ab7b7f31896f9700cfd3))
+* **App:** Remove unnecessary Lucide icons and Leaderboard component ([#123](https://tokenizedev//null/issues/123)) ([4397afe](https://tokenizedev///commit/4397afe4c11a6a48d1f4aab98d7faa4d9e1cc758))
+* **App:** update CoinCreator component to accept isSidebar prop ([06da7f8](https://tokenizedev///commit/06da7f8763062e12ea05f456ad9780fafc7e9c56))
+* **App:** Update header design to include streamlined cyberpunk theme ([442fc21](https://tokenizedev///commit/442fc21ab8352988d0af3865d2041431ff7d8c25))
+* **background:** enhance message handling and content injection ([733b281](https://tokenizedev///commit/733b28182af2e015a3867deb5a4ca01c5bf2e3d3))
+* **CoinCreator:** Enhance image container styling and button appearance ([0b27613](https://tokenizedev///commit/0b2761357aab23da71af42f81bfb2dfd89bc80ed))
+* **components:** add 'Memier' title to CoinCreator action button ([c9e5efd](https://tokenizedev///commit/c9e5efd79b21ff28e662a8b9577865c851f473f6))
+* **components:** add asynchronous function to retrieve and parse selected content from local storage ([e9f4242](https://tokenizedev///commit/e9f42425f430c6b03f2bf2a52fcf30ecdd677cf0))
+* **components:** Add clearForm function to reset form fields and state ([5c2e014](https://tokenizedev///commit/5c2e01413e2cbc2e209fd6922bb86d1ea3214dc9))
+* **components:** Add ensureArticleData function for handling ArticleData properties ([6ddebf1](https://tokenizedev///commit/6ddebf145e02d8dfa9939b8e69116f7aa7ed0e67))
+* **components:** add error handling for coin creation in CoinCreator ([8faf6a6](https://tokenizedev///commit/8faf6a65c833fc4b307dbabe2e71c04dc1f4759d))
+* **components:** Add functionality to reset image URL and set preview URL ([da2f8c2](https://tokenizedev///commit/da2f8c2c71a41515ff3fd1630b938318c81cf5cb))
+* **components:** add image upload functionality ([12d8edb](https://tokenizedev///commit/12d8edbbced98e0b1e17238c9cc1013628721e35))
+* **components:** Add Loader component to CoinCreator ([808a3a1](https://tokenizedev///commit/808a3a111a32c801aaf1bcd61b52ae7e5655207b))
+* **components:** add multiple image support and carousel functionality ([02808eb](https://tokenizedev///commit/02808ebfa9aaf0496103170d8f3538beb0879cb4))
+* **components:** add NetworkIndicator component and implement investment amount input validation ([37f9e69](https://tokenizedev///commit/37f9e69722e906a52063b6506e7dfc1adf171241))
+* **components:** add prop 'isSidebar' to CoinCreator component ([7038396](https://tokenizedev///commit/703839618af2554859740ac85c4e5604a5d8d0b2))
+* **components:** Add support for local image file upload in CoinCreator component ([1694b1f](https://tokenizedev///commit/1694b1f4a80711f51250f0a2d14675b182914c06))
+* **components:** Add Target icon to lucide-react library ([23f2b6b](https://tokenizedev///commit/23f2b6bea1dfcfa3e539ac5e808f848a708fc726))
+* **components:** add TerminalLoading component and progress animation effect ([45ab95f](https://tokenizedev///commit/45ab95f96f2fbe7f39972ccc953e042ffdfe078a))
+* **components:** enhance Loader component with additional features ([ac9081d](https://tokenizedev///commit/ac9081d2b3eafcec7993f367e7cd2f24b56ed614))
+* **components:** improve CoinCreator interface and functionality ([91e62c1](https://tokenizedev///commit/91e62c11ba159a99833c59fc6bdd6a87bf1b70ac))
+* **components:** Improve image display in CoinCreator component ([8d5e1ac](https://tokenizedev///commit/8d5e1ac37d33947ebd4620d2c07cddd0b1d7907d))
+* **components:** improve Loader component in CoinCreator ([331639a](https://tokenizedev///commit/331639a03be676b3edda7d64245832632035e02a))
+* **components:** update CoinCreaterProps with new onCreationError callback ([bdc42b6](https://tokenizedev///commit/bdc42b6ee9a362852e7fe062ef89119ae47fa526))
+* **components:** update CoinCreator inputs maxLength ([6b9aa2d](https://tokenizedev///commit/6b9aa2d365cbd47c0e260817370b8b7a463e051d))
+* **contentScript:** add base URL support for resolving relative image URLs ([e39fbec](https://tokenizedev///commit/e39fbecc73a844b8634b967593fe7b0cc31fbb4d))
+* **contentScript:** add function to extract multiple images ([0062bb8](https://tokenizedev///commit/0062bb8e3ff5aa99f83628550704339f87015068))
+* **contentScript:** Add functionality to select and tokenize content ([4bb3542](https://tokenizedev///commit/4bb3542f1272c0132de35104756b59c88e089999))
+* **contentScript:** add selection mode for user content selection ([ff92a17](https://tokenizedev///commit/ff92a1712a9f52b064a8f3b1557eb27bef5ed4fb))
+* **contentScript:** extract tweet specific URL from timestamp link ([ca48502](https://tokenizedev///commit/ca48502f26231a17ffccf27c04e639d7c2be9167))
+* **contentScript:** Implement feature to extract multiple images from article content ([ad30829](https://tokenizedev///commit/ad308293078c0938e0b185913beca47fae2ac9a3))
+* **css:** Add new animations and styles for navigation ([33712bc](https://tokenizedev///commit/33712bc50d0648cb2a90245c66321ec0239745a4))
+* **css:** Add VT323 font import and new styles ([08d4977](https://tokenizedev///commit/08d49779412035e58fff4239df186b12278cb313))
+* **firebase:** add function to fetch token_launched events from Firestore ([1d73f8b](https://tokenizedev///commit/1d73f8b417be72ac2da4574d0fea5daa72227c04))
+* **firebase:** Add functions to fetch and add created coins to Firestore ([4a4fec1](https://tokenizedev///commit/4a4fec1a59aff2c1606b313a33f05db2f11173c7))
+* **firebase:** add support for sorting created coins by createdAt date ([544c357](https://tokenizedev///commit/544c357eaba5eaaf24b05a60d21af6e2957f9407))
+* **fonts:** add custom fonts for new look ([4af5b00](https://tokenizedev///commit/4af5b005f3ae9b31215f539bd8667c044528b46f))
+* Improve pagination controls in WalletPageCyber component ([bc86de3](https://tokenizedev///commit/bc86de3c554aac740301c2ac18f77ab78b98deba))
+* **Loader:** Add appearance animation and dots animation ([4dc9605](https://tokenizedev///commit/4dc9605e9fabbe26ebe7275600246b80a4c78de3))
+* **Loader:** Add isChild prop and adjust main container styling ([1f345df](https://tokenizedev///commit/1f345df408542aa917d6e7f3b38052f3b2631a40))
+* **manifest:** update version to 0.5.4 ([f01262c](https://tokenizedev///commit/f01262c3e670e90bfb13e839e91174cffdb2af9d))
+* **src/index.css:** Remove Google Fonts import and update typography styling ([f681dd0](https://tokenizedev///commit/f681dd0f07ca286974dee545c39331605e6e52b8))
+* **storage:** implement fallback storage support ([9dcd44d](https://tokenizedev///commit/9dcd44deca2a05247becbc6cecec272637335700))
+* **store:** Add functions for fetching, adding, and updating created coins to/from Firestore ([add6280](https://tokenizedev///commit/add628063244104202ed7baae866301a8d4df44f))
+* **store:** add migration functionality to copy local coins to Firestore ([c9de314](https://tokenizedev///commit/c9de31488f835ef4c8979e0502cd4426da6b8a98))
+* **store:** allow image upload for coin creation ([c15ba17](https://tokenizedev///commit/c15ba1770ac7b56bb4655536bc329e2afc9ba3ca))
+* **store:** Improve handling of added coins and balance updates ([2aa9778](https://tokenizedev///commit/2aa97788acebaa0d25853760c5274011242ad4be))
+* **styles:** Add cyberpunk font styles, terminal effects, and button enhancements ([d632816](https://tokenizedev///commit/d63281609aa9d9b35dabb38e472a2d8f37daf104))
+* **tailwind:** Add new animations and keyframes for loading screen ([dfa4b6b](https://tokenizedev///commit/dfa4b6b2e0a4db43b9aac5581b87378c24bc3dd2))
+* **tailwind:** add new fonts, colors, animations, keyframes, backgrounds, box shadows, and border widths to tailwind config ([d62b1f3](https://tokenizedev///commit/d62b1f3de19b507c1b4bd6b5cd4c7410aaf6f048))
+* **tailwind:** Add new scale-in and fade animations for loader animations ([0103048](https://tokenizedev///commit/010304833ad0b8133d8d335330b4d44998e5494e))
+* **types:** add createdAt field to CreatedCoin and migrationStatus field to WalletState ([bbeb0d8](https://tokenizedev///commit/bbeb0d83e893f8f145f55bf38da12770e51f8576))
+* **ui:** solidify new approach by updating src and Tailwind config ([79d8d2e](https://tokenizedev///commit/79d8d2e530da251f2322f2db0b3cac972956c0fa))
+* **utils:** add DEVNET_RPC_ENDPOINT constant ([7c7ee34](https://tokenizedev///commit/7c7ee34478b27445b1f4dfb9c20b5a311d697e99))
+* **wallet:** add dynamic text animation during wallet setup ([8ef7e83](https://tokenizedev///commit/8ef7e83ce603760230a30a08965a1acb9a5e09c3))
+* **WalletPageCyber:** Add pagination for created coins ([9b2dc8a](https://tokenizedev///commit/9b2dc8a3cf4fd7441b48247ae5b9e1af31d4bac5))
+
+
+### Bug Fixes
+
+* adjust height to 90% in App component ([b108c3c](https://tokenizedev///commit/b108c3cfc5400bf68ea3ca1f2bc7d9e0888e7ecd))
+* **article-content:** fix issue with article content ([7ec46f8](https://tokenizedev///commit/7ec46f8fa2604e5ed84734ba4d54a9811c288163))
+* **components:** fix isLoading condition in CoinCreator component ([7c60c53](https://tokenizedev///commit/7c60c53d750d2e7d11f67e8b72ab37a978e64abd))
+* **components:** fix loader display issue in CoinCreator component ([925a0fe](https://tokenizedev///commit/925a0fedf9aec1adf579b801985e40e3be4fc2d6))
+* Correct overflow property in index.css for consistency ([479e85c](https://tokenizedev///commit/479e85c3efdb945c062d39cda44573fd6fe157ee))
+* Fix typo in 'addCreatedCoinToFirestore' function in src/firebase.ts ([202b512](https://tokenizedev///commit/202b512b229d0b523305f265ddfd392036ae885f))
+* **store:** Remove unnecessary console.log statement ([e95e2d8](https://tokenizedev///commit/e95e2d802481d5d6647cca5c3ab25987bce86535))
+* update caniuse-lite to version 1.0.30001717 ([26a5d4d](https://tokenizedev///commit/26a5d4d074f50deff711c2ed2f932218b6b6310f))
+* Update version to 0.3.3 in manifest.json ([1d982df](https://tokenizedev///commit/1d982df6f4bfc02831276ac90864293df01f6a15))
+* update version to 0.5.1 in manifest.json ([68e8e3e](https://tokenizedev///commit/68e8e3ec0349a1723d2326093ba23846a3b1a022))
+* update version to 0.5.2 in manifest.json ([c1a2b29](https://tokenizedev///commit/c1a2b2922ff0bdc1491074b0a7d0a2f1f46b2807))
+
 ## [0.3.3](https://tokenizedev///compare/v0.3.2...v0.3.3) (2025-05-03)
 
 
