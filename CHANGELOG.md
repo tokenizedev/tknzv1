@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.5.0](https://tokenizedev///compare/v0.4.0...v0.5.0) (2025-05-05)
+
+
+### ⚠ BREAKING CHANGES
+
+* **background:** Updated behavior for side panel closed event to remove tab ID from status instead of opening popup
+
+### Features
+
+* Add functionality to notify background when side panel is open for the tab ([621c6cb](https://tokenizedev///commit/621c6cb840329b659a98c9469859b3dd7b51a58e))
+* Add functionality to send message to tab when side panel is closed ([c2a7641](https://tokenizedev///commit/c2a76411e9ed4ea664fe19af5370b01c776edeeb))
+* **background:** Add logging for side panel status and handle side panel closed event ([ba71bec](https://tokenizedev///commit/ba71becfb735e74949c3c432a7ad1d3fabd569a1))
+* **background:** Track side panel status per tab and handle side panel ready notification ([#37](https://tokenizedev//null/issues/37)) ([ccb646b](https://tokenizedev///commit/ccb646b068176b6288615fc8a1d1a8c4c1e120a9))
+* **components:** Add isSidebar parameter to START_SELECT_MODE message ([94278da](https://tokenizedev///commit/94278da260c2dc36b4d62d4f20b8d9e8b665dadc))
+* **components:** add listener for selectedContent in local storage ([338a57f](https://tokenizedev///commit/338a57fa92c64e3bcd2c806ce6f1b84ab8dd3dd8))
+* **contentScript:** add sidebar parameter to startSelectionMode function ([715ee24](https://tokenizedev///commit/715ee24e979f4ad00fcf9b45074f6526ccd4fcde))
+
 ## [0.4.0](https://tokenizedev///compare/v0.3.3...v0.4.0) (2025-05-05)
 
 
