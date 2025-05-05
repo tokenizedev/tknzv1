@@ -2,6 +2,96 @@
 import html2canvas from 'html2canvas';
 
 const getIsXPost = () => window.location.hostname === 'x.com' || window.location.hostname === 'twitter.com';
+
+// Function to extract multiple images from an element or page
+export const extractImages = (baseElement: HTMLElement = document.body): string[] => {
+  const images: Set<string> = new Set(); // Use a Set to avoid duplicates
+  
+  // Check if baseElement itself is an image
+  if (baseElement instanceof HTMLImageElement && baseElement.src) {
+    try {
+      const absoluteUrl = new URL(baseElement.src, window.location.origin).href;
+      images.add(absoluteUrl);
+    } catch (e) {
+      console.warn('Invalid base element image URL:', baseElement.src);
+    }
+  }
+  
+  // Meta image selectors (usually highest quality/most relevant)
+  const metaSelectors = [
+    'meta[property="og:image"]',
+    'meta[name="twitter:image"]',
+    'link[rel="image_src"]',
+  ];
+  
+  // Check meta images in document head and base element
+  for (const selector of metaSelectors) {
+    const elements = [...(document.head.querySelectorAll(selector) || []), 
+                     ...(baseElement.querySelectorAll(selector) || [])];
+    
+    for (const element of elements) {
+      const imgSrc = element instanceof HTMLMetaElement 
+        ? element.getAttribute('content') 
+        : element instanceof HTMLLinkElement 
+          ? element.getAttribute('href')
+          : null;
+      
+      if (imgSrc) {
+        try {
+          const absoluteUrl = new URL(imgSrc, window.location.origin).href;
+          images.add(absoluteUrl);
+        } catch (e) {
+          console.warn('Invalid meta image URL:', imgSrc);
+        }
+      }
+    }
+  }
+  
+  // Content image selectors (find actual <img> elements)
+  const imgSelectors = [
+    'article img',
+    '.article-content img',
+    '.post-content img',
+    'img[src]:not([src^="data:"])', // Get all images with src attribute that aren't data URIs
+  ];
+  
+  // Extract images from content
+  for (const selector of imgSelectors) {
+    const elements = baseElement.querySelectorAll(selector);
+    elements.forEach(element => {
+      if (element instanceof HTMLImageElement && element.src) {
+        // Ignore tiny images (icons, spacers, etc.)
+        const isLargeEnough = (
+          element.naturalWidth > 80 || 
+          element.naturalHeight > 80 || 
+          element.width > 80 || 
+          element.height > 80 || 
+          // If dimensions aren't available yet, check CSS
+          parseInt(getComputedStyle(element).width) > 80 ||
+          parseInt(getComputedStyle(element).height) > 80
+        );
+        
+        if (isLargeEnough || selector.includes('article')) { // Always include article images
+          try {
+            const absoluteUrl = new URL(element.src, window.location.origin).href;
+            images.add(absoluteUrl);
+          } catch (e) {
+            console.warn('Invalid content image URL:', element.src);
+          }
+        }
+      }
+    });
+  }
+  
+  return Array.from(images);
+}
+
+// Legacy function for backward compatibility
+const extractImage = (baseElement: HTMLElement = document.body): string => {
+  const images = extractImages(baseElement);
+  return images.length > 0 ? images[0] : '';
+};
+
 // Selection mode: highlight divs and allow user to select content
 function startSelectionMode() {
   const highlightMap = new WeakMap();
@@ -242,43 +332,11 @@ const extractContent = async (baseElement: HTMLElement = document.body) => {
   }
 }
 
-const extractImage = (baseElement: HTMLElement = document.body) => {
-  // Extract image
-  const imageSelectors = [
-    'meta[property="og:image"]',
-    'meta[name="twitter:image"]',
-    'link[rel="image_src"]',
-    'article img',
-    '.article-content img',
-    '.post-content img',
-    'img',
-  ];
-
-  for (const selector of imageSelectors) {
-    const element = baseElement.querySelector(selector);
-    if (element) {
-      let imgSrc = element instanceof HTMLMetaElement 
-        ? element.getAttribute('content') || ''
-        : element.getAttribute('src') || '';
-      
-      if (imgSrc) {
-        try {
-          if (!imgSrc.startsWith('http')) {
-            imgSrc = new URL(imgSrc, window.location.origin).href;
-          }
-          return imgSrc;
-        } catch (e) {
-          console.warn('Invalid image URL:', imgSrc);
-          continue;
-        }
-      }
-    }
-  }
-  return '';
-}
-
 // Function to extract tweet data
-const extractTweetData = async (tweetContainer: HTMLElement | null = null, baseElement: HTMLElement = document.body) => {
+export const extractTweetData = async (
+  tweetContainer: HTMLElement | null = null,
+  baseElement: HTMLElement = document.body
+) => {
   try {
     // Wait for tweet container to be available
     let retries = 0;
@@ -298,8 +356,8 @@ const extractTweetData = async (tweetContainer: HTMLElement | null = null, baseE
     // Get tweet text
     const tweetText = tweetContainer.querySelector('div[lang]')?.textContent || '';
     
-    // Get tweet image if exists
-    const tweetImage = tweetContainer.querySelector('img[alt="Image"]')?.getAttribute('src') || '';
+    // Get tweet images
+    const contentImages = extractImages(tweetContainer);
     
     // Get tweet author
     const authorName = tweetContainer.querySelector('div[data-testid="User-Name"] span')?.textContent || '';
@@ -346,135 +404,93 @@ const extractTweetData = async (tweetContainer: HTMLElement | null = null, baseE
       }
     });
 
+    const screenshotUrl = canvas.toDataURL('image/png');
+    
+    // Combine and deduplicate all images, with screenshot first
+    const allImages = [screenshotUrl, ...contentImages.filter(url => url !== screenshotUrl)];
+    // The first content image (excluding screenshot) is the tweet image
+    const tweetImage = contentImages[0] || '';
     return {
       title: tweetText || 'Tweet',
-      image: canvas.toDataURL('image/png'),
-      authorName,
-      tweetImage,
       description: tweetText,
+      image: screenshotUrl,
+      tweetImage: tweetImage,
+      authorName,
       url: window.location.href,
       xUrl: window.location.href,
-      isXPost: true
+      isXPost: true,
+      images: allImages
     };
   } catch (error) {
-    // Suppress error logs during testing
     console.error('Error extracting tweet data:', error);
-    
     return {
       title: document.title || 'Tweet',
-      image: '',
       description: '',
+      image: '',
+      tweetImage: '',
+      authorName: '',
       url: window.location.href,
       xUrl: window.location.href,
-      isXPost: true
+      isXPost: true,
+      images: []
     };
   }
 };
 
 // Function to extract article data
-const extractArticleData = (baseElement: HTMLElement = document.body) => {
-  
+export const extractArticleData = (baseElement: HTMLElement = document.body) => {
+  // Derive origin for relative URL resolution
+  let origin: string;
   try {
-    let title = '';
-    let image = '';
-    let description = '';
-    let url = window.location.href;
-
-    // Extract title
-    const titleSelectors = [
-      'h1',
-      'h2',
-      'h3',
-      'h4',
-      'h5',
-      'h6',
-      'p',
-      'article h1',
-      'meta[property="og:title"]',
-      'meta[name="twitter:title"]',
-      'title'
-    ];
-
-    for (const selector of titleSelectors) {
-      const element = baseElement.querySelector(selector);
-      if (element) {
-        title = element instanceof HTMLMetaElement 
-          ? element.getAttribute('content') || ''
-          : element.textContent?.trim() || '';
-        if (title) break;
-      }
-    }
-
-    if (!title && baseElement !== document.body) {
-      title = baseElement.textContent?.slice(0, 32) || document.title;
-    }
-
-    image = extractImage(baseElement);
-
-    if (!image && baseElement !== document.body) {
-      image = extractImage(document.body);
-    }
-
-    // Extract description
-    const descriptionSelectors = [
-      'meta[name="description"]',
-      'meta[property="og:description"]',
-      'meta[name="twitter:description"]',
-      'article p',
-      '.article-content p',
-      '.post-content p',
-      'p',
-      'div'
-    ];
-
-    for (const selector of descriptionSelectors) {
-      const element = baseElement.querySelector(selector);
-      if (element) {
-        description = element instanceof HTMLMetaElement 
-          ? element.getAttribute('content') || ''
-          : element.textContent?.trim() || '';
-        if (description) break;
-      }
-    }
-
-    if (!description && baseElement !== document.body) {
-      description = baseElement.innerText || baseElement.textContent || '';
-    }
-
-    // Get canonical URL
-    try {
-      const canonicalUrl = document.body.querySelector('link[rel="canonical"]')?.getAttribute('href');
-      const ogUrl = document.body.querySelector('meta[property="og:url"]')?.getAttribute('content');
-      
-      if (canonicalUrl) {
-        url = new URL(canonicalUrl, window.location.origin).href;
-      } else if (ogUrl) {
-        url = new URL(ogUrl, window.location.origin).href;
-      }
-    } catch (e) {
-      console.warn('Error processing URLs:', e);
-    }
-
-    return {
-      title: title || document.title || 'Untitled Article',
-      image,
-      description,
-      url,
-      isXPost: false
-    };
-  } catch (error) {
-    // Suppress error logs during testing
-    
-    console.error('Error extracting article data:', error);
-    
-    return {
-      title: document.title || 'Untitled Article',
-      image: '',
-      description: '',
-      url: window.location.href,
-      isXPost: false
-    };
+    origin = new URL(window.location.href).origin;
+  } catch {
+    origin = (window.location as any).origin || '';
   }
+
+  // Title: <h1> > og:title > twitter:title > document.title > default
+  const h1 = baseElement.querySelector('h1');
+  let title = h1?.textContent?.trim() || '';
+  if (!title) {
+    const ogTitle = document.head.querySelector('meta[property="og:title"]')?.getAttribute('content');
+    const twTitle = document.head.querySelector('meta[name="twitter:title"]')?.getAttribute('content');
+    title = ogTitle || twTitle || document.title || '';
+  }
+
+  // Description: <p> > meta description > empty
+  let description = '';
+  const p = baseElement.querySelector('p');
+  if (p?.textContent?.trim()) {
+    description = p.textContent.trim();
+  } else {
+    description = document.head.querySelector('meta[name="description"]')?.getAttribute('content') || '';
+  }
+
+  // Image: og:image > twitter:image > first <img>
+  let image = '';
+  const ogImg = document.head.querySelector('meta[property="og:image"]')?.getAttribute('content');
+  const twImg = document.head.querySelector('meta[name="twitter:image"]')?.getAttribute('content');
+  if (ogImg) {
+    image = ogImg;
+  } else if (twImg) {
+    image = twImg;
+  } else {
+    const imgEl = baseElement.querySelector('img');
+    const raw = imgEl?.getAttribute('src') || '';
+    if (raw.startsWith('http')) {
+      image = raw;
+    } else if (raw) {
+      image = new URL(raw, origin).href;
+    }
+  }
+
+  const url = window.location.href;
+  return {
+    title: title || 'Untitled Article',
+    image: image || '',
+    description: description || '',
+    url,
+    isXPost: false
+  };
 };
 
 // Auto-initialize in a Chrome extension environment
