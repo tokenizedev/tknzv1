@@ -1,77 +1,18 @@
 import { create } from 'zustand';
 import { Keypair, VersionedTransaction } from '@solana/web3.js';
-import { logEventToFirestore } from './firebase';
+import { 
+  logEventToFirestore, 
+  getCreatedCoins, 
+  addCreatedCoinToFirestore, 
+  getLaunchedTokenEvents
+} from './firebase';
 import { APP_VERSION } from './config/version';
 import { storage } from './utils/storage';
 import { createConnection, web3Connection } from './utils/connection';
 const DEV_MODE = process.env.NODE_ENV === 'development' && !chrome?.tabs;
 import { compareVersions } from 'compare-versions'
+import { WalletState, CreatedCoin, ArticleData, CoinCreationParams, TokenCreationData } from './types';
 
-interface CreatedCoin {
-  address: string;
-  name: string;
-  ticker: string;
-  pumpUrl: string;
-  balance: number;
-}
-
-interface CoinCreationParams {
-  name: string;
-  ticker: string;
-  description: string;
-  imageUrl: string;
-  websiteUrl: string;
-  twitter?: string;
-  telegram?: string;
-  investmentAmount: number;
-}
-
-//make a tyhpe for this data
-interface TokenCreationData {
-  article: {
-    title: string;
-    image: string;
-    description: string;
-    url: string;
-    isXPost: boolean;
-  };
-  token: {
-    name: string;
-    ticker: string;
-    description: string;
-  };
-}
-
-interface WalletState {
-  wallet: Keypair | null;
-  balance: number;
-  error: string | null;
-  createdCoins: CreatedCoin[];
-  isRefreshing: boolean;
-  investmentAmount: number;
-  isLatestVersion: boolean;
-  updateAvailable: string | null;
-  initializeWallet: () => Promise<void>;
-  getBalance: () => Promise<void>;
-  addCreatedCoin: (coin: CreatedCoin) => Promise<void>;
-  setInvestmentAmount: (amount: number) => Promise<void>;
-  updateCoinBalance: (address: string, balance: number) => Promise<void>;
-  refreshTokenBalances: () => Promise<void>;
-  createCoin: (params: CoinCreationParams) => Promise<{ address: string; pumpUrl: string; }>;
-  getArticleData: () => Promise<ArticleData>;
-  getTokenCreationData: (article: ArticleData, level: number) => Promise<TokenCreationData>;
-  checkVersion: () => Promise<void>;
-}
-
-interface ArticleData {
-  title: string
-  image: string
-  description: string
-  url: string
-  author?: string
-  xUrl?: string,
-  isXPost: boolean
-}
 
 const TOKEN_CREATION_API_URL = 'https://tknz.fun/.netlify/functions/article-token';
 const APP_VERSION_API_URL = 'https://tknz.fun/.netlify/functions/version';
@@ -94,13 +35,13 @@ export const useStore = create<WalletState>((set, get) => ({
   investmentAmount: 0,
   isLatestVersion: true,
   updateAvailable: null,
+  migrationStatus: 'idle',
 
   initializeWallet: async () => {
     try {
       set({ error: null });
 
       const stored = await storage.get('walletSecret');
-      const storedCoins = await storage.get('createdCoins');
       const storedInvestment = await storage.get('investmentAmount');
       let wallet: Keypair;
       
@@ -122,9 +63,15 @@ export const useStore = create<WalletState>((set, get) => ({
         });
       }
       
+      // Run Migration BEFORE fetching coins
+      await get().migrateLocalStorageToFirestore(wallet);
+      
+      // Fetch created coins from Firestore
+      const fetchedCoins = await getCreatedCoins(wallet.publicKey.toString());
+      
       set({ 
         wallet,
-        createdCoins: storedCoins.createdCoins || [],
+        createdCoins: fetchedCoins || [],
         investmentAmount: storedInvestment.investmentAmount || 0
       });
 
@@ -162,6 +109,99 @@ export const useStore = create<WalletState>((set, get) => ({
     }
   },
 
+  migrateLocalStorageToFirestore: async (wallet: Keypair) => {
+    if (!wallet) return; // Should not happen if called after wallet init
+    set({ migrationStatus: 'running' });
+    const walletAddress = wallet.publicKey.toString();
+    let migrationError: string | null = null;
+    let localCoinsMigrated = 0;
+    let eventCoinsMigrated = 0;
+    let totalUniqueMigrated = 0;
+
+    try {
+      // 1. Check if migration already ran
+      const migrationRecord = await storage.get('tokens_migrated');
+      if (migrationRecord.tokens_migrated) {
+        console.log('Token migration already completed on:', migrationRecord.tokens_migrated);
+        set({ migrationStatus: 'complete' });
+        return; 
+      }
+
+      console.log('Starting token migration...');
+
+      // 2. Fetch data from local storage and events
+      const localData = await storage.get('createdCoins');
+      const localCoins: CreatedCoin[] = localData.createdCoins || [];
+      const launchEvents = await getLaunchedTokenEvents(walletAddress);
+
+      // 3. Combine and deduplicate
+      const combinedCoinsMap = new Map<string, CreatedCoin>();
+
+      // Process local coins first (potentially more complete data)
+      localCoins.forEach(coin => {
+        if (coin.address) { // Ensure address exists
+          combinedCoinsMap.set(coin.address, { ...coin, balance: coin.balance || 0 }); // Ensure balance is set
+        }
+      });
+      localCoinsMigrated = combinedCoinsMap.size;
+
+      // Process event data, adding only if not already present from local storage
+      launchEvents.forEach(event => {
+        // Assuming event has contractAddress, name, ticker
+        // Need to map event fields to CreatedCoin fields
+        const address = event.contractAddress; 
+        if (address && !combinedCoinsMap.has(address)) {
+          combinedCoinsMap.set(address, {
+            address: address,
+            name: event.name || 'Unknown Name', 
+            ticker: event.ticker || 'UNKNOWN', 
+            pumpUrl: `https://pump.fun/coin/${address}`, // Construct pumpUrl
+            balance: 0, // Initial balance, will be updated by refreshTokenBalances
+          });
+          eventCoinsMigrated++; // Count only those added from events
+        }
+      });
+
+      totalUniqueMigrated = combinedCoinsMap.size;
+      console.log(`Found ${localCoinsMigrated} coins locally, ${launchEvents.length} launch events. Migrating ${totalUniqueMigrated} unique coins.`);
+
+      // 4. Add unique coins to Firestore
+      const migrationPromises = Array.from(combinedCoinsMap.values()).map(coin => 
+        addCreatedCoinToFirestore(walletAddress, coin)
+      );
+      
+      await Promise.all(migrationPromises);
+      console.log('Successfully migrated coins to Firestore.');
+
+      // 5. Log migration event
+      const migrationTimestamp = new Date().toISOString();
+      await logEventToFirestore('tokens_migrated', {
+        walletAddress,
+        localCoinsMigrated,
+        eventCoinsFound: launchEvents.length,
+        eventCoinsAdded: eventCoinsMigrated,
+        totalUniqueMigrated,
+        migratedAt: migrationTimestamp
+      });
+
+      // 6. Set migration flag in local storage
+      await storage.set({ tokens_migrated: migrationTimestamp });
+      set({ migrationStatus: 'complete' });
+      console.log('Token migration completed successfully.');
+
+    } catch (error) {
+      migrationError = error instanceof Error ? error.message : 'Unknown migration error';
+      console.error('Token migration failed:', error);
+      set({ migrationStatus: 'error', error: `Migration failed: ${migrationError}` });
+      // Log migration failure event? Optional.
+      // await logEventToFirestore('tokens_migration_failed', {
+      //   walletAddress,
+      //   error: migrationError,
+      //   timestamp: new Date().toISOString()
+      // });
+    }
+  },
+
   getBalance: async () => {
     const { wallet } = get();
     if (!wallet) return;
@@ -193,10 +233,28 @@ export const useStore = create<WalletState>((set, get) => ({
 
   addCreatedCoin: async (coin: CreatedCoin) => {
     try {
-      const { createdCoins } = get();
-      const updatedCoins = [...createdCoins, coin];
-      await storage.set({ createdCoins: updatedCoins });
-      set({ createdCoins: updatedCoins });
+      const { wallet, createdCoins } = get();
+      if (!wallet) throw new Error('Wallet not initialized when adding coin');
+
+      // Add the new coin (potentially without createdAt yet)
+      let updatedCoins = [...createdCoins, { ...coin, createdAt: new Date() }]; // Add with client date temporarily
+      
+      // Sort immediately after adding
+      updatedCoins.sort((a, b) => {
+        const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return timeB - timeA; // Descending order
+      });
+      
+      set({ createdCoins: updatedCoins }); // Update state optimistically
+
+      // Save to Firestore (which adds server timestamp)
+      await addCreatedCoinToFirestore(wallet.publicKey.toString(), coin); 
+      
+      // Optionally re-fetch to get server timestamp, or rely on next refresh
+      // const refreshedCoins = await getCreatedCoins(wallet.publicKey.toString());
+      // set({ createdCoins: refreshedCoins });
+
     } catch (error) {
       console.error('Failed to add created coin:', error);
       throw error;
@@ -216,10 +274,11 @@ export const useStore = create<WalletState>((set, get) => ({
   updateCoinBalance: async (address: string, balance: number) => {
     try {
       const { createdCoins } = get();
+      // Keep the existing order when updating balance
       const updatedCoins = createdCoins.map(coin => 
         coin.address === address ? { ...coin, balance } : coin
       );
-      await storage.set({ createdCoins: updatedCoins });
+      // No need to sort here as order doesn't change
       set({ createdCoins: updatedCoins });
     } catch (error) {
       console.error('Failed to update coin balance:', error);
@@ -242,12 +301,13 @@ export const useStore = create<WalletState>((set, get) => ({
 
       const balances = await Promise.all(balancePromises);
       
+      // Keep the existing order when updating balances
       const updatedCoins = createdCoins.map(coin => {
         const balanceInfo = balances.find(b => b.address === coin.address);
         return balanceInfo ? { ...coin, balance: balanceInfo.balance } : coin;
       });
 
-      await storage.set({ createdCoins: updatedCoins });
+      // No need to sort here as order doesn't change
       set({ createdCoins: updatedCoins });
     } catch (error) {
       console.error('Failed to refresh token balances:', error);
@@ -267,7 +327,7 @@ export const useStore = create<WalletState>((set, get) => ({
     } catch (error) {
       console.error('Version check failed:', error);
       // Fail safe - assume current version is latest if check fails
-      set({ isLatestVersion });
+      set({ isLatestVersion: true });
     }
   },
 
@@ -297,13 +357,24 @@ export const useStore = create<WalletState>((set, get) => ({
     return response;
   },
 
-  getTokenCreationData: async (article: ArticleData, level: number = 1) => {
+  getTokenCreationData: async (article: ArticleData, level: number = 1): Promise<TokenCreationData> => {
+    // Construct payload carefully, omitting image/images
+    const payloadArticle = {
+      title: article.title,
+      description: article.description,
+      url: article.url,
+      isXPost: article.isXPost,
+      author: article.author,
+      xUrl: article.xUrl,
+    };
+
     const response = await fetch(TOKEN_CREATION_API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ article, level })
+      // Send the cleaned payload
+      body: JSON.stringify({ article: payloadArticle, level })
     })
 
     if (!response.ok) {
@@ -313,7 +384,7 @@ export const useStore = create<WalletState>((set, get) => ({
     return response.json()
   },
 
-  createCoin: async ({ name, ticker, description, imageUrl, websiteUrl, twitter, telegram, investmentAmount }) => {
+  createCoin: async ({ name, ticker, description, imageUrl, imageFile, websiteUrl, twitter, telegram, investmentAmount }: CoinCreationParams) => {
     const { wallet } = get();
     if (!wallet) {
       throw new Error('Wallet not initialized');
@@ -326,10 +397,17 @@ export const useStore = create<WalletState>((set, get) => ({
       // Create form data for metadata
       const formData = new FormData();
       
-      // Fetch and append the image
-      const imageResponse = await fetch(imageUrl);
-      const imageBlob = await imageResponse.blob();
-      formData.append("file", imageBlob);
+      // Append image data: use provided blob or fetch from URL
+      let fileBlob: Blob;
+      if (imageFile) {
+        fileBlob = imageFile;
+      } else if (imageUrl) {
+        const imgRes = await fetch(imageUrl);
+        fileBlob = await imgRes.blob();
+      } else {
+        throw new Error('No image provided for coin creation');
+      }
+      formData.append("file", fileBlob);
       
       // Append other metadata
       formData.append("name", name);
