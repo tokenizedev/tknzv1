@@ -76,7 +76,8 @@ const carouselAnimationStyles = `
 export const CoinCreator: React.FC<CoinCreatorProps> = ({ 
   isSidebar = false, 
   onCreationStart, 
-  onCreationComplete 
+  onCreationComplete,
+  onCreationError
 }) => {
   useEffect(() => {
     // Add animation styles
@@ -386,31 +387,12 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
     };
   }, []);
 
-  const handleSubmit = async () => {
-    if (balance < requiredBalance) {
-      setError(`Insufficient balance. Please add at least ${requiredBalance.toFixed(2)} SOL to your wallet (${investmentAmount} SOL for investment + 0.03 SOL for fees).`);
-      return;
-    }
-
-    // Notify parent component that creation is starting
-    if (onCreationStart) {
-      onCreationStart();
-      // We'll let the parent component handle the UI now
-      return;
-    }
-
-    // Otherwise, use the existing UI
+  const innerHandleSubmit = async () => {
     setIsCreating(true);
-    setLoadingProgress(0);
+    
     setError(null);
 
     try {
-      // Simulate initial progress
-      for (let i = 0; i < 5; i++) {
-        await new Promise(resolve => setTimeout(resolve, 300));
-        setLoadingProgress(prev => Math.min(prev + Math.random() * 15, 95));
-      }
-
       // Prepare parameters, supporting either a URL or local file blob
       const params: any = {
         name: coinName,
@@ -421,15 +403,15 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
         telegram: telegramUrl,
         investmentAmount: investmentAmount
       };
+      
       if (imageFile) {
         params.imageFile = imageFile;
       } else {
         params.imageUrl = imageUrl;
       }
+
       const response = await createCoin(params);
 
-      setLoadingProgress(100);
-      
       await addCreatedCoin({
         address: response.address,
         name: coinName,
@@ -447,19 +429,23 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to create coin';
       setError(`Failed to create coin: ${errorMessage}`);
-      // Reset creation state on error
-      if (onCreationStart) {
-        // Wait a moment to show the error before resetting
-        setTimeout(() => {
-          setIsCreating(false);
-        }, 3000);
+      if (onCreationError) {
+        onCreationError(errorMessage);
       }
+      setIsCreating(false);
     } finally {
-      if (!onCreationStart) {
-        setTimeout(() => {
-          setIsCreating(false);
-        }, 500);
-      }
+      setIsCreating(false);
+    }
+  }
+  const handleSubmit = async () => {
+    if (balance < requiredBalance) {
+      setError(`Insufficient balance. Please add at least ${requiredBalance.toFixed(2)} SOL to your wallet (${investmentAmount} SOL for investment + 0.03 SOL for fees).`);
+      return;
+    }
+
+    // Notify parent component that creation is starting
+    if (onCreationStart) {
+      onCreationStart(innerHandleSubmit);
     }
   };
 
