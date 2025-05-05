@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { Wallet, RefreshCw, Sidebar, X, Copy } from 'lucide-react';
+import { Wallet, RefreshCw, Sidebar, X, Copy, ChevronDown, ChevronUp, Menu } from 'lucide-react';
 import { useStore } from './store';
 import { WalletSetup } from './components/WalletSetup';
 import { CoinCreator } from './components/CoinCreator';
@@ -22,6 +22,7 @@ function App({ isSidebar = false }: AppProps = {}) {
   
   const [loading, setLoading] = useState(true);
   const [showWallet, setShowWallet] = useState(false);
+  const [showWalletDrawer, setShowWalletDrawer] = useState(false);
   
   // Add this for cypherpunk animation effects
   const [_animateZap, setAnimateZap] = useState(false);
@@ -95,6 +96,13 @@ function App({ isSidebar = false }: AppProps = {}) {
     setTimeout(() => setAnimateZap(false), 1500);
   };
   
+  // Toggle the wallet drawer
+  const toggleWalletDrawer = () => {
+    setShowWalletDrawer(!showWalletDrawer);
+    // Add a glitch effect when toggling
+    setGlitching(true);
+    setTimeout(() => setGlitching(false), 200);
+  };
 
   useEffect(() => {
     const init = async () => {
@@ -143,85 +151,106 @@ function App({ isSidebar = false }: AppProps = {}) {
         ))}
       </div>
       
-      <header className="glass-panel p-4 flex items-center justify-between sticky top-0 z-10">
-        {/* Logo area with more space */}
-        <div className="flex-none mr-4">
-          <h1 className="leaderboard-title text-xl tracking-wider">TKNZ</h1>
-        </div>
-        
-        {wallet && (
-          <div className="flex items-center space-x-4">
-            {/* Balance display - with proper spacing */}
-            <div className="flex-none bg-cyber-dark/90 px-3 py-1.5 rounded-sm border border-cyber-green/30 shadow-terminal relative">
-              <div className="flex items-center space-x-2">
-                <span className="font-terminal text-sm text-cyber-green">
-                  {balance.toFixed(2)}
-                </span>
-                <span className="font-terminal text-sm text-cyber-green/80">SOL</span>
-                <button
-                  onClick={triggerBalanceEffect}
-                  disabled={isRefreshing}
-                  className="p-1 hover:bg-cyber-green/10 rounded-sm transition-colors disabled:opacity-50"
-                  title="Refresh balance"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 text-cyber-green ${isRefreshing ? 'animate-cyber-spin' : ''}`} />
-                </button>
-              </div>
-            </div>
-            {/* Wallet address and copy */}
-            <div className="flex-none bg-cyber-dark/90 px-3 py-1.5 rounded-sm border border-cyber-green/30 shadow-terminal relative">
-              <div className="flex items-center space-x-1">
-                <span className="font-terminal text-sm text-cyber-green">{truncatedAddress}</span>
-                <button
-                  onClick={copyAddress}
-                  className="p-1 hover:bg-cyber-green/10 rounded-sm transition-colors"
-                  title="Copy address"
-                >
-                  <Copy className="w-3.5 h-3.5 text-cyber-green" />
-                </button>
-              </div>
+      {/* Minimalist header */}
+      <header className="sticky top-0 z-10">
+        <div className="border-b border-cyber-green/20">
+          <div className="flex items-center px-4 py-2">
+            {/* TKNZ Logo */}
+            <div className="flex-none mr-4">
+              <h1 className="leaderboard-title text-3xl tracking-wider">TKNZ</h1>
             </div>
             
-            {/* Toggle between open and close based on context - properly spaced */}
-            <div className="flex items-center space-x-2 flex-none">
+            {wallet && (
+              <>
+                {/* Minimal wallet info - just balance */}
+                <div className="bg-cyber-black/70 backdrop-blur-sm border border-cyber-green/30 rounded-sm flex items-center px-3 py-1.5 mr-4">
+                  <div className="mr-1">
+                    <div className="font-terminal text-lg text-cyber-green">
+                      {balance.toFixed(2)}
+                    </div>
+                    <div className="font-terminal text-xs text-cyber-green/70 -mt-1">
+                      SOL
+                    </div>
+                  </div>
+                  <button
+                    onClick={triggerBalanceEffect}
+                    disabled={isRefreshing}
+                    className="p-1 hover:bg-cyber-green/10 rounded-full transition-colors"
+                  >
+                    <RefreshCw className={`w-4 h-4 text-cyber-green ${isRefreshing ? 'animate-cyber-spin' : ''}`} />
+                  </button>
+                </div>
+                
+                {/* Wallet drawer toggle */}
+                <button 
+                  onClick={toggleWalletDrawer}
+                  className="relative bg-cyber-black/70 backdrop-blur-sm border border-cyber-green/30 p-1.5 rounded-sm hover:bg-cyber-green/10 transition-all duration-200"
+                >
+                  <Menu className="w-5 h-5 text-cyber-green" />
+                  <span className="absolute top-0 right-0 w-1.5 h-1.5 rounded-full bg-cyber-green shadow-[0_0_5px_#00ff41] transform -translate-y-1/4 translate-x-1/4"></span>
+                </button>
+                
+                <div className="flex-1"></div>
+                
+                {/* Wallet action button */}
+                <button 
+                  className={`p-1.5 rounded-sm transition-all duration-200 ml-2 ${
+                    showWallet 
+                      ? 'bg-cyber-green/20 border border-cyber-green/50 text-cyber-green' 
+                      : 'bg-cyber-black/70 backdrop-blur-sm border border-cyber-green/30 hover:bg-cyber-green/10'
+                  }`}
+                  onClick={() => setShowWallet(!showWallet)}
+                >
+                  <Wallet className="w-5 h-5 text-cyber-green" />
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Animated wallet drawer */}
+        <div className={`overflow-hidden transition-all duration-300 border-b border-cyber-green/20 bg-cyber-black/90 backdrop-blur-md ${
+          showWalletDrawer ? 'max-h-20 opacity-100' : 'max-h-0 opacity-0'
+        }`}>
+          <div className="p-3 flex items-center justify-between">
+            {/* Wallet address */}
+            <div className="flex items-center space-x-2">
+              <div className="bg-cyber-black/70 border border-cyber-green/20 rounded-sm px-2 py-1">
+                <div className="font-terminal text-cyber-green/90 text-sm">{address}</div>
+              </div>
+              <button
+                onClick={copyAddress}
+                className="p-1.5 hover:bg-cyber-green/10 rounded-sm transition-colors text-cyber-green/80 hover:text-cyber-green"
+              >
+                <Copy className="w-4 h-4" />
+              </button>
+            </div>
+            
+            {/* Sidebar toggle */}
+            <div>
               {!isSidebar ? (
                 <button
                   onClick={openSidebar}
-                  className="p-2 rounded-sm bg-cyber-dark border border-cyber-green/30 hover:bg-cyber-green/10 text-cyber-green transition-all duration-200"
-                  title="Open Sidebar"
+                  className="p-1.5 bg-cyber-black/70 border border-cyber-green/30 hover:bg-cyber-green/10 rounded-sm transition-all duration-200"
                 >
-                  <Sidebar className="w-4 h-4" />
+                  <Sidebar className="w-4 h-4 text-cyber-green" />
                 </button>
               ) : (
                 <button
                   onClick={closeSidebar}
-                  className="p-2 rounded-sm bg-cyber-dark border border-cyber-green/30 hover:bg-cyber-green/10 text-cyber-green transition-all duration-200"
-                  title="Close Sidebar"
+                  className="p-1.5 bg-cyber-black/70 border border-cyber-green/30 hover:bg-cyber-green/10 rounded-sm transition-all duration-200"
                 >
-                  <X className="w-4 h-4" />
+                  <X className="w-4 h-4 text-cyber-green" />
                 </button>
               )}
-              <button 
-                className={`p-2 rounded-sm transition-all duration-200 ${
-                  showWallet 
-                    ? 'bg-cyber-green/20 border border-cyber-green/50 text-cyber-green' 
-                    : 'bg-cyber-dark border border-cyber-green/30 hover:bg-cyber-green/10 text-cyber-green'
-                }`}
-                onClick={() => {
-                  setShowWallet(!showWallet);
-                }}
-                title="View Wallet"
-              >
-                <Wallet className="w-4 h-4" />
-              </button>
             </div>
           </div>
-        )}
+        </div>
       </header>
       
       <main 
         className={`overflow-auto px-4 relative ${glitching ? 'animate-glitch' : ''}`} 
-        style={{ height: 'calc(100% - 64px)' }}
+        style={{ height: `calc(100% - ${showWalletDrawer ? '104px' : '52px'})` }}
         ref={mainAreaRef}
       >
         {/* CRT screen effect - subtle for cypherpunk */}
