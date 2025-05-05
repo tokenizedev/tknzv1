@@ -1,9 +1,13 @@
+import { Keypair } from '@solana/web3.js';
+import { Timestamp } from 'firebase/firestore';
+
 export interface CreatedCoin {
     address: string;
     name: string;
     ticker: string;
     pumpUrl: string;
     balance: number;
+    createdAt?: Timestamp | Date;
 }
   
 export interface CoinCreationParams {
@@ -44,6 +48,7 @@ export interface WalletState {
     investmentAmount: number;
     isLatestVersion: boolean;
     updateAvailable: string | null;
+    migrationStatus: 'idle' | 'running' | 'complete' | 'error';
     initializeWallet: () => Promise<void>;
     getBalance: () => Promise<void>;
     addCreatedCoin: (coin: CreatedCoin) => Promise<void>;
@@ -54,6 +59,7 @@ export interface WalletState {
     getArticleData: () => Promise<ArticleData>;
     getTokenCreationData: (article: ArticleData, level: number) => Promise<TokenCreationData>;
     checkVersion: () => Promise<void>;
+    migrateLocalStorageToFirestore: (wallet: Keypair) => Promise<void>;
 }
   
 export interface ArticleData {
