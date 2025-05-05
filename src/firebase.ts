@@ -3,6 +3,7 @@ import { getFirestore, collection, addDoc, query, where, getDocs, serverTimestam
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { v4 as uuidv4 } from "uuid";
 import type { CreatedCoin } from './types'; // Assuming CreatedCoin type is exported from store
+import { Timestamp } from 'firebase/firestore';
 
 // Replace these with your own Firebase config values
 const firebaseConfig = {
@@ -44,9 +45,22 @@ export async function getCreatedCoins(walletAddress: string): Promise<CreatedCoi
     const querySnapshot = await getDocs(q);
     const coins: CreatedCoin[] = [];
     querySnapshot.forEach((doc) => {
-      // We assume the document data matches the CreatedCoin structure
-      // Perform type assertion carefully, or add validation
-      coins.push(doc.data() as CreatedCoin);
+      const data = doc.data();
+      // Convert Firestore Timestamp to JS Date if it exists
+      const createdAt = data.createdAt instanceof Timestamp 
+                        ? data.createdAt.toDate() 
+                        : data.createdAt; // Keep as is if already Date or undefined
+                        
+      coins.push({
+        ...(data as Omit<CreatedCoin, 'createdAt'>), // Assert base type
+        createdAt: createdAt // Add potentially converted date
+      });
+    });
+    // Sort here in case the query doesn't support ordering or for robustness
+    coins.sort((a, b) => {
+      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return timeB - timeA; // Descending order
     });
     return coins;
   } catch (error) {
