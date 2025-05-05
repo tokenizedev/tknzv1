@@ -45,6 +45,121 @@
     font-style: normal;
   }
   
+  /* Navigation slide-down animation keyframes */
+  @keyframes nav-slide-down {
+    0% {
+      transform: translateY(-100%);
+      opacity: 0;
+    }
+    30% {
+      opacity: 0.5;
+    }
+    100% {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+  
+  /* Navigation drawer slide-down animation */
+  @keyframes drawer-slide-down {
+    0% {
+      transform: translateY(-20px);
+      opacity: 0;
+    }
+    100% {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+  
+  /* Navigation glow pulse keyframes */
+  @keyframes nav-glow-pulse {
+    0% {
+      box-shadow: 0 0 5px rgba(0, 255, 65, 0.2), 0 4px 0 rgba(0, 255, 65, 0.1);
+    }
+    50% {
+      box-shadow: 0 0 10px rgba(0, 255, 65, 0.3), 0 4px 0 rgba(0, 255, 65, 0.2);
+    }
+    100% {
+      box-shadow: 0 0 5px rgba(0, 255, 65, 0.2), 0 4px 0 rgba(0, 255, 65, 0.1);
+    }
+  }
+  
+  /* Border highlight animation keyframes */
+  @keyframes border-highlight {
+    0% {
+      border-bottom-color: rgba(0, 255, 65, 0.1);
+      box-shadow: 0 1px 0 rgba(0, 255, 65, 0.1);
+    }
+    50% {
+      border-bottom-color: rgba(0, 255, 65, 0.4);
+      box-shadow: 0 1px 6px rgba(0, 255, 65, 0.3);
+    }
+    100% {
+      border-bottom-color: rgba(0, 255, 65, 0.2);
+      box-shadow: 0 1px 0 rgba(0, 255, 65, 0.2);
+    }
+  }
+  
+  /* Border line slice animation */
+  @keyframes border-slice {
+    0% {
+      width: 0%;
+      left: 0;
+      right: auto;
+    }
+    50% {
+      width: 100%;
+      left: 0;
+      right: auto;
+    }
+    50.1% {
+      width: 100%;
+      left: auto;
+      right: 0;
+    }
+    100% {
+      width: 0%;
+      left: auto;
+      right: 0;
+    }
+  }
+  
+  /* Animated nav bar class */
+  .nav-animated {
+    animation: nav-slide-down 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    position: relative;
+  }
+  
+  /* Animated nav drawer */
+  .nav-drawer-animated {
+    animation: drawer-slide-down 0.5s 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  
+  /* Nav border glow effect */
+  .nav-glow {
+    animation: nav-glow-pulse 3s ease-in-out infinite;
+  }
+  
+  /* Border highlight animation */
+  .border-highlight {
+    animation: border-highlight 2s ease-in-out infinite;
+  }
+  
+  /* Border slice animation for nav */
+  .nav-border-animated {
+    position: relative;
+  }
+  
+  .nav-border-animated::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    height: 2px;
+    background: linear-gradient(90deg, rgba(0, 255, 65, 0.1), rgba(0, 255, 65, 0.8), rgba(0, 255, 65, 0.1));
+    animation: border-slice 2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  
   h1, h2, h3, h4, h5, h6 {
     @apply font-bold text-cyber-green;
     text-shadow: 0 0 5px theme('colors.cyber-green'), 0 0 10px rgba(0, 255, 65, 0.5);
