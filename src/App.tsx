@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { Wallet, RefreshCw, Sidebar, X } from 'lucide-react';
+import { Wallet, RefreshCw, Sidebar, X, Copy } from 'lucide-react';
 import { useStore } from './store';
 import { WalletSetup } from './components/WalletSetup';
 import { CoinCreator } from './components/CoinCreator';
@@ -28,6 +28,16 @@ function App({ isSidebar = false }: AppProps = {}) {
   
   const [glitching, setGlitching] = useState(false);
   const mainAreaRef = useRef<HTMLDivElement>(null);
+  // Wallet address and copy handler
+  const address = wallet?.publicKey.toString() || '';
+  const truncatedAddress = address ? `${address.slice(0,4)}...${address.slice(-4)}` : '';
+  const copyAddress = async () => {
+    try {
+      await navigator.clipboard.writeText(address);
+    } catch (e) {
+      console.error('Failed to copy address:', e);
+    }
+  };
 
   // Trigger random glitch effects - less frequent for cleaner UI
   useEffect(() => {
@@ -155,6 +165,19 @@ function App({ isSidebar = false }: AppProps = {}) {
                   title="Refresh balance"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 text-cyber-green ${isRefreshing ? 'animate-cyber-spin' : ''}`} />
+                </button>
+              </div>
+            </div>
+            {/* Wallet address and copy */}
+            <div className="flex-none bg-cyber-dark/90 px-3 py-1.5 rounded-sm border border-cyber-green/30 shadow-terminal relative">
+              <div className="flex items-center space-x-1">
+                <span className="font-terminal text-sm text-cyber-green">{truncatedAddress}</span>
+                <button
+                  onClick={copyAddress}
+                  className="p-1 hover:bg-cyber-green/10 rounded-sm transition-colors"
+                  title="Copy address"
+                >
+                  <Copy className="w-3.5 h-3.5 text-cyber-green" />
                 </button>
               </div>
             </div>
