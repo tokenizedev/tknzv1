@@ -300,12 +300,19 @@ export const useStore = create<WalletState>((set, get) => ({
   },
 
   getTokenCreationData: async (article: ArticleData, level: number = 1) => {
+    const _article = {
+      ...article,
+    }
+
+    delete _article.images
+    delete _article.image
+
     const response = await fetch(TOKEN_CREATION_API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ article, level })
+      body: JSON.stringify({ article: _article, level })
     })
 
     if (!response.ok) {
