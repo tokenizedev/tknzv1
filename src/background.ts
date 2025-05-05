@@ -14,13 +14,20 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 });
 
 // Track content script status per tab
-const contentScriptStatus = new Map();
+const contentScriptStatus = new Map<number, boolean>();
+// Track side panel status per tab
+const sidePanelStatus = new Map<number, boolean>();
 
 let lastMessage: any = null;
 // Handle messages from content script
 chrome.runtime.onMessage.addListener((message: any, sender, sendResponse) => {
-  // Determine target tab: either provided in message (from popup) or sender.tab (from content script)
+  // Determine target tab: provided in message or from sender.tab
   const targetTabId = message.tabId ?? sender.tab?.id;
+  // Handle side panel ready notification
+  if (message.type === 'SIDEBAR_READY' && typeof message.tabId === 'number') {
+    sidePanelStatus.set(message.tabId, true);
+    return;
+  }
   if (!targetTabId) return;
 
   // Messages from content script to background
@@ -48,7 +55,10 @@ chrome.runtime.onMessage.addListener((message: any, sender, sendResponse) => {
   else if (message.type === 'CONTENT_SELECTED') {
     const content = message.content;
     chrome.storage.local.set({ selectedContent: JSON.stringify(content) }, () => {
-      chrome.action.openPopup().catch(err => console.error('Failed to open popup:', err));
+      // Only open popup if side panel is not open for this tab
+      if (!sidePanelStatus.get(targetTabId)) {
+        chrome.action.openPopup().catch(err => console.error('Failed to open popup:', err));
+      }
     });
   }
   
@@ -56,6 +66,8 @@ chrome.runtime.onMessage.addListener((message: any, sender, sendResponse) => {
 });
 
 // Clean up when tabs are closed
+// Clean up status when tabs are closed
 chrome.tabs.onRemoved.addListener((tabId) => {
   contentScriptStatus.delete(tabId);
+  sidePanelStatus.delete(tabId);
 });
