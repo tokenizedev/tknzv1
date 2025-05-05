@@ -10,6 +10,23 @@ import { TokenCreationProgress } from './components/TokenCreationProgress';
 
 interface AppProps { isSidebar?: boolean; }
 function App({ isSidebar = false }: AppProps = {}) {
+  // Notify background that side panel is open for this tab
+  useEffect(() => {
+    if (isSidebar && chrome?.tabs) {
+      (async () => {
+        try {
+          const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+          const tab = tabs[0];
+          if (tab?.id != null) {
+            chrome.runtime.sendMessage({ type: 'SIDEBAR_READY', tabId: tab.id });
+          }
+        } catch (error) {
+          console.error('Failed to notify sidebar ready:', error);
+        }
+      })();
+    }
+  }, [isSidebar]);
+  
   const { 
     wallet, 
     balance, 
