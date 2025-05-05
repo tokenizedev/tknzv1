@@ -1006,20 +1006,17 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({ isSidebar = false }) =
 
             {/* Image container */}
             <div className="relative">
-              <div className="bg-black/40 aspect-video flex items-center justify-center p-4 min-h-[300px] overflow-hidden">
-                <img 
-                  src={articleData.images[carouselIndex]} 
-                  alt={`Image option ${carouselIndex + 1}`}
-                  className="max-h-[60vh] max-w-full object-contain block mx-auto my-auto shadow-lg shadow-black/20"
-                  onError={(e) => {
-                    e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0yNCAxaDtgTWFnZSBub3QgZm91bmQiIHN0eWxlPSJmaWxsOiMwMGZmNDE7Zm9udC1mYW1pbHk6bW9ub3NwYWNlO2ZvbnQtc2l6ZToxMHB4OyIvPjwvc3ZnPg=='; 
-                  }} 
-                  style={{
-                    maxWidth: '90%',
-                    maxHeight: '90%',
-                    objectFit: 'contain',
-                  }}
-                />
+              <div className="bg-black/40 flex items-center justify-center w-full aspect-video p-4 min-h-[300px] overflow-hidden">
+                <div className="flex items-center justify-center w-full h-full">
+                  <img 
+                    src={articleData.images[carouselIndex]} 
+                    alt={`Image option ${carouselIndex + 1}`}
+                    className="max-h-[60vh] max-w-[90%] h-auto w-auto object-contain shadow-lg shadow-black/20"
+                    onError={(e) => {
+                      e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0yNCAxaDtgTWFnZSBub3QgZm91bmQiIHN0eWxlPSJmaWxsOiMwMGZmNDE7Zm9udC1mYW1pbHk6bW9ub3NwYWNlO2ZvbnQtc2l6ZToxMHB4OyIvPjwvc3ZnPg=='; 
+                    }} 
+                  />
+                </div>
               </div>
               
               {/* Navigation controls */}
@@ -1050,7 +1047,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({ isSidebar = false }) =
             {/* Thumbnail strip */}
             {articleData.images.length > 1 && (
               <div className="bg-black/80 border-t border-cyber-green/20 p-2 overflow-x-auto">
-                <div className="flex space-x-2">
+                <div className="flex justify-center space-x-2 mx-auto">
                   {articleData.images.map((img, idx) => (
                     <button
                       key={idx}
@@ -1116,7 +1113,5 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({ isSidebar = false }) =
     </div>
   );
 };
-
-
 
 export default CoinCreator;
