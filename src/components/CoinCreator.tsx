@@ -559,7 +559,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isCarouselOpen, articleData.images, carouselIndex]);
 
-  if (isLoading) {
+  if (true) {
     return <Loader isSidebar={isSidebar} />;
   }
 
