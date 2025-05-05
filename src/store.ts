@@ -3,7 +3,8 @@ import { Keypair, VersionedTransaction } from '@solana/web3.js';
 import { 
   logEventToFirestore, 
   getCreatedCoins, 
-  addCreatedCoinToFirestore 
+  addCreatedCoinToFirestore, 
+  getLaunchedTokenEvents
 } from './firebase';
 import { APP_VERSION } from './config/version';
 import { storage } from './utils/storage';
@@ -34,6 +35,7 @@ export const useStore = create<WalletState>((set, get) => ({
   investmentAmount: 0,
   isLatestVersion: true,
   updateAvailable: null,
+  migrationStatus: 'idle',
 
   initializeWallet: async () => {
     try {
@@ -60,6 +62,9 @@ export const useStore = create<WalletState>((set, get) => ({
           walletSecret: Array.from(wallet.secretKey)
         });
       }
+      
+      // Run Migration BEFORE fetching coins
+      await get().migrateLocalStorageToFirestore(wallet);
       
       // Fetch created coins from Firestore
       const fetchedCoins = await getCreatedCoins(wallet.publicKey.toString());
@@ -101,6 +106,100 @@ export const useStore = create<WalletState>((set, get) => ({
         error: `Failed to initialize wallet: ${errorMessage}. Please try reloading the extension.`,
         wallet: null 
       });
+    }
+  },
+
+  migrateLocalStorageToFirestore: async (wallet: Keypair) => {
+    if (!wallet) return; // Should not happen if called after wallet init
+    console.log('migrateLocalStorageToFirestore:wallet', wallet)
+    set({ migrationStatus: 'running' });
+    const walletAddress = wallet.publicKey.toString();
+    let migrationError: string | null = null;
+    let localCoinsMigrated = 0;
+    let eventCoinsMigrated = 0;
+    let totalUniqueMigrated = 0;
+
+    try {
+      // 1. Check if migration already ran
+      const migrationRecord = await storage.get('tokens_migrated');
+      if (migrationRecord.tokens_migrated) {
+        console.log('Token migration already completed on:', migrationRecord.tokens_migrated);
+        set({ migrationStatus: 'complete' });
+        return; 
+      }
+
+      console.log('Starting token migration...');
+
+      // 2. Fetch data from local storage and events
+      const localData = await storage.get('createdCoins');
+      const localCoins: CreatedCoin[] = localData.createdCoins || [];
+      const launchEvents = await getLaunchedTokenEvents(walletAddress);
+
+      // 3. Combine and deduplicate
+      const combinedCoinsMap = new Map<string, CreatedCoin>();
+
+      // Process local coins first (potentially more complete data)
+      localCoins.forEach(coin => {
+        if (coin.address) { // Ensure address exists
+          combinedCoinsMap.set(coin.address, { ...coin, balance: coin.balance || 0 }); // Ensure balance is set
+        }
+      });
+      localCoinsMigrated = combinedCoinsMap.size;
+
+      // Process event data, adding only if not already present from local storage
+      launchEvents.forEach(event => {
+        // Assuming event has contractAddress, name, ticker
+        // Need to map event fields to CreatedCoin fields
+        const address = event.contractAddress; 
+        if (address && !combinedCoinsMap.has(address)) {
+          combinedCoinsMap.set(address, {
+            address: address,
+            name: event.name || 'Unknown Name', 
+            ticker: event.ticker || 'UNKNOWN', 
+            pumpUrl: `https://pump.fun/coin/${address}`, // Construct pumpUrl
+            balance: 0, // Initial balance, will be updated by refreshTokenBalances
+          });
+          eventCoinsMigrated++; // Count only those added from events
+        }
+      });
+
+      totalUniqueMigrated = combinedCoinsMap.size;
+      console.log(`Found ${localCoinsMigrated} coins locally, ${launchEvents.length} launch events. Migrating ${totalUniqueMigrated} unique coins.`);
+
+      // 4. Add unique coins to Firestore
+      const migrationPromises = Array.from(combinedCoinsMap.values()).map(coin => 
+        addCreatedCoinToFirestore(walletAddress, coin)
+      );
+      
+      await Promise.all(migrationPromises);
+      console.log('Successfully migrated coins to Firestore.');
+
+      // 5. Log migration event
+      const migrationTimestamp = new Date().toISOString();
+      await logEventToFirestore('tokens_migrated', {
+        walletAddress,
+        localCoinsMigrated,
+        eventCoinsFound: launchEvents.length,
+        eventCoinsAdded: eventCoinsMigrated,
+        totalUniqueMigrated,
+        migratedAt: migrationTimestamp
+      });
+
+      // 6. Set migration flag in local storage
+      await storage.set({ tokens_migrated: migrationTimestamp });
+      set({ migrationStatus: 'complete' });
+      console.log('Token migration completed successfully.');
+
+    } catch (error) {
+      migrationError = error instanceof Error ? error.message : 'Unknown migration error';
+      console.error('Token migration failed:', error);
+      set({ migrationStatus: 'error', error: `Migration failed: ${migrationError}` });
+      // Log migration failure event? Optional.
+      // await logEventToFirestore('tokens_migration_failed', {
+      //   walletAddress,
+      //   error: migrationError,
+      //   timestamp: new Date().toISOString()
+      // });
     }
   },
 
