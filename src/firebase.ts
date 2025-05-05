@@ -64,7 +64,7 @@ export async function addCreatedCoinToFirestore(walletAddress: string, coin: Cre
     await addDoc(collection(db, 'createdCoins'), {
       walletAddress, // Store the wallet address with the coin data
       ...coin,
-      createdAt: serverTimestamp() code// Use server-side timestamp for creation time
+      createdAt: serverTimestamp() // Use server-side timestamp for creation time
     });
   } catch (error) {
     console.error('Error adding created coin to Firestore:', error);
