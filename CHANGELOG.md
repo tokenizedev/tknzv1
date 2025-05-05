@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.5.1](https://tokenizedev///compare/v0.5.0...v0.5.1) (2025-05-05)
+
+
+### Bug Fixes
+
+* Reorder 'release' script commands in package.json ([9c71f61](https://tokenizedev///commit/9c71f614d6ec0d2e0e67a50bbab2f650750e2dc1))
+
 ## [0.5.0](https://tokenizedev///compare/v0.4.0...v0.5.0) (2025-05-05)
 
 
