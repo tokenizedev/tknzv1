@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { Wallet, RefreshCw, Sidebar, X, Copy, ChevronDown, ChevronUp, Menu } from 'lucide-react';
+import { Wallet, RefreshCw, Sidebar, X, Copy, ChevronDown, ChevronUp, Menu, CheckCircle } from 'lucide-react';
 import { useStore } from './store';
 import { WalletSetup } from './components/WalletSetup';
 import { CoinCreator } from './components/CoinCreator';
@@ -29,12 +29,16 @@ function App({ isSidebar = false }: AppProps = {}) {
   
   const [glitching, setGlitching] = useState(false);
   const mainAreaRef = useRef<HTMLDivElement>(null);
+  const [copyConfirm, setCopyConfirm] = useState(false);
+  
   // Wallet address and copy handler
   const address = wallet?.publicKey.toString() || '';
   const truncatedAddress = address ? `${address.slice(0,4)}...${address.slice(-4)}` : '';
   const copyAddress = async () => {
     try {
       await navigator.clipboard.writeText(address);
+      setCopyConfirm(true);
+      setTimeout(() => setCopyConfirm(false), 1500);
     } catch (e) {
       console.error('Failed to copy address:', e);
     }
@@ -182,13 +186,19 @@ function App({ isSidebar = false }: AppProps = {}) {
                   {/* Wallet controls - simplified */}
                   <button 
                     onClick={toggleWalletDrawer}
-                    className="border-r border-cyber-green/20 w-14 h-full flex items-center justify-center hover:bg-cyber-green/10 transition-colors"
+                    className="border-r border-cyber-green/20 w-14 h-full flex items-center justify-center hover:bg-cyber-green/10 transition-colors relative"
                     title="Toggle wallet address"
                   >
-                    <Copy className="w-4 h-4 text-cyber-green/80 hover:text-cyber-green" onClick={(e) => {
-                      e.stopPropagation();
-                      copyAddress();
-                    }} />
+                    {copyConfirm ? (
+                      <div className="absolute inset-0 flex items-center justify-center bg-cyber-green/10 text-cyber-green animate-pulse-fast">
+                        <CheckCircle className="w-4 h-4" />
+                      </div>
+                    ) : (
+                      <Copy className="w-4 h-4 text-cyber-green/80 hover:text-cyber-green" onClick={(e) => {
+                        e.stopPropagation();
+                        copyAddress();
+                      }} />
+                    )}
                   </button>
                   
                   {/* Control buttons */}
@@ -239,10 +249,14 @@ function App({ isSidebar = false }: AppProps = {}) {
             </div>
             <button
               onClick={copyAddress}
-              className="ml-2 p-1.5 hover:bg-cyber-green/10 rounded-sm transition-colors text-cyber-green/80 hover:text-cyber-green"
+              className="ml-2 p-1.5 hover:bg-cyber-green/10 rounded-sm transition-colors text-cyber-green/80 hover:text-cyber-green relative"
               title="Copy address"
             >
-              <Copy className="w-3.5 h-3.5" />
+              {copyConfirm ? (
+                <CheckCircle className="w-3.5 h-3.5 text-cyber-green animate-pulse-fast" />
+              ) : (
+                <Copy className="w-3.5 h-3.5" />
+              )}
             </button>
           </div>
         </div>
