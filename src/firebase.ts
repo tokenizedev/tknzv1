@@ -122,4 +122,27 @@ export const uploadImageToFirebase = async (
   }
 };
 
+/**
+ * Fetches token_launched events for a specific wallet address from Firestore.
+ */
+export async function getLaunchedTokenEvents(walletAddress: string): Promise<any[]> { // Return type as any[] for now, adjust if event structure is known
+  try {
+    const eventsRef = collection(db, 'events');
+    const q = query(
+      eventsRef, 
+      where('walletAddress', '==', walletAddress),
+      where('eventName', '==', 'token_launched')
+    );
+    const querySnapshot = await getDocs(q);
+    const events: any[] = [];
+    querySnapshot.forEach((doc) => {
+      events.push({ id: doc.id, ...doc.data() }); // Include doc ID if needed
+    });
+    return events;
+  } catch (error) {
+    console.error('Error fetching token_launched events from Firestore:', error);
+    return []; 
+  }
+}
+
 export default storage; 
