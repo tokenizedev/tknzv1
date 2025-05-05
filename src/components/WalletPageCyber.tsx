@@ -276,26 +276,53 @@ export const WalletPageCyber: React.FC<WalletPageCyberProps> = ({ highlightCoinA
                 </div>
                  {/* Pagination Controls */}
                  {totalPages > 1 && (
-                    <div className="flex justify-between items-center p-2 border-t border-cyber-green/30">
-                        <button 
-                            onClick={() => handlePageChange(currentPage - 1)}
-                            disabled={currentPage === 1}
-                            className="p-2 text-cyber-green disabled:text-gray-600 hover:text-cyber-green-dark disabled:opacity-50 transition-colors"
-                            title="Previous Page"
-                        >
-                            <ChevronUp className="w-5 h-5" />
-                        </button>
-                        <span className="text-xs font-terminal text-white/70">
-                            Page {currentPage} of {totalPages}
-                        </span>
-                        <button 
-                            onClick={() => handlePageChange(currentPage + 1)}
-                            disabled={currentPage === totalPages}
-                            className="p-2 text-cyber-green disabled:text-gray-600 hover:text-cyber-green-dark disabled:opacity-50 transition-colors"
-                            title="Next Page"
-                        >
-                            <ChevronDown className="w-5 h-5" />
-                        </button>
+                    <div className="border-t border-cyber-green/30 bg-cyber-black/60 backdrop-blur-sm">
+                        <div className="flex justify-between items-center p-3 relative">
+                            {/* Decorative elements */}
+                            <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-cyber-green/30 to-transparent"></div>
+                            <div className="absolute inset-0 bg-[linear-gradient(transparent_50%,rgba(0,255,65,0.02)_50%)] bg-[length:100%_4px] pointer-events-none"></div>
+                            
+                            <button 
+                                onClick={() => handlePageChange(currentPage - 1)}
+                                disabled={currentPage === 1}
+                                className="flex items-center justify-center w-8 h-8 border border-cyber-green/40 rounded-sm 
+                                          disabled:border-gray-700 disabled:text-gray-600 
+                                          enabled:hover:border-cyber-green enabled:hover:text-cyber-green enabled:hover:bg-cyber-green/10 
+                                          enabled:hover:shadow-[0_0_5px_rgba(0,255,65,0.5)] enabled:active:bg-cyber-green/20
+                                          transition-all duration-200 transform enabled:hover:scale-105 enabled:active:scale-95"
+                                title="Previous Page"
+                            >
+                                <ChevronUp className="w-5 h-5" />
+                            </button>
+                            
+                            <div className="flex space-x-1 items-center">
+                                {[...Array(totalPages)].map((_, idx) => (
+                                    <button
+                                        key={idx}
+                                        onClick={() => handlePageChange(idx + 1)}
+                                        className={`w-5 h-5 flex items-center justify-center text-xs font-terminal transition-all duration-200
+                                                  ${idx + 1 === currentPage 
+                                                    ? 'bg-cyber-green text-cyber-black font-bold shadow-[0_0_5px_rgba(0,255,65,0.7)]' 
+                                                    : 'bg-cyber-black/80 border border-cyber-green/40 text-cyber-green/80 hover:border-cyber-green hover:text-cyber-green hover:bg-cyber-green/10'}`}
+                                    >
+                                        {idx + 1}
+                                    </button>
+                                ))}
+                            </div>
+                            
+                            <button 
+                                onClick={() => handlePageChange(currentPage + 1)}
+                                disabled={currentPage === totalPages}
+                                className="flex items-center justify-center w-8 h-8 border border-cyber-green/40 rounded-sm 
+                                          disabled:border-gray-700 disabled:text-gray-600 
+                                          enabled:hover:border-cyber-green enabled:hover:text-cyber-green enabled:hover:bg-cyber-green/10 
+                                          enabled:hover:shadow-[0_0_5px_rgba(0,255,65,0.5)] enabled:active:bg-cyber-green/20
+                                          transition-all duration-200 transform enabled:hover:scale-105 enabled:active:scale-95"
+                                title="Next Page"
+                            >
+                                <ChevronDown className="w-5 h-5" />
+                            </button>
+                        </div>
                     </div>
                 )}
             </div>
