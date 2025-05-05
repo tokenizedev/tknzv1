@@ -1,11 +1,24 @@
-const DEV_MODE = process.env.NODE_ENV === 'development' && !window.chrome?.storage;
-
-const devStorage = {
-  data: new Map<string, any>(),
-  get: async (key: string) => ({ [key]: devStorage.data.get(key) }),
+// Fallback storage using window.localStorage for non-extension contexts
+// Note: availability of chrome.storage.local is checked dynamically in get/set
+const fallbackStorage = {
+  get: async (key: string) => {
+    const item = window.localStorage.getItem(key);
+    if (item === null) {
+      return { [key]: undefined };
+    }
+    try {
+      return { [key]: JSON.parse(item) };
+    } catch {
+      return { [key]: item };
+    }
+  },
   set: async (data: Record<string, any>) => {
     Object.entries(data).forEach(([key, value]) => {
-      devStorage.data.set(key, value);
+      try {
+        window.localStorage.setItem(key, JSON.stringify(value));
+      } catch {
+        window.localStorage.setItem(key, String(value));
+      }
     });
   }
 };
@@ -19,8 +32,8 @@ export const storage = {
    */
   get: async (key: string): Promise<Record<string, any>> => {
     try {
-      if (DEV_MODE || !window.chrome?.storage?.local) {
-        return devStorage.get(key);
+      if (!window.chrome?.storage?.local) {
+        return fallbackStorage.get(key);
       }
       return new Promise<Record<string, any>>((resolve) => {
         chrome.storage.local.get([key], (result) => {
@@ -42,8 +55,8 @@ export const storage = {
    */
   set: async (data: Record<string, any>): Promise<void> => {
     try {
-      if (DEV_MODE || !window.chrome?.storage?.local) {
-        return devStorage.set(data);
+      if (!window.chrome?.storage?.local) {
+        return fallbackStorage.set(data);
       }
       return new Promise<void>((resolve, reject) => {
         chrome.storage.local.set(data, () => {
