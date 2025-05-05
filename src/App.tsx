@@ -144,7 +144,7 @@ function App({ isSidebar = false }: AppProps = {}) {
   };
 
   // Function to handle coin creation state
-  const handleCoinCreationStart = () => {
+  const handleCoinCreationStart = async (innerHandleSubmit: () => Promise<void>) => {
     setIsCreatingCoin(true);
     setCreationProgress(0);
     
@@ -157,10 +157,12 @@ function App({ isSidebar = false }: AppProps = {}) {
         }
         return prev + Math.random() * 2;
       });
-    }, 150);
-    
+    }, 50);
+
+    await innerHandleSubmit();
     // Add a subtle glitch effect
     setGlitching(true);
+
     setTimeout(() => setGlitching(false), 200);
   };
   
@@ -180,9 +182,14 @@ function App({ isSidebar = false }: AppProps = {}) {
       setTimeout(() => {
         setIsCreatingCoin(false);
         // Keep the address for highlighting for a while
-        setTimeout(() => setNewCoinAddress(null), 5000);
+        setTimeout(() => setNewCoinAddress(null), 10000);
       }, 300);
     }, 200);
+  };
+
+  const handleCoinCreationError = (_errorMessage: string) => {
+    setGlitching(false);
+    setIsCreatingCoin(false);
   };
 
   useEffect(() => {
@@ -374,6 +381,7 @@ function App({ isSidebar = false }: AppProps = {}) {
             isSidebar={isSidebar} 
             onCreationStart={handleCoinCreationStart}
             onCreationComplete={handleCoinCreationComplete}
+            onCreationError={handleCoinCreationError}
           />
         )}
         
