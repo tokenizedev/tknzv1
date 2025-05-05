@@ -19,7 +19,9 @@ interface CoinCreationParams {
   name: string;
   ticker: string;
   description: string;
-  imageUrl: string;
+  // Provide either an image URL or a local file blob
+  imageUrl?: string;
+  imageFile?: Blob;
   websiteUrl: string;
   twitter?: string;
   telegram?: string;
@@ -313,7 +315,7 @@ export const useStore = create<WalletState>((set, get) => ({
     return response.json()
   },
 
-  createCoin: async ({ name, ticker, description, imageUrl, websiteUrl, twitter, telegram, investmentAmount }) => {
+  createCoin: async ({ name, ticker, description, imageUrl, imageFile, websiteUrl, twitter, telegram, investmentAmount }: CoinCreationParams) => {
     const { wallet } = get();
     if (!wallet) {
       throw new Error('Wallet not initialized');
@@ -326,10 +328,17 @@ export const useStore = create<WalletState>((set, get) => ({
       // Create form data for metadata
       const formData = new FormData();
       
-      // Fetch and append the image
-      const imageResponse = await fetch(imageUrl);
-      const imageBlob = await imageResponse.blob();
-      formData.append("file", imageBlob);
+      // Append image data: use provided blob or fetch from URL
+      let fileBlob: Blob;
+      if (imageFile) {
+        fileBlob = imageFile;
+      } else if (imageUrl) {
+        const imgRes = await fetch(imageUrl);
+        fileBlob = await imgRes.blob();
+      } else {
+        throw new Error('No image provided for coin creation');
+      }
+      formData.append("file", fileBlob);
       
       // Append other metadata
       formData.append("name", name);
