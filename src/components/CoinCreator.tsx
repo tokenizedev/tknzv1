@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Image, Type, FileText, Send, Loader2, AlertCircle, Globe, Sparkles, DollarSign, Hand as BrandX, GitBranch as BrandTelegram, Terminal, Zap, Target, X, Upload, ChevronLeft, ChevronRight, CheckCircle, Copy, ExternalLink, Hash } from 'lucide-react';
 import { useStore } from '../store';
 import { TerminalLoader } from './TerminalLoader';
-import { uploadImageToFirebase } from '../firebase';
 
 interface ArticleData {
   title: string
@@ -444,7 +443,9 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({ isSidebar = false }) =
     if (!file) return;
     
     setImageFile(file);
-    setIsUploading(true);
+    // Reset image URL if a file is selected
+    setImageUrl(''); 
+    setIsUploading(false); // No longer uploading to Firebase
     setUploadProgress(0);
     setError(null);
     
@@ -453,19 +454,12 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({ isSidebar = false }) =
       const reader = new FileReader();
       reader.onload = (e) => {
         const localPreview = e.target?.result as string;
-        // Just for preview - we'll update with the real URL after upload
-        setImageUrl(localPreview);
+        // Set the preview URL
+        setImageUrl(localPreview); 
         
-        // Add to images array temporarily
+        // Add preview to images array temporarily for carousel
         setArticleData(prev => {
-          // Create a new images array
-          const newImages = [...prev.images];
-          
-          // Try to prevent adding duplicate data URIs
-          if (!newImages.some(img => img.startsWith('data:') && img.length > 1000)) {
-            newImages.unshift(localPreview);
-          }
-          
+          const newImages = [localPreview, ...prev.images.filter(img => !img.startsWith('data:'))];
           return {
             ...prev,
             primaryImage: localPreview,
@@ -474,39 +468,10 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({ isSidebar = false }) =
         });
       };
       reader.readAsDataURL(file);
-      
-      // Upload to Firebase
-      const downloadURL = await uploadImageToFirebase(file, (progress) => {
-        setUploadProgress(progress);
-      });
-      
-      // Set the permanent image URL from Firebase
-      setImageUrl(downloadURL);
-      
-      // Update the image arrays with the permanent URL
-      setArticleData(prev => {
-        // Replace data URL with permanent URL
-        const newImages = prev.images.map(img => 
-          img === prev.primaryImage ? downloadURL : img
-        );
-        
-        // Ensure the URL is in the array
-        if (!newImages.includes(downloadURL)) {
-          newImages.unshift(downloadURL);
-        }
-        
-        return {
-          ...prev,
-          primaryImage: downloadURL,
-          images: newImages
-        };
-      });
-      
-      setIsUploading(false);
     } catch (error) {
-      console.error('Upload error:', error);
-      setError('Failed to upload image. Please try again.');
-      setIsUploading(false);
+      console.error('Error handling image file:', error);
+      setError('Failed to process image file. Please try again.');
+      // Keep isUploading false as we removed the upload step
     }
   };
 
