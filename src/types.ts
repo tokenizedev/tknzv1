@@ -1,6 +1,14 @@
 import { Keypair } from '@solana/web3.js';
 import { Timestamp } from 'firebase/firestore';
 
+export interface WalletInfo {
+    id: string; // Unique identifier for the wallet
+    name: string; // User-friendly name for the wallet
+    publicKey: string; // Public key in string format for easy use
+    keypair: Keypair; // The actual wallet keypair
+    isActive: boolean; // Whether this is the currently active wallet
+}
+
 export interface CreatedCoin {
     address: string;
     name: string;
@@ -40,7 +48,9 @@ export interface TokenCreationData {
 }
   
 export interface WalletState {
-    wallet: Keypair | null;
+    wallets: WalletInfo[]; // List of all wallets
+    activeWallet: WalletInfo | null; // Currently active wallet
+    wallet: Keypair | null; // Kept for backward compatibility
     balance: number;
     error: string | null;
     createdCoins: CreatedCoin[];
@@ -50,6 +60,10 @@ export interface WalletState {
     updateAvailable: string | null;
     migrationStatus: 'idle' | 'running' | 'complete' | 'error';
     initializeWallet: () => Promise<void>;
+    createNewWallet: (name: string) => Promise<WalletInfo>;
+    switchWallet: (walletId: string) => Promise<void>;
+    removeWallet: (walletId: string) => Promise<void>;
+    renameWallet: (walletId: string, newName: string) => Promise<void>;
     getBalance: () => Promise<void>;
     addCreatedCoin: (coin: CreatedCoin) => Promise<void>;
     setInvestmentAmount: (amount: number) => Promise<void>;
