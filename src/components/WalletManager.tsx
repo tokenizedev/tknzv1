@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronDown, ChevronUp, Plus, Pen, Trash2, Key, Shield, Wallet, Check, X, Zap } from 'lucide-react';
+import { ChevronDown, ChevronUp, Plus, Pen, Trash2, Key, Shield, Wallet, Check, X, Zap, Download, Upload } from 'lucide-react';
 import { useStore } from '../store';
 import { WalletInfo } from '../types';
 
@@ -7,15 +7,31 @@ interface WalletManagerProps {
   onClose: () => void;
 }
 
+type WalletTab = 'list' | 'create' | 'import';
+
 export const WalletManager: React.FC<WalletManagerProps> = ({ onClose }) => {
-  const { wallets, activeWallet, createNewWallet, switchWallet, removeWallet, renameWallet } = useStore();
+  const { wallets, activeWallet, createNewWallet, importWallet, switchWallet, removeWallet, renameWallet } = useStore();
+  const [activeTab, setActiveTab] = useState<WalletTab>('list');
+  
+  // Create wallet state
   const [newWalletName, setNewWalletName] = useState('');
   const [showCreateForm, setShowCreateForm] = useState(false);
+  
+  // Import wallet state
+  const [importName, setImportName] = useState('');
+  const [privateKey, setPrivateKey] = useState('');
+  
+  // Editing state
   const [editingWalletId, setEditingWalletId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [expandedWalletId, setExpandedWalletId] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
+  
+  // Loading states
   const [isCreating, setIsCreating] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  
+  // Error and success states
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
@@ -48,12 +64,38 @@ export const WalletManager: React.FC<WalletManagerProps> = ({ onClose }) => {
       setError('');
       await createNewWallet(newWalletName.trim());
       setNewWalletName('');
-      setShowCreateForm(false);
+      setActiveTab('list');
       setSuccessMessage('Wallet created successfully');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create wallet');
     } finally {
       setIsCreating(false);
+    }
+  };
+  
+  const handleImportWallet = async () => {
+    if (!importName.trim()) {
+      setError('Wallet name cannot be empty');
+      return;
+    }
+    
+    if (!privateKey.trim()) {
+      setError('Private key cannot be empty');
+      return;
+    }
+
+    try {
+      setIsImporting(true);
+      setError('');
+      await importWallet(importName.trim(), privateKey.trim());
+      setImportName('');
+      setPrivateKey('');
+      setActiveTab('list');
+      setSuccessMessage('Wallet imported successfully');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to import wallet');
+    } finally {
+      setIsImporting(false);
     }
   };
 
@@ -102,46 +144,134 @@ export const WalletManager: React.FC<WalletManagerProps> = ({ onClose }) => {
     setExpandedWalletId(expandedWalletId === walletId ? null : walletId);
     setConfirmingDelete(null); // Reset delete confirmation when toggling
   };
-
-  return (
-    <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center">
-      <div className="w-[90%] max-w-md crypto-card relative overflow-hidden animate-glitch-in">
-        {/* Header */}
-        <div className="crypto-card-header flex items-center justify-between">
-          <h2 className="crypto-card-title flex items-center">
-            <Wallet className="w-5 h-5 mr-2 text-cyber-green" />
-            WALLET MANAGEMENT
-          </h2>
-          <button 
-            onClick={onClose}
-            className="p-1.5 hover:bg-cyber-green/10 rounded-full text-cyber-green/80 hover:text-cyber-green"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Control Panel */}
-        <div className="crypto-card-body space-y-4">
-          {/* Status message */}
-          {successMessage && (
-            <div className="bg-cyber-green/10 border border-cyber-green text-cyber-green p-3 rounded-sm font-terminal text-sm animate-pulse">
-              {successMessage}
+  
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'create':
+        return (
+          <div className="border border-cyber-green p-3 rounded-sm animate-slide-up">
+            <h3 className="text-cyber-green font-terminal text-sm mb-2 flex items-center">
+              <Key className="w-4 h-4 mr-1" />
+              CREATE NEW WALLET
+            </h3>
+            
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-cyber-green/70 font-terminal mb-1 block">
+                  Wallet Name
+                </label>
+                <input
+                  type="text"
+                  value={newWalletName}
+                  onChange={(e) => setNewWalletName(e.target.value)}
+                  placeholder="Enter wallet name"
+                  className="w-full bg-cyber-black border border-cyber-green/50 rounded-sm p-2 text-cyber-green font-terminal text-sm focus:border-cyber-green focus:outline-none"
+                  autoFocus
+                />
+              </div>
+              
+              <div className="flex space-x-2">
+                <button
+                  onClick={handleCreateWallet}
+                  disabled={isCreating}
+                  className="flex-1 p-2 bg-cyber-green/10 text-cyber-green border border-cyber-green rounded-sm hover:bg-cyber-green/20 transition-colors font-terminal text-xs flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isCreating ? (
+                    <>
+                      <Shield className="w-3 h-3 mr-1 animate-spin" />
+                      CREATING...
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-3 h-3 mr-1" />
+                      CREATE WALLET
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => setActiveTab('list')}
+                  className="p-2 border border-cyber-green/30 text-cyber-green/70 rounded-sm hover:text-cyber-green hover:border-cyber-green/50 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
-          )}
-          
-          {error && (
-            <div className="bg-cyber-pink/10 border border-cyber-pink text-cyber-pink p-3 rounded-sm font-terminal text-sm">
-              {error}
-              <button 
-                onClick={() => setError('')} 
-                className="float-right text-cyber-pink hover:text-white"
-              >
-                <X className="w-4 h-4" />
-              </button>
+          </div>
+        );
+        
+      case 'import':
+        return (
+          <div className="border border-cyber-purple p-3 rounded-sm animate-slide-up">
+            <h3 className="text-cyber-purple font-terminal text-sm mb-2 flex items-center">
+              <Download className="w-4 h-4 mr-1 text-cyber-purple" />
+              IMPORT EXISTING WALLET
+            </h3>
+            
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-cyber-purple/80 font-terminal mb-1 block">
+                  Wallet Name
+                </label>
+                <input
+                  type="text"
+                  value={importName}
+                  onChange={(e) => setImportName(e.target.value)}
+                  placeholder="Enter a name for this wallet"
+                  className="w-full bg-cyber-black border border-cyber-purple/50 rounded-sm p-2 text-cyber-purple font-terminal text-sm focus:border-cyber-purple focus:outline-none"
+                  autoFocus
+                />
+              </div>
+              
+              <div>
+                <label className="text-xs text-cyber-purple/80 font-terminal mb-1 block flex justify-between">
+                  <span>Private Key</span>
+                  <span className="text-cyber-purple/50">Hex or Base58 Format</span>
+                </label>
+                <textarea
+                  value={privateKey}
+                  onChange={(e) => setPrivateKey(e.target.value)}
+                  placeholder="Enter private key (remains encrypted locally)"
+                  className="w-full h-20 bg-cyber-black border border-cyber-purple/50 rounded-sm p-2 text-cyber-purple font-mono text-sm focus:border-cyber-purple focus:outline-none"
+                />
+              </div>
+              
+              <div className="bg-cyber-purple/10 border border-cyber-purple/30 p-2 rounded-sm">
+                <p className="text-xs text-cyber-purple/90 font-terminal">
+                  Your private key is never sent to any server and will be securely encrypted on this device.
+                </p>
+              </div>
+              
+              <div className="flex space-x-2">
+                <button
+                  onClick={handleImportWallet}
+                  disabled={isImporting}
+                  className="flex-1 p-2 bg-cyber-purple/10 text-cyber-purple border border-cyber-purple rounded-sm hover:bg-cyber-purple/20 transition-colors font-terminal text-xs flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isImporting ? (
+                    <>
+                      <Shield className="w-3 h-3 mr-1 animate-spin" />
+                      IMPORTING...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-3 h-3 mr-1" />
+                      IMPORT WALLET
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => setActiveTab('list')}
+                  className="p-2 border border-cyber-purple/30 text-cyber-purple/70 rounded-sm hover:text-cyber-purple hover:border-cyber-purple/50 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
-          )}
-
-          {/* Wallet list */}
+          </div>
+        );
+        
+      default: // 'list'
+        return (
           <div className="space-y-2 border border-cyber-green/20 p-3 rounded-sm">
             <h3 className="text-cyber-green font-terminal text-sm mb-2">YOUR WALLETS [{wallets.length}]</h3>
             {wallets.length === 0 ? (
@@ -289,70 +419,68 @@ export const WalletManager: React.FC<WalletManagerProps> = ({ onClose }) => {
                 ))}
               </div>
             )}
-          </div>
-
-          {/* Create new wallet form */}
-          {showCreateForm ? (
-            <div className="border border-cyber-green p-3 rounded-sm animate-slide-up">
-              <h3 className="text-cyber-green font-terminal text-sm mb-2 flex items-center">
-                <Key className="w-4 h-4 mr-1" />
-                CREATE NEW WALLET
-              </h3>
-              
-              <div className="space-y-3">
-                <div>
-                  <label className="text-xs text-cyber-green/70 font-terminal mb-1 block">
-                    Wallet Name
-                  </label>
-                  <input
-                    type="text"
-                    value={newWalletName}
-                    onChange={(e) => setNewWalletName(e.target.value)}
-                    placeholder="Enter wallet name"
-                    className="w-full bg-cyber-black border border-cyber-green/50 rounded-sm p-2 text-cyber-green font-terminal text-sm focus:border-cyber-green focus:outline-none"
-                    autoFocus
-                  />
-                </div>
-                
-                <div className="flex space-x-2">
-                  <button
-                    onClick={handleCreateWallet}
-                    disabled={isCreating}
-                    className="flex-1 p-2 bg-cyber-green/10 text-cyber-green border border-cyber-green rounded-sm hover:bg-cyber-green/20 transition-colors font-terminal text-xs flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isCreating ? (
-                      <>
-                        <Shield className="w-3 h-3 mr-1 animate-spin" />
-                        CREATING...
-                      </>
-                    ) : (
-                      <>
-                        <Plus className="w-3 h-3 mr-1" />
-                        CREATE WALLET
-                      </>
-                    )}
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowCreateForm(false);
-                      setNewWalletName('');
-                    }}
-                    className="p-2 border border-cyber-green/30 text-cyber-green/70 rounded-sm hover:text-cyber-green hover:border-cyber-green/50 transition-colors"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
+            
+            <div className="flex space-x-2 pt-2">
+              <button
+                onClick={() => setActiveTab('create')}
+                className="flex-1 p-2 bg-cyber-black border border-cyber-green/50 text-cyber-green rounded-sm hover:bg-cyber-green/10 hover:border-cyber-green transition-colors font-terminal text-xs flex items-center justify-center"
+              >
+                <Plus className="w-3 h-3 mr-1" />
+                CREATE NEW
+              </button>
+              <button
+                onClick={() => setActiveTab('import')}
+                className="flex-1 p-2 bg-cyber-black border border-cyber-purple/50 text-cyber-purple rounded-sm hover:bg-cyber-purple/10 hover:border-cyber-purple transition-colors font-terminal text-xs flex items-center justify-center"
+              >
+                <Download className="w-3 h-3 mr-1" />
+                IMPORT
+              </button>
             </div>
-          ) : (
-            <button
-              onClick={() => setShowCreateForm(true)}
-              className="w-full p-3 bg-cyber-black border border-cyber-green/50 text-cyber-green rounded-sm hover:bg-cyber-green/10 hover:border-cyber-green transition-colors font-terminal text-sm flex items-center justify-center"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              CREATE NEW WALLET
-            </button>
+          </div>
+        );
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center">
+      <div className="w-[90%] max-w-md crypto-card relative overflow-hidden animate-glitch-in">
+        {/* Header */}
+        <div className="crypto-card-header flex items-center justify-between">
+          <h2 className="crypto-card-title flex items-center">
+            <Wallet className="w-5 h-5 mr-2 text-cyber-green" />
+            WALLET MANAGEMENT
+          </h2>
+          <button 
+            onClick={onClose}
+            className="p-1.5 hover:bg-cyber-green/10 rounded-full text-cyber-green/80 hover:text-cyber-green"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Control Panel */}
+        <div className="crypto-card-body space-y-4">
+          {/* Status message */}
+          {successMessage && (
+            <div className="bg-cyber-green/10 border border-cyber-green text-cyber-green p-3 rounded-sm font-terminal text-sm animate-pulse">
+              {successMessage}
+            </div>
           )}
+          
+          {error && (
+            <div className="bg-cyber-pink/10 border border-cyber-pink text-cyber-pink p-3 rounded-sm font-terminal text-sm">
+              {error}
+              <button 
+                onClick={() => setError('')} 
+                className="float-right text-cyber-pink hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
+          {/* Tabs content */}
+          {renderTabContent()}
         </div>
         
         {/* Footer */}

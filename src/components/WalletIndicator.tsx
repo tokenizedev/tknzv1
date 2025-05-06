@@ -3,7 +3,11 @@ import { Wallet, ChevronDown, Users, PlusCircle } from 'lucide-react';
 import { useStore } from '../store';
 import { WalletManager } from './WalletManager';
 
-export const WalletIndicator: React.FC = () => {
+interface WalletIndicatorProps {
+  onManageWallets?: () => void;
+}
+
+export const WalletIndicator: React.FC<WalletIndicatorProps> = ({ onManageWallets }) => {
   const { activeWallet, wallets } = useStore();
   const [showDropdown, setShowDropdown] = useState(false);
   const [showWalletManager, setShowWalletManager] = useState(false);
@@ -12,6 +16,18 @@ export const WalletIndicator: React.FC = () => {
   const getShortWalletName = (name: string) => {
     if (name.length <= 12) return name;
     return `${name.substring(0, 10)}...`;
+  };
+
+  // Handle opening wallet manager
+  const handleManageWallets = () => {
+    if (onManageWallets) {
+      // Use the provided handler if available (new full page)
+      onManageWallets();
+    } else {
+      // Fallback to modal if no handler provided
+      setShowWalletManager(true);
+    }
+    setShowDropdown(false);
   };
 
   return (
@@ -65,10 +81,7 @@ export const WalletIndicator: React.FC = () => {
             {/* Management options */}
             <div className="border-t border-cyber-green/20">
               <button
-                onClick={() => {
-                  setShowWalletManager(true);
-                  setShowDropdown(false);
-                }}
+                onClick={handleManageWallets}
                 className="w-full text-left p-2 flex items-center text-cyber-green/80 hover:bg-cyber-green/10 hover:text-cyber-green group"
               >
                 <Users className="w-4 h-4 mr-2 group-hover:text-cyber-purple transition-colors" />
@@ -79,8 +92,8 @@ export const WalletIndicator: React.FC = () => {
         )}
       </div>
 
-      {/* Wallet manager modal */}
-      {showWalletManager && (
+      {/* Wallet manager modal (only used if onManageWallets is not provided) */}
+      {showWalletManager && !onManageWallets && (
         <WalletManager onClose={() => setShowWalletManager(false)} />
       )}
     </>

@@ -235,6 +235,88 @@ export const useStore = create<WalletState>((set, get) => ({
     }
   },
 
+  importWallet: async (name: string, privateKeyString: string) => {
+    try {
+      const { wallets } = get();
+      
+      // Validate and clean up the private key string
+      // It might be in different formats like hex or base58
+      let privateKeyBytes: Uint8Array;
+      
+      try {
+        // Try to parse as hex string (remove spaces, 0x prefix, etc.)
+        const cleanHex = privateKeyString.replace(/[\s,]+/g, '').replace(/^0x/i, '');
+        
+        // Check if it's a valid hex string of the correct length
+        if (/^[0-9a-f]{128}$/i.test(cleanHex)) {
+          // Convert hex to byte array
+          privateKeyBytes = new Uint8Array(
+            cleanHex.match(/.{1,2}/g)?.map(byte => parseInt(byte, 16)) || []
+          );
+        } else {
+          // Try to decode as base58 (common Solana format)
+          const bs58 = await import('bs58');
+          privateKeyBytes = bs58.decode(privateKeyString.trim());
+        }
+        
+        // Verify we have a valid length for Solana keypair (64 bytes)
+        if (privateKeyBytes.length !== 64) {
+          throw new Error('Invalid private key length');
+        }
+      } catch (error) {
+        throw new Error('Invalid private key format. Please provide a valid Solana private key.');
+      }
+      
+      // Create keypair from private key
+      const keypair = Keypair.fromSecretKey(privateKeyBytes);
+      const walletId = uuidv4();
+      
+      // Check if this wallet already exists
+      const publicKey = keypair.publicKey.toString();
+      const existingWallet = wallets.find(w => w.publicKey === publicKey);
+      
+      if (existingWallet) {
+        throw new Error('This wallet has already been imported.');
+      }
+      
+      // Create wallet info
+      const importedWallet: WalletInfo = {
+        id: walletId,
+        name: name.trim(),
+        publicKey,
+        keypair,
+        isActive: false
+      };
+      
+      // Add to existing wallets
+      const updatedWallets = [...wallets, importedWallet];
+      
+      // Save to storage
+      await storage.set({
+        wallets: updatedWallets.map(w => ({
+          id: w.id,
+          name: w.name,
+          publicKey: w.publicKey,
+          keypairSecretKey: Array.from(w.keypair.secretKey)
+        }))
+      });
+      
+      // Log wallet import event
+      await logEventToFirestore('wallet_imported', {
+        walletAddress: importedWallet.publicKey,
+        timestamp: new Date().toISOString()
+      });
+      
+      // Update state
+      set({ wallets: updatedWallets });
+      
+      return importedWallet;
+    } catch (error) {
+      console.error('Failed to import wallet:', error);
+      throw error;
+    }
+  },
+
   switchWallet: async (walletId: string) => {
     try {
       const { wallets } = get();
@@ -346,7 +428,7 @@ export const useStore = create<WalletState>((set, get) => ({
       });
       
       // Update state and activeWallet if it was the one renamed
-      const updatedActiveWallet = get().activeWallet?.id === walletId
+      const updatedActiveWallet = get().activeWallet && get().activeWallet.id === walletId
         ? { ...get().activeWallet, name: newName.trim() }
         : get().activeWallet;
         
@@ -485,8 +567,12 @@ export const useStore = create<WalletState>((set, get) => ({
       
       // Sort immediately after adding
       updatedCoins.sort((a, b) => {
-        const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        const timeA = a.createdAt 
+          ? (a.createdAt instanceof Date ? a.createdAt.getTime() : a.createdAt.toDate().getTime()) 
+          : 0;
+        const timeB = b.createdAt 
+          ? (b.createdAt instanceof Date ? b.createdAt.getTime() : b.createdAt.toDate().getTime()) 
+          : 0;
         return timeB - timeA; // Descending order
       });
       
