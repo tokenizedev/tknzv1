@@ -1,5 +1,4 @@
 import { useEffect, useState, useRef } from 'react';
-import { Wallet, RefreshCw, Sidebar, X, Copy, ChevronDown, ChevronUp, Menu, CheckCircle, Terminal } from 'lucide-react';
 import { useStore } from './store';
 import { WalletSetup } from './components/WalletSetup';
 import { CoinCreator } from './components/CoinCreator';
@@ -7,7 +6,8 @@ import { WalletPageCyber } from './components/WalletPageCyber';
 import { VersionCheck } from './components/VersionCheck';
 import { Loader } from './components/Loader';
 import { TokenCreationProgress } from './components/TokenCreationProgress';
-import { WalletIndicator } from './components/WalletIndicator';
+import { WalletManagerPage } from './components/WalletManagerPage';
+import { Navigation } from './components/Navigation';
 
 interface AppProps { isSidebar?: boolean; }
 function App({ isSidebar = false }: AppProps = {}) {
@@ -42,6 +42,7 @@ function App({ isSidebar = false }: AppProps = {}) {
   const [loading, setLoading] = useState(true);
   const [showWallet, setShowWallet] = useState(false);
   const [showWalletDrawer, setShowWalletDrawer] = useState(false);
+  const [showWalletManager, setShowWalletManager] = useState(false);
   
   // Add this for cypherpunk animation effects
   const [_animateZap, setAnimateZap] = useState(false);
@@ -162,6 +163,27 @@ function App({ isSidebar = false }: AppProps = {}) {
     setTimeout(() => setGlitching(false), 200);
   };
 
+  // Function to handle wallet manager navigation
+  const openWalletManager = () => {
+    // Reset other views when opening wallet manager
+    setShowWallet(false);
+    setShowWalletManager(true);
+    setGlitching(true);
+    setTimeout(() => setGlitching(false), 200);
+  };
+
+  const closeWalletManager = () => {
+    setShowWalletManager(false);
+    setGlitching(true);
+    setTimeout(() => setGlitching(false), 200);
+  };
+
+  // Toggle wallet view
+  const toggleWallet = () => {
+    setShowWallet(!showWallet);
+    setShowWalletManager(false); // Close wallet manager when toggling wallet view
+  };
+
   // Function to handle coin creation state
   const handleCoinCreationStart = async (innerHandleSubmit: () => Promise<void>) => {
     setIsCreatingCoin(true);
@@ -256,121 +278,28 @@ function App({ isSidebar = false }: AppProps = {}) {
         <Loader isSidebar={isSidebar} />
       ) : (
         <>
-          {/* Streamlined cyberpunk header with slide-down animation */}
-          <header className="fixed top-0 left-0 right-0 z-20 nav-placeholder nav-animated nav-glow">
-            <div className={`border-b border-cyber-green/20 bg-cyber-black/90 backdrop-blur-sm ${navAnimated ? 'nav-border-animated border-highlight' : ''}`}>
-              <div className="flex items-center h-14">
-                {/* Logo with sequential animation */}
-                <div className={`px-5 flex-none transition-all duration-300 ${logoAnimated ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'}`}>
-                  <h1 className="leaderboard-title text-2xl tracking-widest">
-                    {/* Individual letter animation */}
-                    <span className="inline-block" style={{ animationDelay: '0.1s', animation: logoAnimated ? 'float 3s ease-in-out infinite' : 'none' }}>T</span>
-                    <span className="inline-block" style={{ animationDelay: '0.2s', animation: logoAnimated ? 'float 3s ease-in-out infinite' : 'none' }}>K</span>
-                    <span className="inline-block" style={{ animationDelay: '0.3s', animation: logoAnimated ? 'float 3s ease-in-out infinite' : 'none' }}>N</span>
-                    <span className="inline-block" style={{ animationDelay: '0.4s', animation: logoAnimated ? 'float 3s ease-in-out infinite' : 'none' }}>Z</span>
-                  </h1>
-                </div>
-                
-                {activeWallet && (
-                  <>
-                    {/* SOL balance indicator with sequential animation */}
-                    <div className={`ml-auto flex h-full transition-all duration-500 ${controlsAnimated ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-10'}`}>
-                      <div className="border-l border-r border-cyber-green/20 px-4 flex items-center">
-                        <div className="flex flex-col items-end mr-2">
-                          <div className="font-terminal text-sm text-cyber-green tabular-nums">
-                            {balance.toFixed(2)} <span className="text-cyber-green/70">SOL</span>
-                          </div>
-                        </div>
-                        <button
-                          onClick={triggerBalanceEffect}
-                          disabled={isRefreshing}
-                          className="p-1.5 hover:bg-cyber-green/10 rounded-full"
-                        >
-                          <RefreshCw className={`w-3.5 h-3.5 text-cyber-green/80 hover:text-cyber-green ${isRefreshing ? 'animate-cyber-spin' : ''}`} />
-                        </button>
-                      </div>
-                      
-                      {/* Wallet controls with sequential animation */}
-                      <WalletIndicator />
-                      
-                      <button 
-                        className={`h-full w-14 transition-colors flex items-center justify-center ${
-                          showWallet 
-                            ? 'bg-cyber-green/20 text-cyber-green' 
-                            : 'hover:bg-cyber-green/10 text-cyber-green/80 hover:text-cyber-green'
-                        }`}
-                        onClick={() => setShowWallet(!showWallet)}
-                        title="View Wallet"
-                      >
-                        <Terminal className="w-4 h-4" />
-                      </button>
-                      
-                      <button 
-                        onClick={toggleWalletDrawer}
-                        className="border-r border-cyber-green/20 w-14 h-full flex items-center justify-center hover:bg-cyber-green/10 transition-colors relative"
-                        title="Toggle wallet address"
-                      >
-                        {copyConfirm ? (
-                          <div className="absolute inset-0 flex items-center justify-center bg-cyber-green/10 text-cyber-green animate-pulse-fast">
-                            <CheckCircle className="w-4 h-4" />
-                          </div>
-                        ) : (
-                          <Copy className="w-4 h-4 text-cyber-green/80 hover:text-cyber-green" onClick={(e) => {
-                            e.stopPropagation();
-                            copyAddress();
-                          }} />
-                        )}
-                      </button>
-                      
-                      {/* Control buttons with sequential animation */}
-                      <div className="flex h-full">
-                        {!isSidebar ? (
-                          <button
-                            onClick={openSidebar}
-                            className="border-r border-cyber-green/20 h-full w-14 flex items-center justify-center hover:bg-cyber-green/10 transition-colors"
-                            title="Open Sidebar"
-                          >
-                            <Sidebar className="w-4 h-4 text-cyber-green/80 hover:text-cyber-green" />
-                          </button>
-                        ) : (
-                          <button
-                            onClick={closeSidebar}
-                            className="border-r border-cyber-green/20 h-full w-14 flex items-center justify-center hover:bg-cyber-green/10 transition-colors"
-                            title="Close Sidebar"
-                          >
-                            <X className="w-4 h-4 text-cyber-green/80 hover:text-cyber-green" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* Wallet drawer with slide animation */}
-            <div className={`overflow-hidden transition-all duration-200 border-b border-cyber-green/20 bg-cyber-black/80 backdrop-blur-md ${
-              showWalletDrawer ? 'max-h-12 nav-drawer-animated nav-border-animated' : 'max-h-0'
-            }`}>
-              <div className="flex items-center px-5 h-12">
-                {/* Full wallet address */}
-                <div className="font-terminal text-xs text-cyber-green/90 flex-1 truncate">
-                  {address}
-                </div>
-                <button
-                  onClick={copyAddress}
-                  className="ml-2 p-1.5 hover:bg-cyber-green/10 rounded-sm transition-colors text-cyber-green/80 hover:text-cyber-green relative"
-                  title="Copy address"
-                >
-                  {copyConfirm ? (
-                    <CheckCircle className="w-3.5 h-3.5 text-cyber-green animate-pulse-fast" />
-                  ) : (
-                    <Copy className="w-3.5 h-3.5" />
-                  )}
-                </button>
-              </div>
-            </div>
-          </header>
+          {/* Use the Navigation component here */}
+          <Navigation
+            isSidebar={isSidebar}
+            activeWallet={activeWallet}
+            balance={balance}
+            isRefreshing={isRefreshing}
+            address={address}
+            logoAnimated={logoAnimated}
+            navAnimated={navAnimated}
+            controlsAnimated={controlsAnimated}
+            showWallet={showWallet}
+            showWalletDrawer={showWalletDrawer}
+            glitching={glitching}
+            onRefresh={triggerBalanceEffect}
+            onToggleWallet={toggleWallet}
+            onCopyAddress={copyAddress}
+            onToggleWalletDrawer={toggleWalletDrawer}
+            onManageWallets={openWalletManager}
+            onOpenSidebar={openSidebar}
+            onCloseSidebar={closeSidebar}
+            copyConfirm={copyConfirm}
+          />
           
           <main 
             className={`overflow-auto px-4 relative main-content-transition ${glitching ? 'animate-glitch' : ''}`}
@@ -393,6 +322,8 @@ function App({ isSidebar = false }: AppProps = {}) {
             {/* Conditional rendering of main content */}
             {!activeWallet ? (
               <WalletSetup />
+            ) : showWalletManager ? (
+              <WalletManagerPage onBack={closeWalletManager} />
             ) : isCreatingCoin ? (
               /* Using our new TokenCreationProgress component */
               <TokenCreationProgress progress={creationProgress} />

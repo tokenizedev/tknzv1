@@ -61,6 +61,7 @@ export interface WalletState {
     migrationStatus: 'idle' | 'running' | 'complete' | 'error';
     initializeWallet: () => Promise<void>;
     createNewWallet: (name: string) => Promise<WalletInfo>;
+    importWallet: (name: string, privateKeyString: string) => Promise<WalletInfo>;
     switchWallet: (walletId: string) => Promise<void>;
     removeWallet: (walletId: string) => Promise<void>;
     renameWallet: (walletId: string, newName: string) => Promise<void>;
@@ -84,4 +85,12 @@ export interface ArticleData {
     author?: string
     xUrl?: string,
     isXPost: boolean
+}
+
+export interface NavigationProps {
+    wallet: Wallet | null;
+    balance: number;
+    logoAnimated: boolean;
+    navAnimated: boolean;
+    controlsAnimated: boolean;
 }
