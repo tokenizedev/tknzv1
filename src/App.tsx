@@ -7,6 +7,7 @@ import { WalletPageCyber } from './components/WalletPageCyber';
 import { VersionCheck } from './components/VersionCheck';
 import { Loader } from './components/Loader';
 import { TokenCreationProgress } from './components/TokenCreationProgress';
+import { WalletIndicator } from './components/WalletIndicator';
 
 interface AppProps { isSidebar?: boolean; }
 function App({ isSidebar = false }: AppProps = {}) {
@@ -28,7 +29,7 @@ function App({ isSidebar = false }: AppProps = {}) {
   }, [isSidebar]);
   
   const { 
-    wallet, 
+    activeWallet, 
     balance, 
     initializeWallet, 
     getBalance, 
@@ -58,7 +59,7 @@ function App({ isSidebar = false }: AppProps = {}) {
   const [controlsAnimated, setControlsAnimated] = useState(false);
   
   // Wallet address and copy handler
-  const address = wallet?.publicKey.toString() || '';
+  const address = activeWallet?.publicKey || '';
   
   const copyAddress = async () => {
     try {
@@ -270,7 +271,7 @@ function App({ isSidebar = false }: AppProps = {}) {
                   </h1>
                 </div>
                 
-                {wallet && (
+                {activeWallet && (
                   <>
                     {/* SOL balance indicator with sequential animation */}
                     <div className={`ml-auto flex h-full transition-all duration-500 ${controlsAnimated ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-10'}`}>
@@ -290,6 +291,8 @@ function App({ isSidebar = false }: AppProps = {}) {
                       </div>
                       
                       {/* Wallet controls with sequential animation */}
+                      <WalletIndicator />
+                      
                       <button 
                         className={`h-full w-14 transition-colors flex items-center justify-center ${
                           showWallet 
@@ -299,8 +302,9 @@ function App({ isSidebar = false }: AppProps = {}) {
                         onClick={() => setShowWallet(!showWallet)}
                         title="View Wallet"
                       >
-                        <Wallet className="w-4 h-4" />
+                        <Terminal className="w-4 h-4" />
                       </button>
+                      
                       <button 
                         onClick={toggleWalletDrawer}
                         className="border-r border-cyber-green/20 w-14 h-full flex items-center justify-center hover:bg-cyber-green/10 transition-colors relative"
@@ -387,7 +391,7 @@ function App({ isSidebar = false }: AppProps = {}) {
             </div>
 
             {/* Conditional rendering of main content */}
-            {!wallet ? (
+            {!activeWallet ? (
               <WalletSetup />
             ) : isCreatingCoin ? (
               /* Using our new TokenCreationProgress component */
