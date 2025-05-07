@@ -185,4 +185,7 @@
  The project's roadmap is available [here](roadmap-05-01-2025.md).
 
  ## License
- This project is private. Please contact the maintainers for access.
+This repository is licensed under the Creative Commons Attribution-NonCommercial 4.0 International License (CC BY-NC 4.0).
+Free for personal and non-profit use. Commercial use requires a paid license.
+Please see the LICENSE file for details.
+To obtain a commercial license or for licensing inquiries, please open an issue or contact the repository owner.
