@@ -34,14 +34,35 @@
  - Support modern web apps and dynamic content (e.g., SPAs, Twitter/X posts).
 
  ## Features
- - Extract title, image, and description from articles and tweets.
- - Generate token metadata via an AI-powered Token Creation API.
- - Host metadata on IPFS through Pump.fun.
- - Create and fund Solana SPL tokens with a configurable investment amount.
- - View and refresh SOL and token balances.
- - Version checking and update prompts.
- - Analytics logging to Firestore (requires Firebase configuration).
- - Responsive UI built with React, Vite, Tailwind CSS, and Zustand.
+
+ TKNZ offers a comprehensive suite of features for creating and managing meme coins:
+
+ ### Content Tokenization
+ - **Isolated Tokenization** — Select specific sections of a webpage to tokenize, allowing you to precisely target the content that matters most for your token creation.
+ - **Custom Token Image Uploads** — Upload your own images for token creation instead of relying solely on extracted content, giving you more control over token branding.
+ - **Custom AI Prompts** — Fine-tune the AI token generation process with personalized prompts to create tokens that better reflect your vision.
+
+ ### User Experience
+ - **Pin Extension** — Lock TKNZ on-screen as a sidebar for rapid token launches while browsing, eliminating the need to switch between windows or tabs.
+ - **Automatic Wallet Provisioning** — Get started immediately with automatically created Solana wallets, removing barriers to entry for new users.
+
+ ### Community & Engagement
+ - **Token Leaderboard** — Track top token launches in real-time to see which coins are gaining momentum in the community.
+ - **"Coin Create" Contest** — Participate in community challenges that incentivize creative and innovative token launches.
+
+ ### Developer Tools
+ - **Leaderboard API** — Access token performance data programmatically through our API, enabling integration with external tools and services.
+
+ ### User Education
+ - **Explainer Video** — Watch comprehensive tutorials on our main website to quickly understand how to use all TKNZ features effectively.
+
+ ### Core Functionality
+ - Extract title, image, and description from articles and tweets
+ - Generate token metadata via an AI-powered Creation API
+ - Host metadata on IPFS through Pump.fun
+ - Create and fund Solana SPL tokens with configurable investment amounts
+ - View and refresh SOL and token balances
+ - Version checking and update prompts
 
  ## Getting Started
 
@@ -209,33 +230,37 @@ class RoadmapFeature {
 function initRoadmap() {
   return new Promise(async (resolve) => {
     
-    // Feature 1 ✓ [==============] 100%
-    await implement("PIN_EXTENSION");
-    console.log("Sidebar TKNZ for rapid token launches");
+    // Core Features ✓ 
+    await implement("PIN_EXTENSION"); // Sidebar for rapid token launches
+    await implement("TOKEN_LEADERBOARD"); // Track launches in real time
+    await implement("ISOLATED_TOKENIZATION"); // Select specific page sections
+    await implement("CUSTOM_AI_PROMPTS"); // Personalized token generation
+    await implement("CUSTOM_TOKEN_IMAGES"); // Upload custom images
     
-    // Feature 2 ✓ [==============] 100%
-    await implement("TOKEN_LEADERBOARD");
-    console.log("Track top launches in real time");
+    // Developer & Education ✓
+    await implement("LEADERBOARD_API"); // Programmatic data access
+    await implement("EXPLAINER_VIDEO"); // Tutorial content
+    await implement("AUTO_WALLET_PROVISIONING"); // Easy onboarding
+    await implement("COIN_CREATE_CONTEST"); // Community engagement
+    await implement("METRICS_DASHBOARD"); // Usage analytics
     
-    // Feature 3 □ [======------==] 60%
+    // In Progress □ 
     if (await getFunds("treasury")) {
-      implement("NEW_FEE_STRUCTURE");
-      console.log("3.3% of minted tokens go to treasury");
+      implement("NEW_FEE_STRUCTURE"); // 3.3% to treasury
+      console.log("Fee structure: 60% complete");
     }
     
-    // Feature 4 □ [-----=-------] 20%
     try {
-      implement("WALLET_UPGRADES");
-      console.log("Send, swap, and manage assets in extension");
+      implement("WALLET_UPGRADES"); // Send, swap, and manage assets
+      console.log("Wallet upgrades: 20% complete");
     } catch (e) {
       console.log("Development in progress...");
     }
     
-    // Feature 5 ✓ [==============] 100%
-    await implement("ISOLATED_TOKENIZATION");
-    console.log("Select specific sections of a page for tokens");
+    // Summary
+    console.log("Total completed features: 10/12");
     
-    resolve("Roadmap initialized");
+    resolve("Roadmap initialized with v" + VERSION);
   });
 }
 
@@ -245,6 +270,11 @@ function initRoadmap() {
 |  ✓ PIN_EXTENSION                                           |
 |  ✓ TOKEN_LEADERBOARD                                       |
 |  ✓ ISOLATED_TOKENIZATION                                   |
+|  ✓ CUSTOM_AI_PROMPTS                                       |
+|  ✓ LEADERBOARD_API                                         |
+|  ✓ CUSTOM_TOKEN_IMAGES                                     |
+|  ✓ EXPLAINER_VIDEO                                         |
+|  ✓ AUTO_WALLET_PROVISIONING                                |
 |                                                            |
 |  // PENDING:                                               |
 |  □ NEW_FEE_STRUCTURE                                       |
