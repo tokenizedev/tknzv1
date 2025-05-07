@@ -182,6 +182,81 @@
  Ensure code is linted and builds cleanly.
 
  ## Roadmap
+ ```javascript
+ /* TKNZ Roadmap Implementation */
+
+#include <progress.h>
+#include <features.h>
+#define VERSION 0.5.1
+
+/*==========================================================*\
+|  ████████╗██╗  ██╗███╗   ██╗███████╗                      |
+|  ╚══██╔══╝██║ ██╔╝████╗  ██║╚══███╔╝                      |
+|     ██║   █████╔╝ ██╔██╗ ██║  ███╔╝                       |
+|     ██║   ██╔═██╗ ██║╚██╗██║ ███╔╝                        |
+|     ██║   ██║  ██╗██║ ╚████║███████╗                      |
+|     ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═══╝╚══════╝                      |
+\*==========================================================*/
+
+class RoadmapFeature {
+  constructor(name, status, description) {
+    this.name = name;
+    this.status = status; // COMPLETED or PENDING
+    this.description = description;
+  }
+}
+
+function initRoadmap() {
+  return new Promise(async (resolve) => {
+    
+    // Feature 1 ✓ [==============] 100%
+    await implement("PIN_EXTENSION");
+    console.log("Sidebar TKNZ for rapid token launches");
+    
+    // Feature 2 ✓ [==============] 100%
+    await implement("TOKEN_LEADERBOARD");
+    console.log("Track top launches in real time");
+    
+    // Feature 3 □ [======------==] 60%
+    if (await getFunds("treasury")) {
+      implement("NEW_FEE_STRUCTURE");
+      console.log("3.3% of minted tokens go to treasury");
+    }
+    
+    // Feature 4 □ [-----=-------] 20%
+    try {
+      implement("WALLET_UPGRADES");
+      console.log("Send, swap, and manage assets in extension");
+    } catch (e) {
+      console.log("Development in progress...");
+    }
+    
+    // Feature 5 ✓ [==============] 100%
+    await implement("ISOLATED_TOKENIZATION");
+    console.log("Select specific sections of a page for tokens");
+    
+    resolve("Roadmap initialized");
+  });
+}
+
+/*----------------------------------------------------------*\
+|                                                            |
+|  // COMPLETED:                                             |
+|  ✓ PIN_EXTENSION                                           |
+|  ✓ TOKEN_LEADERBOARD                                       |
+|  ✓ ISOLATED_TOKENIZATION                                   |
+|                                                            |
+|  // PENDING:                                               |
+|  □ NEW_FEE_STRUCTURE                                       |
+|  □ WALLET_UPGRADES                                         |
+|                                                            |
+\*----------------------------------------------------------*/
+
+// Start deployment
+initRoadmap().then(status => {
+  console.log(`TKNZ roadmap deployment: ${status}`);
+});
+ ```
  The project's roadmap is available [here](roadmap-05-01-2025.md).
 
  ## License
