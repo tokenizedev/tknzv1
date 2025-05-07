@@ -5,6 +5,8 @@ import { CoinCreator } from './components/CoinCreator';
 import { WalletPageCyber } from './components/WalletPageCyber';
 import { VersionCheck } from './components/VersionCheck';
 import { Loader } from './components/Loader';
+import { PasswordSetup } from './components/PasswordSetup';
+import { storage } from './utils/storage';
 import { TokenCreationProgress } from './components/TokenCreationProgress';
 import { WalletManagerPage } from './components/WalletManagerPage';
 import { Navigation } from './components/Navigation';
@@ -40,6 +42,8 @@ function App({ isSidebar = false }: AppProps = {}) {
   } = useStore();
   
   const [loading, setLoading] = useState(true);
+  // Show initial password & passkey setup
+  const [showPasswordSetup, setShowPasswordSetup] = useState(false);
   const [showWallet, setShowWallet] = useState(false);
   const [showWalletDrawer, setShowWalletDrawer] = useState(false);
   const [showWalletManager, setShowWalletManager] = useState(false);
@@ -235,8 +239,18 @@ function App({ isSidebar = false }: AppProps = {}) {
 
   useEffect(() => {
     const init = async () => {
+      // Initialize wallet and app version
       await initializeWallet();
       await checkVersion();
+      // Prompt for password setup if not already configured
+      try {
+        const result = await storage.get('walletPasswordHash');
+        if (!result.walletPasswordHash) {
+          setShowPasswordSetup(true);
+        }
+      } catch (e) {
+        console.error('Failed to load password settings', e);
+      }
       setLoading(false);
     };
     init();
@@ -274,8 +288,12 @@ function App({ isSidebar = false }: AppProps = {}) {
         ))}
       </div>
       
-      {loading ? (
-        <Loader isSidebar={isSidebar} />
+      {loading || showPasswordSetup ? (
+        showPasswordSetup ? (
+          <PasswordSetup onComplete={() => setShowPasswordSetup(false)} />
+        ) : (
+          <Loader isSidebar={isSidebar} />
+        )
       ) : (
         <>
           {/* Use the Navigation component here */}
