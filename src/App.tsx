@@ -7,6 +7,7 @@ import { WalletPageCyber } from './components/WalletPageCyber';
 import { VersionCheck } from './components/VersionCheck';
 import { Loader } from './components/Loader';
 import { TokenCreationProgress } from './components/TokenCreationProgress';
+import { PrivacyPolicy } from './components/PrivacyPolicy';
 
 interface AppProps { isSidebar?: boolean; }
 function App({ isSidebar = false }: AppProps = {}) {
@@ -41,6 +42,7 @@ function App({ isSidebar = false }: AppProps = {}) {
   const [loading, setLoading] = useState(true);
   const [showWallet, setShowWallet] = useState(false);
   const [showWalletDrawer, setShowWalletDrawer] = useState(false);
+  const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
   
   // Add this for cypherpunk animation effects
   const [_animateZap, setAnimateZap] = useState(false);
@@ -371,7 +373,7 @@ function App({ isSidebar = false }: AppProps = {}) {
           <main 
             className={`overflow-auto px-4 relative main-content-transition ${glitching ? 'animate-glitch' : ''}`}
             style={{ 
-              height: '90%', 
+              height: '85%', 
               paddingTop: showWalletDrawer ? '56px' : '0',
               transition: 'padding-top 0.3s ease-out'
             }}
@@ -387,7 +389,9 @@ function App({ isSidebar = false }: AppProps = {}) {
             </div>
 
             {/* Conditional rendering of main content */}
-            {!wallet ? (
+            {showPrivacyPolicy ? (
+              <PrivacyPolicy onBack={() => setShowPrivacyPolicy(false)} />
+            ) : !wallet ? (
               <WalletSetup />
             ) : isCreatingCoin ? (
               /* Using our new TokenCreationProgress component */
@@ -422,6 +426,18 @@ function App({ isSidebar = false }: AppProps = {}) {
               ))}
             </div>
           </main>
+          
+          {/* Footer with privacy policy link */}
+          <footer className="absolute bottom-0 left-0 w-full border-t border-cyber-green/20 bg-cyber-black/90 backdrop-blur-sm py-2 px-4 z-20">
+            <div className="flex justify-center items-center">
+              <button 
+                onClick={() => setShowPrivacyPolicy(true)}
+                className="text-cyber-green/60 hover:text-cyber-green text-xs font-terminal transition-colors"
+              >
+                Privacy Policy
+              </button>
+            </div>
+          </footer>
         </>
       )}
     </div>
