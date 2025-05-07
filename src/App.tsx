@@ -6,6 +6,7 @@ import { WalletPageCyber } from './components/WalletPageCyber';
 import { VersionCheck } from './components/VersionCheck';
 import { Loader } from './components/Loader';
 import { PasswordSetup } from './components/PasswordSetup';
+import { PasswordUnlock } from './components/PasswordUnlock';
 import { storage } from './utils/storage';
 import { TokenCreationProgress } from './components/TokenCreationProgress';
 import { WalletManagerPage } from './components/WalletManagerPage';
@@ -42,11 +43,14 @@ function App({ isSidebar = false }: AppProps = {}) {
   } = useStore();
   
   const [loading, setLoading] = useState(true);
-  // Show initial password & passkey setup
+  // Show initial password & passkey setup or unlock guard
   const [showPasswordSetup, setShowPasswordSetup] = useState(false);
+  const [showUnlock, setShowUnlock] = useState(false);
   const [showWallet, setShowWallet] = useState(false);
   const [showWalletDrawer, setShowWalletDrawer] = useState(false);
   const [showWalletManager, setShowWalletManager] = useState(false);
+  // Timeout for wallet unlock in milliseconds (1 hour)
+  const UNLOCK_TIMEOUT = 60 * 60 * 1000;
   
   // Add this for cypherpunk animation effects
   const [_animateZap, setAnimateZap] = useState(false);
@@ -188,6 +192,17 @@ function App({ isSidebar = false }: AppProps = {}) {
     setShowWalletManager(false); // Close wallet manager when toggling wallet view
   };
 
+  // After setting up password or unlocking, initialize and record unlock time
+  const handlePostUnlock = async () => {
+    setShowPasswordSetup(false);
+    setShowUnlock(false);
+    setLoading(true);
+    await storage.set({ walletLastUnlocked: Date.now() });
+    await initializeWallet();
+    await checkVersion();
+    setLoading(false);
+  };
+
   // Function to handle coin creation state
   const handleCoinCreationStart = async (innerHandleSubmit: () => Promise<void>) => {
     setIsCreatingCoin(true);
@@ -239,18 +254,31 @@ function App({ isSidebar = false }: AppProps = {}) {
 
   useEffect(() => {
     const init = async () => {
-      // Initialize wallet and app version
-      await initializeWallet();
-      await checkVersion();
-      // Prompt for password setup if not already configured
       try {
-        const result = await storage.get('walletPasswordHash');
-        if (!result.walletPasswordHash) {
+        // Check if password is configured
+        const { walletPasswordHash } = await storage.get('walletPasswordHash');
+        if (!walletPasswordHash) {
+          // Prompt initial password setup
           setShowPasswordSetup(true);
+          setLoading(false);
+          return;
+        }
+        // Check last unlock timestamp
+        const { walletLastUnlocked } = await storage.get('walletLastUnlocked');
+        const now = Date.now();
+        if (!walletLastUnlocked || now - walletLastUnlocked > UNLOCK_TIMEOUT) {
+          // Require unlock
+          setShowUnlock(true);
+          setLoading(false);
+          return;
         }
       } catch (e) {
-        console.error('Failed to load password settings', e);
+        console.error('Failed to load password settings:', e);
+        // Proceed with initialization on error
       }
+      // Already unlocked or no guard needed, initialize wallet and version
+      await initializeWallet();
+      await checkVersion();
       setLoading(false);
     };
     init();
@@ -288,9 +316,11 @@ function App({ isSidebar = false }: AppProps = {}) {
         ))}
       </div>
       
-      {loading || showPasswordSetup ? (
+      {loading || showPasswordSetup || showUnlock ? (
         showPasswordSetup ? (
-          <PasswordSetup onComplete={() => setShowPasswordSetup(false)} />
+          <PasswordSetup onComplete={handlePostUnlock} />
+        ) : showUnlock ? (
+          <PasswordUnlock onUnlock={handlePostUnlock} />
         ) : (
           <Loader isSidebar={isSidebar} />
         )
