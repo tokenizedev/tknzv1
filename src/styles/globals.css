@@ -24,4 +24,30 @@
 
 .animate-cyber-pulse {
   animation: animate-cyber-pulse 1.5s infinite;
+}
+
+/* Ping animation for active wallet indicator */
+@keyframes ping {
+  75%, 100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+.animate-ping {
+  animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+/* Fast pulse animation used for copy confirmation */
+@keyframes pulse-fast {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse-fast {
+  animation: pulse-fast 0.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 } 
