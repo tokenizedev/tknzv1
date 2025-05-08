@@ -18,8 +18,11 @@ const contentScriptStatus = new Map<number, boolean>();
 // Track side panel status per tab
 const sidePanelStatus = new Map<number, boolean>();
 
-let lastMessage: any = null;
-// Handle messages from content script
+// Pending wallet connect requests (to resolve async via sendResponse)
+type PendingRequest = { tabId: number; requestId: string; sendResponse: (response: any) => void };
+const pendingConnectRequests: PendingRequest[] = [];
+
+// Handle messages from content script or popup
 chrome.runtime.onMessage.addListener((message: any, sender, sendResponse) => {
   // Determine target tab: provided in message or from sender.tab
   const targetTabId = message.tabId ?? sender.tab?.id;
@@ -30,23 +33,22 @@ chrome.runtime.onMessage.addListener((message: any, sender, sendResponse) => {
   }
   if (!targetTabId) return;
   // Handle Phantom provider requests forwarded from content script
+  // Handle wallet connect or sign requests from page
   if (message.type === 'PHANTOM_REQUEST') {
-    const { id, method, serializedTransaction, params } = message as any;
+    const { id: requestId, method, serializedTransaction, params } = message as any;
+    const tabId = sender.tab?.id;
+    if (!tabId) {
+      sendResponse({ error: 'No tabId for connect request', payload: null });
+      return;
+    }
     if (method === 'connect') {
-      // Open extension popup for user to confirm connection
+      // Store pending connect to resolve later
+      pendingConnectRequests.push({ tabId, requestId, sendResponse });
+      // Save for popup UI to detect pending connect
+      chrome.storage.local.set({ pendingConnect: { tabId, requestId } });
+      // Open extension popup for user to unlock/approve
       chrome.action.openPopup().catch(err => console.error('Failed to open popup for connect:', err));
-      // Retrieve active wallet publicKey from storage
-      chrome.storage.local.get(['wallets', 'activeWalletId'], (result) => {
-        let publicKey: string | null = null;
-        const wallets = result.wallets;
-        const activeId = result.activeWalletId;
-        if (Array.isArray(wallets) && wallets.length > 0) {
-          const w = wallets.find((w: any) => w.id === activeId) || wallets[0];
-          publicKey = w?.publicKey || null;
-        }
-        sendResponse({ error: null, payload: { publicKey } });
-      });
-      return true;
+      return true; // Will respond asynchronously
     } else if (method === 'signTransaction') {
       // Signing not implemented yet
       sendResponse({ error: 'signTransaction not implemented', payload: null });
@@ -60,6 +62,22 @@ chrome.runtime.onMessage.addListener((message: any, sender, sendResponse) => {
   // Messages from content script to background
   if (message.type === 'CONTENT_SCRIPT_READY') {
     contentScriptStatus.set(targetTabId, true);
+  }
+  // Popup has fulfilled a pending connect request
+  else if (message.type === 'FULFILL_CONNECT') {
+    const { tabId, id: requestId, publicKey } = message as any;
+    // Find matching pending request
+    const idx = pendingConnectRequests.findIndex(r => r.tabId === tabId && r.requestId === requestId);
+    if (idx !== -1) {
+      // Resolve the original connect promise
+      pendingConnectRequests[idx].sendResponse({ error: null, payload: { publicKey } });
+      pendingConnectRequests.splice(idx, 1);
+      // Clean up stored pending connect
+      chrome.storage.local.remove(['pendingConnect']);
+    }
+    // Acknowledge fulfillment
+    sendResponse({ success: true });
+    return true;
   }
   // Trigger injection and start selection mode (e.g., from popup)
   else if (message.type === 'INJECT_CONTENT_SCRIPT') {
