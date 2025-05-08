@@ -4,6 +4,7 @@ import { ChevronDown, ChevronUp, Plus, Pen, Trash2, Key, Shield, Check, X, Zap, 
 import { useStore } from '../store';
 import { WalletInfo } from '../types';
 import { ImportWalletForm } from './ImportWalletForm';
+import CreateWalletForm from './CreateWalletForm';
 
 // Add TypeScript declaration for react-jdenticon to fix the error
 declare module 'react-jdenticon' {
@@ -29,6 +30,12 @@ export const WalletManagerPage: React.FC<WalletManagerPageProps> = ({ onBack }) 
   // Create wallet state
   const [newWalletName, setNewWalletName] = useState('');
   const [newAvatar, setNewAvatar] = useState<string | null>(null);
+  // Generate a random seed for identicon avatar
+  const generateNewAvatar = () => {
+    // create a short random string as identicon seed
+    const randomSeed = Math.random().toString(36).substring(2, 12);
+    setNewAvatar(randomSeed);
+  };
   
   // Editing state
   const [editingWalletId, setEditingWalletId] = useState<string | null>(null);
@@ -153,100 +160,23 @@ export const WalletManagerPage: React.FC<WalletManagerPageProps> = ({ onBack }) 
     switch (activeTab) {
       case 'create':
         return (
-          <div className="border border-cyber-green p-4 rounded-sm animate-slide-up">
-            <h3 className="text-cyber-green font-terminal text-sm mb-3 flex items-center">
-              <Key className="w-4 h-4 mr-1" />
-              CREATE NEW WALLET
-            </h3>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="text-xs text-cyber-green/70 font-terminal mb-1 block">
-                  Wallet Name
-                </label>
-                <input
-                  type="text"
-                  value={newWalletName}
-                  onChange={(e) => setNewWalletName(e.target.value)}
-                  placeholder="Enter wallet name"
-                  className="w-full bg-cyber-black border border-cyber-green/50 rounded-sm p-2 text-cyber-green font-terminal text-sm focus:border-cyber-green focus:outline-none"
-                  autoFocus
-                />
-              </div>
-              <div>
-                <label className="text-xs text-cyber-green/70 font-terminal mb-1 block">
-                  Avatar (optional)
-                </label>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        const reader = new FileReader();
-                        reader.onload = () => setNewAvatar(reader.result as string);
-                        reader.readAsDataURL(file);
-                      }
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      // Generate a random seed for identicon
-                      const seed = `${Date.now()}-${Math.random()}`;
-                      
-                      // Just store the seed - we'll use Jdenticon component to render it
-                      setNewAvatar(seed);
-                    }}
-                    className="p-1 border border-cyber-green rounded-sm text-cyber-green text-xs"
-                  >
-                    Generate Random
-                  </button>
-                </div>
-                {newAvatar && (
-                  newAvatar.startsWith('data:') ? (
-                    <img src={newAvatar} alt="Avatar Preview" className="w-12 h-12 rounded-full mt-2" />
-                  ) : (
-                    <div className="mt-2 bg-cyber-black/50 inline-block p-1 rounded-full">
-                      <Jdenticon size={48} value={newAvatar} className="rounded-full" />
-                    </div>
-                  )
-                )}
-              </div>
-              
-              <div className="flex space-x-2">
-                <button
-                  onClick={handleCreateWallet}
-                  disabled={isCreating}
-                  className="flex-1 p-2 bg-cyber-green/10 text-cyber-green border border-cyber-green rounded-sm hover:bg-cyber-green/20 transition-colors font-terminal text-xs flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isCreating ? (
-                    <>
-                      <Shield className="w-3 h-3 mr-1 animate-spin" />
-                      CREATING...
-                    </>
-                  ) : (
-                    <>
-                      <Plus className="w-3 h-3 mr-1" />
-                      CREATE WALLET
-                    </>
-                  )}
-                </button>
-                <button
-                  onClick={() => {
-                    setActiveTab('list');
-                    triggerGlitch();
-                  }}
-                  className="p-2 border border-cyber-green/30 text-cyber-green/70 rounded-sm hover:text-cyber-green hover:border-cyber-green/50 transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          </div>
+          <CreateWalletForm
+            name={newWalletName}
+            avatar={newAvatar}
+            isCreating={isCreating}
+            onNameChange={setNewWalletName}
+            onAvatarChange={setNewAvatar}
+            onGenerateAvatar={generateNewAvatar}
+            onSubmit={handleCreateWallet}
+            onCancel={() => {
+              // reset create form state on cancel
+              setNewWalletName('');
+              setNewAvatar(null);
+              setActiveTab('list');
+              triggerGlitch();
+            }}
+          />
         );
-        
       case 'import':
         return (
           <ImportWalletForm 
