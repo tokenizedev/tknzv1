@@ -353,7 +353,6 @@ function App({ isSidebar = false }: AppProps = {}) {
             className={`overflow-auto px-4 relative main-content-transition ${glitching ? 'animate-glitch' : ''}`}
             style={{ 
               height: '90%', 
-              paddingTop: showWalletDrawer ? '56px' : '0',
               transition: 'padding-top 0.3s ease-out'
             }}
             ref={mainAreaRef}
