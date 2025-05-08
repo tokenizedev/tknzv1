@@ -16,11 +16,15 @@ export const PasswordUnlock: React.FC<PasswordUnlockProps> = ({ onUnlock }) => {
   useEffect(() => {
     (async () => {
       try {
-        const res = await storage.get('walletPasskeyId');
-        if (res.walletPasskeyId) {
+        // Retrieve stored passkey credential ID and user ID separately
+        const resId = await storage.get('walletPasskeyId');
+        const id = resId.walletPasskeyId;
+        const resUser = await storage.get('walletPasskeyUserId');
+        const userId = resUser.walletPasskeyUserId;
+        if (id && userId) {
           setPasskeyAvailable(true);
-          setPasskeyId(res.walletPasskeyId);
-          setPasskeyUserId(res.walletPasskeyUserId);
+          setPasskeyId(id);
+          setPasskeyUserId(userId);
         }
       } catch (e) {
         console.error('Failed to check passkey:', e);
