@@ -193,6 +193,8 @@ export const WalletManagerPage: React.FC<WalletManagerPageProps> = ({ onBack }) 
                     onClick={() => {
                       // Generate a random seed for identicon
                       const seed = `${Date.now()}-${Math.random()}`;
+                      
+                      // Just store the seed - we'll use Jdenticon component to render it
                       setNewAvatar(seed);
                     }}
                     className="p-1 border border-cyber-green rounded-sm text-cyber-green text-xs"
@@ -204,7 +206,9 @@ export const WalletManagerPage: React.FC<WalletManagerPageProps> = ({ onBack }) 
                   newAvatar.startsWith('data:') ? (
                     <img src={newAvatar} alt="Avatar Preview" className="w-12 h-12 rounded-full mt-2" />
                   ) : (
-                    <Jdenticon size={48} value={newAvatar} className="mt-2 rounded-full" />
+                    <div className="mt-2 bg-cyber-black/50 inline-block p-1 rounded-full">
+                      <Jdenticon size={48} value={newAvatar} className="rounded-full" />
+                    </div>
                   )
                 )}
               </div>
@@ -405,7 +409,7 @@ export const WalletManagerPage: React.FC<WalletManagerPageProps> = ({ onBack }) 
                           {wallet.isActive && (
                             <div className="bg-cyber-purple/10 text-cyber-purple border border-cyber-purple/30 p-2 rounded-sm text-xs font-terminal flex items-center">
                               <Check className="w-3 h-3 mr-1" />
-                              CURRENTLY ACTIVE WALLET
+                              CURRENTLY ACTIVE WALLETs
                             </div>
                           )}
                         </div>
