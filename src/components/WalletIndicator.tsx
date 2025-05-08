@@ -43,7 +43,7 @@ export const WalletIndicator: React.FC<WalletIndicatorProps> = ({
           <Wallet className="w-8 h-8 mr-2 p-1 rounded-full border-2 border-cyber-green/30 shadow-[0_0_8px_rgba(0,255,0,0.3)] z-10" />
         )}
       </div>
-      <Users
+      <Wallet
         className={`w-4 h-4 ml-1 transition-opacity duration-300 ease-out ${isDrawerOpen ? 'text-cyber-green' : 'opacity-70'}`}
       />
     </button>
