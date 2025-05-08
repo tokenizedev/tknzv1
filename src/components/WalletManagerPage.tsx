@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { ChevronDown, ChevronUp, Plus, Pen, Trash2, Key, Shield, Wallet, Check, X, Zap, Download, Upload, ArrowLeft } from 'lucide-react';
+import React, { useState, useEffect, ChangeEvent } from 'react';
+import Jdenticon from 'react-jdenticon';
+import { ChevronDown, ChevronUp, Plus, Pen, Trash2, Key, Shield, Check, X, Zap, Download, ArrowLeft } from 'lucide-react';
 import { useStore } from '../store';
 import { WalletInfo } from '../types';
 
@@ -10,15 +11,17 @@ interface WalletManagerPageProps {
 type WalletTab = 'list' | 'create' | 'import';
 
 export const WalletManagerPage: React.FC<WalletManagerPageProps> = ({ onBack }) => {
-  const { wallets, activeWallet, createNewWallet, importWallet, switchWallet, removeWallet, renameWallet } = useStore();
+  const { wallets, activeWallet, createNewWallet, importWallet, switchWallet, removeWallet, renameWallet, updateWalletAvatar } = useStore();
   const [activeTab, setActiveTab] = useState<WalletTab>('list');
   
   // Create wallet state
   const [newWalletName, setNewWalletName] = useState('');
+  const [newAvatar, setNewAvatar] = useState<string | null>(null);
   
   // Import wallet state
   const [importName, setImportName] = useState('');
   const [privateKey, setPrivateKey] = useState('');
+  const [importAvatar, setImportAvatar] = useState<string | null>(null);
   
   // Editing state
   const [editingWalletId, setEditingWalletId] = useState<string | null>(null);
@@ -67,8 +70,12 @@ export const WalletManagerPage: React.FC<WalletManagerPageProps> = ({ onBack }) 
     try {
       setIsCreating(true);
       setError('');
-      await createNewWallet(newWalletName.trim());
+      const created = await createNewWallet(newWalletName.trim());
+      if (newAvatar) {
+        await updateWalletAvatar(created.id, newAvatar);
+      }
       setNewWalletName('');
+      setNewAvatar(null);
       setActiveTab('list');
       triggerGlitch();
       setSuccessMessage('Wallet created successfully');
@@ -93,9 +100,13 @@ export const WalletManagerPage: React.FC<WalletManagerPageProps> = ({ onBack }) 
     try {
       setIsImporting(true);
       setError('');
-      await importWallet(importName.trim(), privateKey.trim());
+      const imported = await importWallet(importName.trim(), privateKey.trim());
+      if (importAvatar) {
+        await updateWalletAvatar(imported.id, importAvatar);
+      }
       setImportName('');
       setPrivateKey('');
+      setImportAvatar(null);
       setActiveTab('list');
       triggerGlitch();
       setSuccessMessage('Wallet imported successfully');
@@ -179,6 +190,43 @@ export const WalletManagerPage: React.FC<WalletManagerPageProps> = ({ onBack }) 
                   autoFocus
                 />
               </div>
+              <div>
+                <label className="text-xs text-cyber-green/70 font-terminal mb-1 block">
+                  Avatar (optional)
+                </label>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = () => setNewAvatar(reader.result as string);
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // Generate a random seed for identicon
+                      const seed = `${Date.now()}-${Math.random()}`;
+                      setNewAvatar(seed);
+                    }}
+                    className="p-1 border border-cyber-green rounded-sm text-cyber-green text-xs"
+                  >
+                    Generate Random
+                  </button>
+                </div>
+                {newAvatar && (
+                  newAvatar.startsWith('data:') ? (
+                    <img src={newAvatar} alt="Avatar Preview" className="w-12 h-12 rounded-full mt-2" />
+                  ) : (
+                    <Jdenticon size={48} value={newAvatar} className="mt-2 rounded-full" />
+                  )
+                )}
+              </div>
               
               <div className="flex space-x-2">
                 <button
@@ -248,6 +296,44 @@ export const WalletManagerPage: React.FC<WalletManagerPageProps> = ({ onBack }) 
                 />
               </div>
               
+              {/* Avatar selection */}
+              <div>
+                <label className="text-xs text-cyber-purple/80 font-terminal mb-1 block">
+                  Avatar (optional)
+                </label>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = () => setImportAvatar(reader.result as string);
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // Generate random seed for identicon
+                      const seed = `${Date.now()}-${Math.random()}`;
+                      setImportAvatar(seed);
+                    }}
+                    className="p-1 border border-cyber-purple rounded-sm text-cyber-purple text-xs"
+                  >
+                    Generate Random
+                  </button>
+                </div>
+                {importAvatar && (
+                  importAvatar.startsWith('data:') ? (
+                    <img src={importAvatar} alt="Avatar Preview" className="w-12 h-12 rounded-full mt-2" />
+                  ) : (
+                    <Jdenticon size={48} value={importAvatar} className="mt-2 rounded-full" />
+                  )
+                )}
+              </div>
               <div className="bg-cyber-purple/10 border border-cyber-purple/30 p-2 rounded-sm">
                 <p className="text-xs text-cyber-purple/90 font-terminal">
                   Your private key is never sent to any server and will be securely encrypted on this device.
