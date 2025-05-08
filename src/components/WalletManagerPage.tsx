@@ -38,6 +38,8 @@ export const WalletManagerPage: React.FC<WalletManagerPageProps> = ({ onBack }) 
   
   // Loading states
   const [isCreating, setIsCreating] = useState(false);
+  // Captured mnemonic for new wallet backup
+  const [createdMnemonic, setCreatedMnemonic] = useState<string | null>(null);
   
   // Error and success states
   const [error, setError] = useState('');
@@ -76,15 +78,15 @@ export const WalletManagerPage: React.FC<WalletManagerPageProps> = ({ onBack }) 
     try {
       setIsCreating(true);
       setError('');
+      // Create wallet and obtain mnemonic for user backup
       const created = await createNewWallet(newWalletName.trim());
       if (newAvatar) {
         await updateWalletAvatar(created.id, newAvatar);
       }
+      // Clear inputs but hold off navigation until user backs up mnemonic
       setNewWalletName('');
       setNewAvatar(null);
-      setActiveTab('list');
-      triggerGlitch();
-      setSuccessMessage('Wallet created successfully');
+      setCreatedMnemonic(created.mnemonic);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create wallet');
     } finally {
@@ -454,6 +456,37 @@ export const WalletManagerPage: React.FC<WalletManagerPageProps> = ({ onBack }) 
 
   return (
     <div className={`py-5 px-4 relative ${glitching ? 'animate-glitch' : ''}`}>
+      {/* Backup mnemonic modal */}
+      {createdMnemonic && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+          <div className="bg-cyber-black p-6 rounded-md border border-cyber-green max-w-md w-full space-y-4">
+            <h3 className="text-cyber-green font-terminal text-lg">Backup Your Seed Phrase</h3>
+            <p className="text-cyber-green text-sm">Write down or copy these words in order and keep them safe. They’re the only way to recover your wallet.</p>
+            <div className="bg-cyber-black/80 border border-cyber-green/50 p-4 rounded font-mono text-cyber-green text-sm break-words">
+              {createdMnemonic}
+            </div>
+            <div className="flex justify-end space-x-2">
+              <button
+                onClick={() => navigator.clipboard.writeText(createdMnemonic)}
+                className="px-3 py-1 border border-cyber-green text-cyber-green rounded-sm text-xs"
+              >
+                Copy
+              </button>
+              <button
+                onClick={() => {
+                  setCreatedMnemonic(null);
+                  setActiveTab('list');
+                  triggerGlitch();
+                  setSuccessMessage('Wallet created successfully');
+                }}
+                className="px-3 py-1 bg-cyber-green text-black rounded-sm text-xs"
+              >
+                I’ve copied it
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Page Header */}
       <div className="flex items-center justify-between mb-6">
         <button 
