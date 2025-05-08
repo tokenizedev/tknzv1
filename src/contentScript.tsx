@@ -304,8 +304,10 @@ const initialize = () => {
   // Inject TKNZ Wallet script into page context for Wallet Standard registration
     try {
       const walletScript = document.createElement('script');
-      // Inject the compiled wallet script into the page context
-      walletScript.src = chrome.runtime.getURL('src/injectedWallet.ts');
+      // Load as an ES module so imports in injectedWallet.ts work
+      walletScript.type = 'module';
+      // Inject the compiled wallet bundle (rooted at dist/injectedWallet.js)
+      walletScript.src = chrome.runtime.getURL('injectedWallet.js');
       walletScript.onload = () => { walletScript.remove(); };
       (document.head || document.documentElement).appendChild(walletScript);
     } catch (e) {
