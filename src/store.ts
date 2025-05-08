@@ -194,8 +194,12 @@ export const useStore = create<WalletState>((set, get) => ({
     try {
       const { wallets } = get();
       
-      // Generate new wallet
-      const keypair = Keypair.generate();
+      // Generate new wallet via a mnemonic seed phrase and derive keypair
+      const bip39 = await import('bip39');
+      const mnemonic: string = bip39.generateMnemonic();
+      const seedBuffer = await bip39.mnemonicToSeed(mnemonic);
+      const seed = new Uint8Array(seedBuffer).slice(0, 32);
+      const keypair = Keypair.fromSeed(seed);
       const walletId = uuidv4();
       
       // Create wallet info
@@ -230,7 +234,8 @@ export const useStore = create<WalletState>((set, get) => ({
       // Update state
       set({ wallets: updatedWallets });
       
-      return newWallet;
+      // Return wallet info along with the mnemonic for backup
+      return Object.assign(newWallet, { mnemonic });
     } catch (error) {
       console.error('Failed to create new wallet:', error);
       throw error;
