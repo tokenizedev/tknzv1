@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Jdenticon from 'react-jdenticon';
 import { Wallet, ChevronDown, Users, PlusCircle } from 'lucide-react';
 import { useStore } from '../store';
 import { WalletManager } from './WalletManager';
@@ -37,7 +38,19 @@ export const WalletIndicator: React.FC<WalletIndicatorProps> = ({ onManageWallet
           onClick={() => setShowDropdown(!showDropdown)}
           className="flex items-center h-full px-3 hover:bg-cyber-green/10 text-cyber-green/80 hover:text-cyber-green border-l border-cyber-green/20"
         >
-          <Wallet className="w-4 h-4 mr-2" />
+          {activeWallet?.avatar ? (
+            activeWallet.avatar.startsWith('data:') ? (
+              <img
+                src={activeWallet.avatar}
+                alt={`${activeWallet.name} avatar`}
+                className="w-4 h-4 rounded-full mr-2"
+              />
+            ) : (
+              <Jdenticon size={16} value={activeWallet.avatar} className="rounded-full mr-2" />
+            )
+          ) : (
+            <Wallet className="w-4 h-4 mr-2" />
+          )}
           <ChevronDown className={`w-3 h-3 ml-1 transition-transform duration-200 ${showDropdown ? 'transform rotate-180' : ''}`} />
         </button>
 
