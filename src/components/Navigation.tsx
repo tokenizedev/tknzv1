@@ -47,21 +47,10 @@ export const Navigation: React.FC<NavigationProps> = ({
     <header className="fixed top-0 left-0 right-0 z-20 nav-placeholder nav-animated nav-glow">
       <div className={`border-b border-cyber-green/20 bg-cyber-black/90 backdrop-blur-sm ${navAnimated ? 'nav-border-animated border-highlight' : ''}`}>
         <div className="flex items-center h-14">
-          {/* Logo with sequential animation */}
-          <div className={`px-5 flex-none transition-all duration-300 ${logoAnimated ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'}`}>
-            <h1 className="leaderboard-title text-2xl tracking-widest">
-              {/* Individual letter animation */}
-              <span className="inline-block" style={{ animationDelay: '0.1s', animation: logoAnimated ? 'float 3s ease-in-out infinite' : 'none' }}>T</span>
-              <span className="inline-block" style={{ animationDelay: '0.2s', animation: logoAnimated ? 'float 3s ease-in-out infinite' : 'none' }}>K</span>
-              <span className="inline-block" style={{ animationDelay: '0.3s', animation: logoAnimated ? 'float 3s ease-in-out infinite' : 'none' }}>N</span>
-              <span className="inline-block" style={{ animationDelay: '0.4s', animation: logoAnimated ? 'float 3s ease-in-out infinite' : 'none' }}>Z</span>
-            </h1>
-          </div>
-          
           {activeWallet && (
             <>
               {/* SOL balance indicator with sequential animation */}
-              <div className={`ml-auto flex h-full transition-all duration-500 ${controlsAnimated ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-10'}`}>
+              <div className={`flex h-full transition-all duration-500 ${controlsAnimated ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-10'}`}>
                 <div className="border-l border-r border-cyber-green/20 px-4 flex items-center">
                   <div className="flex flex-col items-end mr-2">
                     <div className="font-terminal text-sm text-cyber-green tabular-nums">
