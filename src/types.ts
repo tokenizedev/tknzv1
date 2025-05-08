@@ -99,3 +99,11 @@ export interface NavigationProps {
     navAnimated: boolean;
     controlsAnimated: boolean;
 }
+
+export interface WalletData {
+  id: string;
+  name: string;
+  publicKey: string;
+  isActive: boolean;
+  avatar?: string;
+}
