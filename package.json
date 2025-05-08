@@ -31,6 +31,7 @@
     "qrcode.react": "^3.1.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-jdenticon": "^1.4.0",
     "uuid": "^11.1.0",
     "zustand": "^4.5.2"
   },
