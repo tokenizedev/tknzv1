@@ -3,6 +3,18 @@ import Jdenticon from 'react-jdenticon';
 import { ChevronDown, ChevronUp, Plus, Pen, Trash2, Key, Shield, Check, X, Zap, Download, ArrowLeft } from 'lucide-react';
 import { useStore } from '../store';
 import { WalletInfo } from '../types';
+import { ImportWalletForm } from './ImportWalletForm';
+
+// Add TypeScript declaration for react-jdenticon to fix the error
+declare module 'react-jdenticon' {
+  export interface JdenticonProps {
+    size?: number;
+    value: string;
+    className?: string;
+  }
+  const Jdenticon: React.FC<JdenticonProps>;
+  export default Jdenticon;
+}
 
 interface WalletManagerPageProps {
   onBack: () => void;
@@ -18,11 +30,6 @@ export const WalletManagerPage: React.FC<WalletManagerPageProps> = ({ onBack }) 
   const [newWalletName, setNewWalletName] = useState('');
   const [newAvatar, setNewAvatar] = useState<string | null>(null);
   
-  // Import wallet state
-  const [importName, setImportName] = useState('');
-  const [privateKey, setPrivateKey] = useState('');
-  const [importAvatar, setImportAvatar] = useState<string | null>(null);
-  
   // Editing state
   const [editingWalletId, setEditingWalletId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
@@ -31,7 +38,6 @@ export const WalletManagerPage: React.FC<WalletManagerPageProps> = ({ onBack }) 
   
   // Loading states
   const [isCreating, setIsCreating] = useState(false);
-  const [isImporting, setIsImporting] = useState(false);
   
   // Error and success states
   const [error, setError] = useState('');
@@ -85,36 +91,11 @@ export const WalletManagerPage: React.FC<WalletManagerPageProps> = ({ onBack }) 
       setIsCreating(false);
     }
   };
-  
-  const handleImportWallet = async () => {
-    if (!importName.trim()) {
-      setError('Wallet name cannot be empty');
-      return;
-    }
-    
-    if (!privateKey.trim()) {
-      setError('Private key cannot be empty');
-      return;
-    }
 
-    try {
-      setIsImporting(true);
-      setError('');
-      const imported = await importWallet(importName.trim(), privateKey.trim());
-      if (importAvatar) {
-        await updateWalletAvatar(imported.id, importAvatar);
-      }
-      setImportName('');
-      setPrivateKey('');
-      setImportAvatar(null);
-      setActiveTab('list');
-      triggerGlitch();
-      setSuccessMessage('Wallet imported successfully');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to import wallet');
-    } finally {
-      setIsImporting(false);
-    }
+  const handleImportSuccess = () => {
+    setActiveTab('list');
+    triggerGlitch();
+    setSuccessMessage('Wallet imported successfully');
   };
 
   const handleSwitchWallet = async (walletId: string) => {
@@ -262,114 +243,13 @@ export const WalletManagerPage: React.FC<WalletManagerPageProps> = ({ onBack }) 
         
       case 'import':
         return (
-          <div className="border border-cyber-purple p-4 rounded-sm animate-slide-up">
-            <h3 className="text-cyber-purple font-terminal text-sm mb-3 flex items-center">
-              <Download className="w-4 h-4 mr-1 text-cyber-purple" />
-              IMPORT EXISTING WALLET
-            </h3>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="text-xs text-cyber-purple/80 font-terminal mb-1 block">
-                  Wallet Name
-                </label>
-                <input
-                  type="text"
-                  value={importName}
-                  onChange={(e) => setImportName(e.target.value)}
-                  placeholder="Enter a name for this wallet"
-                  className="w-full bg-cyber-black border border-cyber-purple/50 rounded-sm p-2 text-cyber-purple font-terminal text-sm focus:border-cyber-purple focus:outline-none"
-                  autoFocus
-                />
-              </div>
-              
-              <div>
-                <label className="text-xs text-cyber-purple/80 font-terminal mb-1 block flex justify-between">
-                  <span>Private Key</span>
-                  <span className="text-cyber-purple/50">Hex or Base58 Format</span>
-                </label>
-                <textarea
-                  value={privateKey}
-                  onChange={(e) => setPrivateKey(e.target.value)}
-                  placeholder="Enter private key (remains encrypted locally)"
-                  className="w-full h-28 bg-cyber-black border border-cyber-purple/50 rounded-sm p-2 text-cyber-purple font-mono text-sm focus:border-cyber-purple focus:outline-none"
-                />
-              </div>
-              
-              {/* Avatar selection */}
-              <div>
-                <label className="text-xs text-cyber-purple/80 font-terminal mb-1 block">
-                  Avatar (optional)
-                </label>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        const reader = new FileReader();
-                        reader.onload = () => setImportAvatar(reader.result as string);
-                        reader.readAsDataURL(file);
-                      }
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      // Generate random seed for identicon
-                      const seed = `${Date.now()}-${Math.random()}`;
-                      setImportAvatar(seed);
-                    }}
-                    className="p-1 border border-cyber-purple rounded-sm text-cyber-purple text-xs"
-                  >
-                    Generate Random
-                  </button>
-                </div>
-                {importAvatar && (
-                  importAvatar.startsWith('data:') ? (
-                    <img src={importAvatar} alt="Avatar Preview" className="w-12 h-12 rounded-full mt-2" />
-                  ) : (
-                    <Jdenticon size={48} value={importAvatar} className="mt-2 rounded-full" />
-                  )
-                )}
-              </div>
-              <div className="bg-cyber-purple/10 border border-cyber-purple/30 p-2 rounded-sm">
-                <p className="text-xs text-cyber-purple/90 font-terminal">
-                  Your private key is never sent to any server and will be securely encrypted on this device.
-                </p>
-              </div>
-              
-              <div className="flex space-x-2">
-                <button
-                  onClick={handleImportWallet}
-                  disabled={isImporting}
-                  className="flex-1 p-2 bg-cyber-purple/10 text-cyber-purple border border-cyber-purple rounded-sm hover:bg-cyber-purple/20 transition-colors font-terminal text-xs flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isImporting ? (
-                    <>
-                      <Shield className="w-3 h-3 mr-1 animate-spin" />
-                      IMPORTING...
-                    </>
-                  ) : (
-                    <>
-                      <Download className="w-3 h-3 mr-1" />
-                      IMPORT WALLET
-                    </>
-                  )}
-                </button>
-                <button
-                  onClick={() => {
-                    setActiveTab('list');
-                    triggerGlitch();
-                  }}
-                  className="p-2 border border-cyber-purple/30 text-cyber-purple/70 rounded-sm hover:text-cyber-purple hover:border-cyber-purple/50 transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          </div>
+          <ImportWalletForm 
+            onSuccess={handleImportSuccess}
+            onCancel={() => {
+              setActiveTab('list');
+              triggerGlitch();
+            }}
+          />
         );
         
       default: // 'list'
@@ -404,26 +284,38 @@ export const WalletManagerPage: React.FC<WalletManagerPageProps> = ({ onBack }) 
                             }
                           </div>
                           
-                          <div className="flex-1">
-                            {editingWalletId === wallet.id ? (
-                              <input 
-                                type="text"
-                                value={editName}
-                                onChange={(e) => setEditName(e.target.value)}
-                                className="bg-cyber-black/80 border-b border-cyber-green text-cyber-green font-terminal w-full text-sm px-1 py-0.5 focus:outline-none focus:border-cyber-purple"
-                                autoFocus
-                              />
-                            ) : (
-                              <div className="font-terminal text-sm">
-                                {wallet.name}
-                                {wallet.isActive && (
-                                  <span className="ml-2 text-xs text-cyber-purple">[ACTIVE]</span>
+                          <div className="flex items-center flex-1">
+                            {wallet.avatar && (
+                              <div className="mr-2 flex-shrink-0">
+                                {wallet.avatar.startsWith('data:') ? (
+                                  <img src={wallet.avatar} alt={wallet.name} className="w-6 h-6 rounded-full" />
+                                ) : (
+                                  <Jdenticon size={24} value={wallet.avatar} className="rounded-full" />
                                 )}
                               </div>
                             )}
                             
-                            <div className="text-xs text-cyber-green/60 font-mono truncate">
-                              {wallet.publicKey.substring(0, 12)}...{wallet.publicKey.substring(wallet.publicKey.length - 4)}
+                            <div className="flex-1">
+                              {editingWalletId === wallet.id ? (
+                                <input 
+                                  type="text"
+                                  value={editName}
+                                  onChange={(e) => setEditName(e.target.value)}
+                                  className="bg-cyber-black/80 border-b border-cyber-green text-cyber-green font-terminal w-full text-sm px-1 py-0.5 focus:outline-none focus:border-cyber-purple"
+                                  autoFocus
+                                />
+                              ) : (
+                                <div className="font-terminal text-sm">
+                                  {wallet.name}
+                                  {wallet.isActive && (
+                                    <span className="ml-2 text-xs text-cyber-purple">[ACTIVE]</span>
+                                  )}
+                                </div>
+                              )}
+                              
+                              <div className="text-xs text-cyber-green/60 font-mono truncate">
+                                {wallet.publicKey.substring(0, 12)}...{wallet.publicKey.substring(wallet.publicKey.length - 4)}
+                              </div>
                             </div>
                           </div>
                         </div>
