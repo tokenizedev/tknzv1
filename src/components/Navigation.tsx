@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Terminal, RefreshCw, Sidebar, X, Copy, CheckCircle } from 'lucide-react';
+import { Terminal, RefreshCw, PanelRight, PanelLeft, Copy, CheckCircle } from 'lucide-react';
 import { WalletIndicator } from './WalletIndicator';
 import { WalletDrawer } from './WalletDrawer';
 import { useStore } from '../store';
@@ -109,17 +109,17 @@ export const Navigation: React.FC<NavigationProps> = ({
                       <button
                         onClick={onOpenSidebar}
                         className="border-r border-cyber-green/20 h-full w-14 flex items-center justify-center hover:bg-cyber-green/10 transition-colors"
-                        title="Open Sidebar"
+                        title="Open Sidebar Drawer"
                       >
-                        <Sidebar className="w-4 h-4 text-cyber-green/80 hover:text-cyber-green" />
+                        <PanelRight className="w-4 h-4 text-cyber-green/80 hover:text-cyber-green" />
                       </button>
                     ) : (
                       <button
                         onClick={onCloseSidebar}
                         className="border-r border-cyber-green/20 h-full w-14 flex items-center justify-center hover:bg-cyber-green/10 transition-colors"
-                        title="Close Sidebar"
+                        title="Close Sidebar Drawer"
                       >
-                        <X className="w-4 h-4 text-cyber-green/80 hover:text-cyber-green" />
+                        <PanelLeft className="w-4 h-4 text-cyber-green/80 hover:text-cyber-green" />
                       </button>
                     )}
                   </div>
