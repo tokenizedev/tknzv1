@@ -78,6 +78,33 @@ export const WalletManagerPage: React.FC<WalletManagerPageProps> = ({ onBack }) 
       return () => clearTimeout(timer);
     }
   }, [successMessage]);
+  // Avatar update handlers
+  const handleAvatarFileChange = async (e: ChangeEvent<HTMLInputElement>, walletId: string) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const result = reader.result as string;
+        try {
+          await updateWalletAvatar(walletId, result);
+          setSuccessMessage('Avatar updated successfully');
+        } catch (err) {
+          setError(err instanceof Error ? err.message : 'Failed to update avatar');
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleGenerateRandomAvatar = async (walletId: string) => {
+    const randomSeed = Math.random().toString(36).substring(2, 12);
+    try {
+      await updateWalletAvatar(walletId, randomSeed);
+      setSuccessMessage('Avatar updated successfully');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update avatar');
+    }
+  };
 
   const handleCreateWallet = async () => {
     if (!newWalletName.trim()) {
@@ -336,6 +363,44 @@ export const WalletManagerPage: React.FC<WalletManagerPageProps> = ({ onBack }) 
                             </div>
                           )}
                           
+                          {/* Avatar update */}
+                          <div className="space-y-2">
+                            <label className="text-xs text-cyber-green/70 font-terminal">Avatar</label>
+                            <div className="flex items-center space-x-3">
+                              <div className="flex-shrink-0">
+                                {wallet.avatar ? (
+                                  wallet.avatar.startsWith('data:') ? (
+                                    <img src={wallet.avatar} alt={wallet.name} className="w-12 h-12 rounded-full" />
+                                  ) : (
+                                    <Jdenticon size={48} value={wallet.avatar} className="rounded-full" />
+                                  )
+                                ) : (
+                                  <Jdenticon size={48} value={wallet.publicKey} className="rounded-full" />
+                                )}
+                              </div>
+                              <input
+                                id={`avatar-input-${wallet.id}`}
+                                type="file"
+                                accept="image/*"
+                                className="sr-only"
+                                onChange={(e) => handleAvatarFileChange(e, wallet.id)}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => document.getElementById(`avatar-input-${wallet.id}`)?.click()}
+                                className="p-2 text-cyber-green bg-cyber-black/80 border border-cyber-green/40 rounded-sm hover:bg-cyber-green/10 transition-colors font-terminal text-xs"
+                              >
+                                Upload
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleGenerateRandomAvatar(wallet.id)}
+                                className="p-2 text-cyber-green bg-cyber-black/80 border border-cyber-green/40 rounded-sm hover:bg-cyber-green/10 transition-colors font-terminal text-xs"
+                              >
+                                Random
+                              </button>
+                            </div>
+                          </div>
                           {/* Public key */}
                           <div className="font-mono text-xs bg-cyber-dark/80 p-2 rounded-sm border border-cyber-green/20 text-cyber-green/90 break-all">
                             {wallet.publicKey}
