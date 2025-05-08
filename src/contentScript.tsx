@@ -302,14 +302,15 @@ const initialize = () => {
   
   console.log('Content script initializing...');
   // Inject TKNZ Wallet script into page context for Wallet Standard registration
-  try {
-    const walletScript = document.createElement('script');
-    walletScript.src = chrome.runtime.getURL('injectedWallet.ts');
-    walletScript.onload = () => { walletScript.remove(); };
-    (document.head || document.documentElement).appendChild(walletScript);
-  } catch (e) {
-    console.error('Failed to inject TKNZ Wallet script:', e);
-  }
+    try {
+      const walletScript = document.createElement('script');
+      // Inject the compiled wallet script into the page context
+      walletScript.src = chrome.runtime.getURL('src/injectedWallet.ts');
+      walletScript.onload = () => { walletScript.remove(); };
+      (document.head || document.documentElement).appendChild(walletScript);
+    } catch (e) {
+      console.error('Failed to inject TKNZ Wallet script:', e);
+    }
   
   // Set up runtime message listener
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
