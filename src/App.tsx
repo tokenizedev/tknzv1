@@ -43,6 +43,37 @@ function App({ isSidebar = false }: AppProps = {}) {
     checkVersion
   } = useStore();
   
+  // Handle pending wallet connect requests (from injected page)
+  interface PendingConnect { tabId: number; requestId: string; }
+  const [pendingConnect, setPendingConnect] = useState<PendingConnect | null>(null);
+  // On mount, check for pending connect in storage
+  useEffect(() => {
+    if (!isSidebar && chrome?.storage?.local) {
+      chrome.storage.local.get(['pendingConnect'], (result) => {
+        if (result.pendingConnect) {
+          setPendingConnect(result.pendingConnect as PendingConnect);
+        }
+      });
+    }
+  }, [isSidebar]);
+  // When wallet is unlocked and active, fulfill the connect request
+  useEffect(() => {
+    if (pendingConnect && activeWallet?.publicKey) {
+      const { tabId, requestId } = pendingConnect;
+      chrome.runtime.sendMessage({
+        type: 'FULFILL_CONNECT',
+        tabId,
+        id: requestId,
+        publicKey: activeWallet.publicKey
+      }, () => {
+        // Clean up and close popup
+        chrome.storage.local.remove(['pendingConnect']);
+        setPendingConnect(null);
+        window.close();
+      });
+    }
+  }, [pendingConnect, activeWallet]);
+  
   const [loading, setLoading] = useState(true);
   // Show initial password & passkey setup or unlock guard
   const [showPasswordSetup, setShowPasswordSetup] = useState(false);
