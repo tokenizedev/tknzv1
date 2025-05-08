@@ -47,6 +47,8 @@ export const WalletManagerPage: React.FC<WalletManagerPageProps> = ({ onBack }) 
   const [isCreating, setIsCreating] = useState(false);
   // Captured mnemonic for new wallet backup
   const [createdMnemonic, setCreatedMnemonic] = useState<string | null>(null);
+  // Mnemonic copy state
+  const [mnemonicCopied, setMnemonicCopied] = useState(false);
   
   // Error and success states
   const [error, setError] = useState('');
@@ -384,6 +386,14 @@ export const WalletManagerPage: React.FC<WalletManagerPageProps> = ({ onBack }) 
     }
   };
 
+  // Handle copy mnemonic
+  const handleCopyMnemonic = () => {
+    if (createdMnemonic) {
+      navigator.clipboard.writeText(createdMnemonic);
+      setMnemonicCopied(true);
+    }
+  };
+
   return (
     <div className={`py-5 px-4 relative ${glitching ? 'animate-glitch' : ''}`}>
       {/* Backup mnemonic modal */}
@@ -391,27 +401,45 @@ export const WalletManagerPage: React.FC<WalletManagerPageProps> = ({ onBack }) 
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
           <div className="bg-cyber-black p-6 rounded-md border border-cyber-green max-w-md w-full space-y-4">
             <h3 className="text-cyber-green font-terminal text-lg">Backup Your Seed Phrase</h3>
-            <p className="text-cyber-green text-sm">Write down or copy these words in order and keep them safe. They’re the only way to recover your wallet.</p>
+            <p className="text-cyber-green text-sm">Write down or copy these words in order and keep them safe. They're the only way to recover your wallet.</p>
             <div className="bg-cyber-black/80 border border-cyber-green/50 p-4 rounded font-mono text-cyber-green text-sm break-words">
               {createdMnemonic}
             </div>
             <div className="flex justify-end space-x-2">
-              <button
-                onClick={() => navigator.clipboard.writeText(createdMnemonic)}
-                className="px-3 py-1 border border-cyber-green text-cyber-green rounded-sm text-xs"
-              >
-                Copy
-              </button>
+              {mnemonicCopied ? (
+                <div className="flex items-center space-x-2 px-3 py-1 bg-cyber-green/20 border border-cyber-green rounded-sm">
+                  <div className="flex items-center">
+                    <input 
+                      type="checkbox"
+                      id="confirm-copy"
+                      checked={true}
+                      readOnly
+                      className="form-checkbox text-cyber-green bg-cyber-black h-3 w-3"
+                    />
+                    <label htmlFor="confirm-copy" className="text-cyber-green text-xs ml-1.5">
+                      Copied to clipboard
+                    </label>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={handleCopyMnemonic}
+                  className="px-3 py-1 border border-cyber-green text-cyber-green rounded-sm text-xs"
+                >
+                  Copy
+                </button>
+              )}
               <button
                 onClick={() => {
                   setCreatedMnemonic(null);
+                  setMnemonicCopied(false);
                   setActiveTab('list');
                   triggerGlitch();
                   setSuccessMessage('Wallet created successfully');
                 }}
                 className="px-3 py-1 bg-cyber-green text-black rounded-sm text-xs"
               >
-                I’ve copied it
+                I've copied it
               </button>
             </div>
           </div>
