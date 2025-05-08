@@ -61,7 +61,11 @@ export interface WalletState {
     updateAvailable: string | null;
     migrationStatus: 'idle' | 'running' | 'complete' | 'error';
     initializeWallet: () => Promise<void>;
-    createNewWallet: (name: string) => Promise<WalletInfo>;
+    /**
+     * Create a new wallet using a generated mnemonic seed phrase.
+     * Returns the wallet info along with the mnemonic for user backup.
+     */
+    createNewWallet: (name: string) => Promise<WalletInfo & { mnemonic: string }>;
     importWallet: (name: string, privateKeyString: string) => Promise<WalletInfo>;
     switchWallet: (walletId: string) => Promise<void>;
     removeWallet: (walletId: string) => Promise<void>;
