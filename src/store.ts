@@ -239,36 +239,61 @@ export const useStore = create<WalletState>((set, get) => ({
     try {
       const { wallets } = get();
       
-      // Validate and clean up the private key string
-      // It might be in different formats like hex or base58
-      let privateKeyBytes: Uint8Array;
-      
+      // Parse input: JSON, seed phrase (mnemonic), or raw private key (hex/base58)
+      let keypair: Keypair | undefined;
+      // 1. Try JSON input (array of bytes or object with secretKey/data)
       try {
-        // Try to parse as hex string (remove spaces, 0x prefix, etc.)
-        const cleanHex = privateKeyString.replace(/[\s,]+/g, '').replace(/^0x/i, '');
-        
-        // Check if it's a valid hex string of the correct length
-        if (/^[0-9a-f]{128}$/i.test(cleanHex)) {
-          // Convert hex to byte array
+        const parsed = JSON.parse(privateKeyString);
+        if (Array.isArray(parsed)) {
+          if (parsed.length === 64) {
+            keypair = Keypair.fromSecretKey(new Uint8Array(parsed));
+          } else if (parsed.length === 32) {
+            keypair = Keypair.fromSeed(new Uint8Array(parsed));
+          }
+        } else if (parsed && typeof parsed === 'object') {
+          const arr = (parsed as any).secretKey ?? (parsed as any).data;
+          if (Array.isArray(arr) && arr.length === 64) {
+            keypair = Keypair.fromSecretKey(new Uint8Array(arr));
+          }
+        }
+      } catch {
+        // Not JSON or invalid JSON
+      }
+      // 2. Try seed phrase (mnemonic) if not JSON keypair
+      if (!keypair) {
+        const words = privateKeyString.trim().split(/\s+/);
+        if (words.length >= 12 && words.length % 3 === 0) {
+          try {
+            const bip39 = await import('bip39');
+            if (bip39.validateMnemonic(privateKeyString.trim())) {
+              const seedBuffer = await bip39.mnemonicToSeed(privateKeyString.trim());
+              const seed = new Uint8Array(seedBuffer).slice(0, 32);
+              keypair = Keypair.fromSeed(seed);
+            } else {
+              throw new Error('Invalid seed phrase');
+            }
+          } catch {
+            throw new Error('Invalid seed phrase. Please provide a valid mnemonic.');
+          }
+        }
+      }
+      // 3. Fallback: raw private key (hex or base58)
+      if (!keypair) {
+        let privateKeyBytes: Uint8Array;
+        const cleanHex = privateKeyString.replace(/\s+/g, '').replace(/^0x/i, '');
+        if (/^[0-9a-fA-F]{128}$/.test(cleanHex)) {
           privateKeyBytes = new Uint8Array(
-            cleanHex.match(/.{1,2}/g)?.map(byte => parseInt(byte, 16)) || []
+            cleanHex.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16))
           );
         } else {
-          // Try to decode as base58 (common Solana format)
           const bs58 = await import('bs58');
           privateKeyBytes = bs58.decode(privateKeyString.trim());
         }
-        
-        // Verify we have a valid length for Solana keypair (64 bytes)
         if (privateKeyBytes.length !== 64) {
-          throw new Error('Invalid private key length');
+          throw new Error('Invalid private key length. Expected 64-byte secret key.');
         }
-      } catch (error) {
-        throw new Error('Invalid private key format. Please provide a valid Solana private key.');
+        keypair = Keypair.fromSecretKey(privateKeyBytes);
       }
-      
-      // Create keypair from private key
-      const keypair = Keypair.fromSecretKey(privateKeyBytes);
       const walletId = uuidv4();
       
       // Check if this wallet already exists
