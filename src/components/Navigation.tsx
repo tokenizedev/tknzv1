@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Terminal, RefreshCw, PanelRight, PanelLeft, Copy, CheckCircle } from 'lucide-react';
+import { Terminal, RefreshCw, PanelRight, PanelLeft } from 'lucide-react';
 import { WalletIndicator } from './WalletIndicator';
 import { WalletDrawer } from './WalletDrawer';
 import { useStore } from '../store';
@@ -44,7 +44,6 @@ export const Navigation: React.FC<NavigationProps> = ({
 }) => {
   const { wallets } = useStore();
   const [copiedWallet, setCopiedWallet] = useState<string | null>(null);
-  const version = import.meta.env.VITE_APP_VERSION || '0.0.0';
 
   // Handle wallet selection
   const handleSelectWallet = (walletId: string) => {
@@ -64,10 +63,6 @@ export const Navigation: React.FC<NavigationProps> = ({
       <header className="fixed top-0 left-0 right-0 z-20 nav-placeholder nav-animated nav-glow">
         <div className={`border-b border-cyber-green/20 bg-cyber-black/90 backdrop-blur-sm ${navAnimated ? 'nav-border-animated border-highlight' : ''}`}>
           <div className="flex items-center h-14">
-            {/* Version number display */}
-            <div className="absolute top-0 right-0 text-[10px] text-cyber-green/60 px-1.5 py-0.5 font-terminal">
-              v{version}
-            </div>
             
             {activeWallet && (
               <>
