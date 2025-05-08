@@ -3,6 +3,7 @@
  * This script runs in the page context to register the TKNZ wallet
  * with the Wallet Standard, enabling dapps to detect and select it.
  */
+import { PublicKey } from '@solana/web3.js';
 (function() {
   // Supported Solana chains
   const SOLANA_CHAINS = [
@@ -25,25 +26,39 @@
       this.chains = SOLANA_CHAINS;
       // Minimal features: connect, disconnect, events
       this.features = {
-        // Standard Connect feature
+        // Standard Connect feature: delegate to Phantom provider
         'standard:connect': {
           version: '1.0.0',
           connect: async (_input) => {
-            throw new Error('TKNZ Wallet: connect not implemented');
+            if (!window.solana || !window.solana.connect) {
+              throw new Error('Phantom provider not found');
+            }
+            // Request connection via Phantom
+            const pk = await window.solana.connect();
+            // Return standard wallet account list
+            return {
+              accounts: [
+                {
+                  chain: SOLANA_CHAINS[0],
+                  publicKey: pk
+                }
+              ]
+            };
           }
         },
-        // Standard Disconnect feature
+        // Standard Disconnect feature: delegate to Phantom provider
         'standard:disconnect': {
           version: '1.0.0',
           disconnect: async () => {
-            throw new Error('TKNZ Wallet: disconnect not implemented');
+            if (window.solana && window.solana.disconnect) {
+              await window.solana.disconnect();
+            }
           }
         },
-        // Standard Events feature
+        // Standard Events feature: no-op fallback
         'standard:events': {
           version: '1.0.0',
           on: (_event, _listener) => {
-            // No-op listener, return no-op off
             return () => {};
           }
         }
@@ -156,7 +171,15 @@
       return;
     }
     if (cb.method === 'connect') {
-      provider.publicKey = { toString: () => payload.publicKey };
+      // Construct a proper PublicKey instance for dApps
+      try {
+        const pk = new PublicKey(payload.publicKey);
+        provider.publicKey = pk;
+      } catch (err) {
+        console.error('Failed to create PublicKey:', err);
+        // Fallback to string wrapper if PublicKey construction fails
+        provider.publicKey = { toString: () => payload.publicKey };
+      }
       provider.isConnected = true;
       provider._listeners.connect.forEach(l => l(provider.publicKey));
       cb.resolve(provider.publicKey);
