@@ -27,13 +27,7 @@
     },
     "default_title": "TKNZ"
   },
-  "content_scripts": [
-    {
-      "matches": ["<all_urls>"],
-      "js": ["src/contentScript.tsx"],
-      "run_at": "document_end"
-    }
-  ],
+  "content_scripts": [],
   "background": {
     "service_worker": "src/background.ts",
     "type": "module"
@@ -49,7 +43,7 @@
       "resources": [
         "assets/*",
         "src/contentScript.tsx",
-        "src/injectedWallet.ts",
+        "injectedWallet.js",
         "*.js",
         "*.woff2"
       ],
