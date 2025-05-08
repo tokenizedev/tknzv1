@@ -24,23 +24,25 @@ export const WalletIndicator: React.FC<WalletIndicatorProps> = ({
       aria-expanded={isDrawerOpen}
       aria-controls="wallet-drawer"
     >
-      {activeWallet ? (
-        activeWallet.avatar ? (
-          activeWallet.avatar.startsWith('data:') ? (
-            <img
-              src={activeWallet.avatar}
-              alt={`${activeWallet.name} avatar`}
-              className="w-4 h-4 rounded-full mr-2"
-            />
+      <div className="relative flex items-center justify-center">
+        {activeWallet ? (
+          activeWallet.avatar ? (
+            activeWallet.avatar.startsWith('data:') ? (
+              <img
+                src={activeWallet.avatar}
+                alt={`${activeWallet.name} avatar`}
+                className="w-8 h-8 rounded-full mr-2 border-2 border-cyber-green/30 shadow-[0_0_8px_rgba(0,255,0,0.3)] z-10"
+              />
+            ) : (
+              <Jdenticon size={32} value={activeWallet.avatar} className="rounded-full mr-2 border-2 border-cyber-green/30 shadow-[0_0_8px_rgba(0,255,0,0.3)] z-10" />
+            )
           ) : (
-            <Jdenticon size={16} value={activeWallet.avatar} className="rounded-full mr-2" />
+            <Jdenticon size={32} value={activeWallet.id} className="rounded-full mr-2 border-2 border-cyber-green/30 shadow-[0_0_8px_rgba(0,255,0,0.3)] z-10" />
           )
         ) : (
-          <Jdenticon size={16} value={activeWallet.id} className="rounded-full mr-2" />
-        )
-      ) : (
-        <Wallet className="w-4 h-4 mr-2" />
-      )}
+          <Wallet className="w-8 h-8 mr-2 p-1 rounded-full border-2 border-cyber-green/30 shadow-[0_0_8px_rgba(0,255,0,0.3)] z-10" />
+        )}
+      </div>
       <ChevronDown 
         className={`w-3 h-3 ml-1 transition-transform duration-300 ease-out ${
           isDrawerOpen ? 'transform rotate-180' : ''
