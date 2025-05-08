@@ -1,6 +1,6 @@
 import React from 'react';
 import Jdenticon from 'react-jdenticon';
-import { Wallet, ChevronDown } from 'lucide-react';
+import { Wallet, ChevronDown, Users } from 'lucide-react';
 import { useStore } from '../store';
 
 // Add declaration for react-jdenticon to fix type error
@@ -43,10 +43,8 @@ export const WalletIndicator: React.FC<WalletIndicatorProps> = ({
           <Wallet className="w-8 h-8 mr-2 p-1 rounded-full border-2 border-cyber-green/30 shadow-[0_0_8px_rgba(0,255,0,0.3)] z-10" />
         )}
       </div>
-      <ChevronDown 
-        className={`w-3 h-3 ml-1 transition-transform duration-300 ease-out ${
-          isDrawerOpen ? 'transform rotate-180' : ''
-        }`} 
+      <Users
+        className={`w-4 h-4 ml-1 transition-opacity duration-300 ease-out ${isDrawerOpen ? 'text-cyber-green' : 'opacity-70'}`}
       />
     </button>
   );
