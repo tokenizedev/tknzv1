@@ -49,7 +49,8 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      'html2canvas': resolve(__dirname, 'node_modules/html2canvas/dist/html2canvas.esm.js')
+      'html2canvas': resolve(__dirname, 'node_modules/html2canvas/dist/html2canvas.esm.js'),
+      buffer: 'buffer',
     }
   },
   test: {
