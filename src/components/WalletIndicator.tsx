@@ -38,15 +38,19 @@ export const WalletIndicator: React.FC<WalletIndicatorProps> = ({ onManageWallet
           onClick={() => setShowDropdown(!showDropdown)}
           className="flex items-center h-full px-3 hover:bg-cyber-green/10 text-cyber-green/80 hover:text-cyber-green border-l border-cyber-green/20"
         >
-          {activeWallet?.avatar ? (
-            activeWallet.avatar.startsWith('data:') ? (
-              <img
-                src={activeWallet.avatar}
-                alt={`${activeWallet.name} avatar`}
-                className="w-4 h-4 rounded-full mr-2"
-              />
+          {activeWallet ? (
+            activeWallet.avatar ? (
+              activeWallet.avatar.startsWith('data:') ? (
+                <img
+                  src={activeWallet.avatar}
+                  alt={`${activeWallet.name} avatar`}
+                  className="w-4 h-4 rounded-full mr-2"
+                />
+              ) : (
+                <Jdenticon size={16} value={activeWallet.avatar} className="rounded-full mr-2" />
+              )
             ) : (
-              <Jdenticon size={16} value={activeWallet.avatar} className="rounded-full mr-2" />
+              <Jdenticon size={16} value={activeWallet.id} className="rounded-full mr-2" />
             )
           ) : (
             <Wallet className="w-4 h-4 mr-2" />
