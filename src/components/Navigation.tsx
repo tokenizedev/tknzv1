@@ -49,6 +49,21 @@ export const Navigation: React.FC<NavigationProps> = ({
         <div className="flex items-center h-14">
           {activeWallet && (
             <>
+              {/* Wallet controls with sequential animation */}
+              <WalletIndicator onManageWallets={onManageWallets} />
+                
+              <button 
+                className={`h-full w-14 transition-colors flex items-center justify-center ${
+                  showWallet 
+                    ? 'bg-cyber-green/20 text-cyber-green' 
+                    : 'hover:bg-cyber-green/10 text-cyber-green/80 hover:text-cyber-green'
+                }`}
+                onClick={onToggleWallet}
+                title="View Wallet"
+              >
+                <Terminal className="w-4 h-4" />
+              </button>
+
               {/* SOL balance indicator with sequential animation */}
               <div className={`flex h-full transition-all duration-500 ${controlsAnimated ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-10'}`}>
                 <div className="border-l border-r border-cyber-green/20 px-4 flex items-center">
@@ -65,22 +80,7 @@ export const Navigation: React.FC<NavigationProps> = ({
                     <RefreshCw className={`w-3.5 h-3.5 text-cyber-green/80 hover:text-cyber-green ${isRefreshing ? 'animate-cyber-spin' : ''}`} />
                   </button>
                 </div>
-                
-                {/* Wallet controls with sequential animation */}
-                <WalletIndicator onManageWallets={onManageWallets} />
-                
-                <button 
-                  className={`h-full w-14 transition-colors flex items-center justify-center ${
-                    showWallet 
-                      ? 'bg-cyber-green/20 text-cyber-green' 
-                      : 'hover:bg-cyber-green/10 text-cyber-green/80 hover:text-cyber-green'
-                  }`}
-                  onClick={onToggleWallet}
-                  title="View Wallet"
-                >
-                  <Terminal className="w-4 h-4" />
-                </button>
-                
+              
                 <button 
                   onClick={onToggleWalletDrawer}
                   className="border-r border-cyber-green/20 w-14 h-full flex items-center justify-center hover:bg-cyber-green/10 transition-colors relative"
