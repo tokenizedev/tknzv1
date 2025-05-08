@@ -311,7 +311,7 @@ const initialize = () => {
     console.error('Failed to inject TKNZ Wallet script:', e);
   }
   
-  // Set up message listener
+  // Set up runtime message listener
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.type === 'START_SELECT_MODE') {
       startSelectionMode(request.isSidebar);
@@ -325,6 +325,18 @@ const initialize = () => {
       extractContent().then(sendResponse);
     }
     return true;
+  });
+
+  // Listen for Phantom provider requests from page context and forward to background
+  window.addEventListener('message', (event) => {
+    if (event.source !== window || !event.data || event.data.type !== 'TKNZ_PHANTOM_REQUEST') return;
+    const { id, method, serializedTransaction, params } = event.data as any;
+    chrome.runtime.sendMessage({ type: 'PHANTOM_REQUEST', id, method, serializedTransaction, params }, (response) => {
+      window.postMessage(
+        { type: 'TKNZ_PHANTOM_RESPONSE', id, error: response?.error, payload: response?.payload },
+        '*'
+      );
+    });
   });
 
   // Mark as initialized
