@@ -128,7 +128,8 @@ export const useStore = create<WalletState>((set, get) => ({
             id: w.id,
             name: w.name,
             publicKey: w.publicKey,
-            keypairSecretKey: Array.from(w.keypair.secretKey) // Store as array for JSON serialization
+            keypairSecretKey: Array.from(w.keypair.secretKey), // Store as array for JSON serialization
+            avatar: (w as any).avatar
           })),
           activeWalletId: activeWallet.id
         });
@@ -215,7 +216,8 @@ export const useStore = create<WalletState>((set, get) => ({
           id: w.id,
           name: w.name,
           publicKey: w.publicKey,
-          keypairSecretKey: Array.from(w.keypair.secretKey)
+          keypairSecretKey: Array.from(w.keypair.secretKey),
+          avatar: w.avatar
         }))
       });
       
@@ -322,7 +324,8 @@ export const useStore = create<WalletState>((set, get) => ({
           id: w.id,
           name: w.name,
           publicKey: w.publicKey,
-          keypairSecretKey: Array.from(w.keypair.secretKey)
+          keypairSecretKey: Array.from(w.keypair.secretKey),
+          avatar: w.avatar
         }))
       });
       
@@ -366,7 +369,8 @@ export const useStore = create<WalletState>((set, get) => ({
           id: w.id,
           name: w.name,
           publicKey: w.publicKey,
-          keypairSecretKey: Array.from(w.keypair.secretKey)
+          keypairSecretKey: Array.from(w.keypair.secretKey),
+          avatar: w.avatar
         }))
       });
       
@@ -414,7 +418,8 @@ export const useStore = create<WalletState>((set, get) => ({
           id: w.id,
           name: w.name,
           publicKey: w.publicKey,
-          keypairSecretKey: Array.from(w.keypair.secretKey)
+          keypairSecretKey: Array.from(w.keypair.secretKey),
+          avatar: w.avatar
         }))
       });
       
@@ -448,7 +453,8 @@ export const useStore = create<WalletState>((set, get) => ({
           id: w.id,
           name: w.name,
           publicKey: w.publicKey,
-          keypairSecretKey: Array.from(w.keypair.secretKey)
+          keypairSecretKey: Array.from(w.keypair.secretKey),
+          avatar: w.avatar
         }))
       });
       
@@ -464,6 +470,31 @@ export const useStore = create<WalletState>((set, get) => ({
       
     } catch (error) {
       console.error('Failed to rename wallet:', error);
+      throw error;
+    }
+  },
+  /**
+   * Update the avatar for a wallet
+   */
+  updateWalletAvatar: async (walletId: string, avatar: string) => {
+    try {
+      const { wallets } = get();
+      const updatedWallets = wallets.map(w =>
+        w.id === walletId ? { ...w, avatar } : w
+      );
+      // Persist updated wallets with avatar
+      await storage.set({
+        wallets: updatedWallets.map(w => ({
+          id: w.id,
+          name: w.name,
+          publicKey: w.publicKey,
+          keypairSecretKey: Array.from(w.keypair.secretKey),
+          avatar: w.avatar
+        }))
+      });
+      set({ wallets: updatedWallets });
+    } catch (error) {
+      console.error('Failed to update wallet avatar:', error);
       throw error;
     }
   },
