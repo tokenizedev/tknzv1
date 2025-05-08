@@ -2,3 +2,5 @@ dist/
 node_modules/
 extension.pem
 release/
+ .yarn-cache/
+ .yarn-global/

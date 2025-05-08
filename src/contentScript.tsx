@@ -301,8 +301,20 @@ const initialize = () => {
   if (isInitialized) return;
   
   console.log('Content script initializing...');
+  // Inject TKNZ Wallet script into page context for Wallet Standard registration
+    try {
+      const walletScript = document.createElement('script');
+      // Load as an ES module so imports in injectedWallet.ts work
+      walletScript.type = 'module';
+      // Inject the compiled wallet bundle (rooted at dist/injectedWallet.js)
+      walletScript.src = chrome.runtime.getURL('injectedWallet.js');
+      walletScript.onload = () => { walletScript.remove(); };
+      (document.head || document.documentElement).appendChild(walletScript);
+    } catch (e) {
+      console.error('Failed to inject TKNZ Wallet script:', e);
+    }
   
-  // Set up message listener
+  // Set up runtime message listener
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.type === 'START_SELECT_MODE') {
       startSelectionMode(request.isSidebar);
@@ -316,6 +328,18 @@ const initialize = () => {
       extractContent().then(sendResponse);
     }
     return true;
+  });
+
+  // Listen for Phantom provider requests from page context and forward to background
+  window.addEventListener('message', (event) => {
+    if (event.source !== window || !event.data || event.data.type !== 'TKNZ_PHANTOM_REQUEST') return;
+    const { id, method, serializedTransaction, params } = event.data as any;
+    chrome.runtime.sendMessage({ type: 'PHANTOM_REQUEST', id, method, serializedTransaction, params }, (response) => {
+      window.postMessage(
+        { type: 'TKNZ_PHANTOM_RESPONSE', id, error: response?.error, payload: response?.payload },
+        '*'
+      );
+    });
   });
 
   // Mark as initialized

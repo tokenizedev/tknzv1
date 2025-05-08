@@ -105,6 +105,112 @@
     }
   }
   
+  /* Glitch entrance effect */
+  @keyframes glitch-in {
+    0% {
+      clip-path: inset(0 100% 0 0);
+      transform: translateX(-10px);
+      opacity: 0;
+    }
+    30% {
+      clip-path: inset(0 70% 0 0);
+      transform: translateX(-5px);
+    }
+    50% {
+      clip-path: inset(0 50% 0 0);
+      transform: translateX(-3px);
+    }
+    70% {
+      clip-path: inset(0 30% 0 0);
+      transform: translateX(-1px);
+    }
+    100% {
+      clip-path: inset(0 0 0 0);
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+  
+  /* Slide down animation */
+  @keyframes slide-down {
+    from {
+      opacity: 0;
+      transform: translateY(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  /* Slide up animation */
+  @keyframes slide-up {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  /* Float animation for text */
+  @keyframes float {
+    0% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-5px);
+    }
+    100% {
+      transform: translateY(0px);
+    }
+  }
+  
+  /* Glitch effect animation */
+  @keyframes glitch {
+    0% {
+      transform: translate(0);
+      clip-path: inset(0 0 0 0);
+    }
+    2% {
+      transform: translate(-2px, 2px);
+      clip-path: inset(15% 0 15% 0);
+    }
+    4% {
+      transform: translate(2px, -2px);
+      clip-path: inset(0 10% 0 10%);
+    }
+    6% {
+      transform: translate(0);
+      clip-path: inset(0 0 0 0);
+    }
+    100% {
+      transform: translate(0);
+      clip-path: inset(0 0 0 0);
+    }
+  }
+  
+  /* Screen flicker for CRT effect */
+  @keyframes flicker {
+    0% {
+      opacity: 0.2;
+    }
+    25% {
+      opacity: 0.4;
+    }
+    50% {
+      opacity: 0.1;
+    }
+    75% {
+      opacity: 0.3;
+    }
+    100% {
+      opacity: 0.2;
+    }
+  }
+  
   /* Animated nav bar class */
   .nav-animated {
     animation: nav-slide-down 0.3s ease-out forwards;
@@ -116,7 +222,7 @@
     animation: drawer-slide-down 0.5s 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
   
-  /* Nav border glow effect */
+  /* Nav glow effect */
   .nav-glow {
     animation: nav-glow-pulse 3s ease-in-out infinite;
   }
@@ -138,6 +244,41 @@
     height: 2px;
     background: linear-gradient(90deg, rgba(0, 255, 65, 0.1), rgba(0, 255, 65, 0.8), rgba(0, 255, 65, 0.1));
     animation: border-slice 2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  
+  /* Glitch entrance animation */
+  .animate-glitch-in {
+    animation: glitch-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  
+  /* Slide down animation */
+  .animate-slide-down {
+    animation: slide-down 0.3s ease-out forwards;
+  }
+  
+  /* Slide up animation */
+  .animate-slide-up {
+    animation: slide-up 0.3s ease-out forwards;
+  }
+  
+  /* Glitch effect for elements */
+  .animate-glitch {
+    animation: glitch 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+  }
+  
+  /* Fast pulse animation */
+  .animate-pulse-fast {
+    animation: pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  
+  /* Custom cyber spin animation */
+  .animate-cyber-spin {
+    animation: spin 1s linear infinite, pulse 2s infinite;
+  }
+  
+  /* Terminal cursor blink */
+  .animate-terminal-cursor {
+    animation: blink 1s step-end infinite;
   }
   
   h1, h2, h3, h4, h5, h6 {

@@ -27,7 +27,9 @@ export default defineConfig({
         main: resolve(__dirname, 'index.html'),
         sidebar: resolve(__dirname, 'sidebar.html'),
         contentScript: resolve(__dirname, 'src/contentScript.tsx'),
-        background: resolve(__dirname, 'src/background.ts')
+        background: resolve(__dirname, 'src/background.ts'),
+        // Build the injected wallet script as a standalone entry for compilation
+        injectedWallet: resolve(__dirname, 'src/injectedWallet.ts')
       },
       external: [],
     },
@@ -49,7 +51,8 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      'html2canvas': resolve(__dirname, 'node_modules/html2canvas/dist/html2canvas.esm.js')
+      'html2canvas': resolve(__dirname, 'node_modules/html2canvas/dist/html2canvas.esm.js'),
+      buffer: 'buffer',
     }
   },
   test: {
