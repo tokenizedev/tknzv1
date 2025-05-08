@@ -97,3 +97,76 @@
     console.error('TKNZ Wallet registration failed', e);
   }
 })();
+// Phantom provider injection for dApps expecting window.solana
+;(function() {
+  // Avoid double injection
+  if (window.solana && (window.solana as any).isPhantom) {
+    return;
+  }
+  const callbacks: Record<string, any> = {};
+  const provider: any = {
+    isPhantom: true,
+    isConnected: false,
+    publicKey: null,
+    _listeners: { connect: [] as Function[], disconnect: [] as Function[] },
+    connect(): Promise<any> {
+      const id = Math.random().toString(36).substring(2);
+      window.postMessage({ type: 'TKNZ_PHANTOM_REQUEST', id, method: 'connect' }, '*');
+      return new Promise((resolve, reject) => {
+        callbacks[id] = { resolve, reject, method: 'connect' };
+      });
+    },
+    disconnect(): Promise<void> {
+      // No-op for now
+      return Promise.resolve();
+    },
+    signTransaction(tx: any): Promise<any> {
+      const id = Math.random().toString(36).substring(2);
+      let serialized: Uint8Array;
+      try {
+        serialized = tx.serializeMessage();
+      } catch (e) {
+        return Promise.reject(e);
+      }
+      window.postMessage(
+        { type: 'TKNZ_PHANTOM_REQUEST', id, method: 'signTransaction', serializedTransaction: Array.from(serialized) },
+        '*'
+      );
+      return new Promise((resolve, reject) => {
+        callbacks[id] = { resolve, reject, method: 'signTransaction', originalTx: tx };
+      });
+    },
+    signAllTransactions(txs: any[]): Promise<any[]> {
+      return Promise.all(txs.map(tx => this.signTransaction(tx)));
+    },
+    on(event: string, listener: Function) {
+      if (!this._listeners[event]) this._listeners[event] = [];
+      this._listeners[event].push(listener);
+    }
+  };
+  // Handle responses from content/background
+  window.addEventListener('message', (event) => {
+    if (event.source !== window || !event.data || event.data.type !== 'TKNZ_PHANTOM_RESPONSE') return;
+    const { id, error, payload } = event.data as any;
+    const cb = callbacks[id];
+    if (!cb) return;
+    delete callbacks[id];
+    if (error) {
+      cb.reject(error);
+      return;
+    }
+    if (cb.method === 'connect') {
+      provider.publicKey = { toString: () => payload.publicKey };
+      provider.isConnected = true;
+      provider._listeners.connect.forEach(l => l(provider.publicKey));
+      cb.resolve(provider.publicKey);
+    } else if (cb.method === 'signTransaction') {
+      // payload.signedTransaction expected as Array<number>
+      const sigBytes = new Uint8Array(payload.signedTransaction);
+      cb.originalTx.addSignature(provider.publicKey, sigBytes);
+      cb.resolve(cb.originalTx);
+    }
+  });
+  // Expose provider
+  (window as any).solana = provider;
+})();
