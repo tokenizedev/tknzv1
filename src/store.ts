@@ -22,6 +22,34 @@ const connection = createConnection();
 // Refresh interval in milliseconds (1 minute)
 const REFRESH_INTERVAL = 60 * 1000;
 
+/**
+ * Derive seed from mnemonic using PBKDF2-HMAC-SHA512 via Web Crypto API.
+ * Returns a 64-byte Uint8Array.
+ */
+async function deriveSeedFromMnemonic(mnemonic: string, password: string = ''): Promise<Uint8Array> {
+  const encoder = new TextEncoder();
+  const mnemonicBuffer = encoder.encode(mnemonic.normalize('NFKD'));
+  const saltBuffer = encoder.encode(('mnemonic' + password).normalize('NFKD'));
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    mnemonicBuffer,
+    { name: 'PBKDF2' },
+    false,
+    ['deriveBits']
+  );
+  const derivedBits = await crypto.subtle.deriveBits(
+    {
+      name: 'PBKDF2',
+      salt: saltBuffer,
+      iterations: 2048,
+      hash: 'SHA-512'
+    },
+    keyMaterial,
+    512
+  );
+  return new Uint8Array(derivedBits);
+}
+
 export const useStore = create<WalletState>((set, get) => ({
   wallets: [],
   activeWallet: null,
@@ -197,8 +225,9 @@ export const useStore = create<WalletState>((set, get) => ({
       // Generate new wallet via a mnemonic seed phrase and derive keypair
       const bip39 = await import('bip39');
       const mnemonic: string = bip39.generateMnemonic();
-      const seedBuffer = await bip39.mnemonicToSeed(mnemonic);
-      const seed = new Uint8Array(seedBuffer).slice(0, 32);
+      // Derive seed using Web Crypto instead of Buffer-dependent bip39.mnemonicToSeed
+      const seedArray = await deriveSeedFromMnemonic(mnemonic);
+      const seed = seedArray.slice(0, 32);
       const keypair = Keypair.fromSeed(seed);
       const walletId = uuidv4();
       
@@ -273,8 +302,9 @@ export const useStore = create<WalletState>((set, get) => ({
           try {
             const bip39 = await import('bip39');
             if (bip39.validateMnemonic(privateKeyString.trim())) {
-              const seedBuffer = await bip39.mnemonicToSeed(privateKeyString.trim());
-              const seed = new Uint8Array(seedBuffer).slice(0, 32);
+              // Derive seed from mnemonic using Web Crypto
+              const seedArray = await deriveSeedFromMnemonic(privateKeyString.trim());
+              const seed = seedArray.slice(0, 32);
               keypair = Keypair.fromSeed(seed);
             } else {
               throw new Error('Invalid seed phrase');
