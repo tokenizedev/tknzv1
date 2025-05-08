@@ -29,6 +29,33 @@ chrome.runtime.onMessage.addListener((message: any, sender, sendResponse) => {
     return;
   }
   if (!targetTabId) return;
+  // Handle Phantom provider requests forwarded from content script
+  if (message.type === 'PHANTOM_REQUEST') {
+    const { id, method, serializedTransaction, params } = message as any;
+    if (method === 'connect') {
+      // Open extension popup for user to confirm connection
+      chrome.action.openPopup().catch(err => console.error('Failed to open popup for connect:', err));
+      // Retrieve active wallet publicKey from storage
+      chrome.storage.local.get(['wallets', 'activeWalletId'], (result) => {
+        let publicKey: string | null = null;
+        const wallets = result.wallets;
+        const activeId = result.activeWalletId;
+        if (Array.isArray(wallets) && wallets.length > 0) {
+          const w = wallets.find((w: any) => w.id === activeId) || wallets[0];
+          publicKey = w?.publicKey || null;
+        }
+        sendResponse({ error: null, payload: { publicKey } });
+      });
+      return true;
+    } else if (method === 'signTransaction') {
+      // Signing not implemented yet
+      sendResponse({ error: 'signTransaction not implemented', payload: null });
+      return true;
+    } else {
+      sendResponse({ error: `Unknown method ${method}`, payload: null });
+      return true;
+    }
+  }
 
   // Messages from content script to background
   if (message.type === 'CONTENT_SCRIPT_READY') {
