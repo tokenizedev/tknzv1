@@ -176,6 +176,7 @@ function App({ isSidebar = false }: AppProps = {}) {
     // Reset other views when opening wallet manager
     setShowWallet(false);
     setShowWalletManager(true);
+    setShowWalletDrawer(false);
     setGlitching(true);
     setTimeout(() => setGlitching(false), 200);
   };
