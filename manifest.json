@@ -33,7 +33,8 @@
         "<all_urls>"
       ],
       "js": [
-        "src/contentScript.tsx"
+        "src/contentScript.tsx",
+        "src/injectedWallet.ts"
       ],
       "run_at": "document_end"
     }
@@ -53,6 +54,7 @@
       "resources": [
         "assets/*",
         "src/contentScript.tsx",
+        "src/injectedWallet.ts",
         "*.js",
         "*.woff2"
       ],
