@@ -1,6 +1,6 @@
 import React, { useState, useEffect, ChangeEvent } from 'react';
 import Jdenticon from 'react-jdenticon';
-import { ChevronDown, ChevronUp, Plus, Pen, Trash2, Key, Shield, Check, X, Zap, Download, ArrowLeft } from 'lucide-react';
+import { ChevronDown, ChevronUp, Plus, Pen, Trash2, Key, Shield, Check, X, Zap, Download, ArrowLeft, TerminalSquare, Lock } from 'lucide-react';
 import { useStore } from '../store';
 import { WalletInfo } from '../types';
 import { ImportWalletForm } from './ImportWalletForm';
@@ -55,6 +55,22 @@ export const WalletManagerPage: React.FC<WalletManagerPageProps> = ({ onBack }) 
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [glitching, setGlitching] = useState(false);
+  
+  // Glitch interval for title
+  const [headerGlitch, setHeaderGlitch] = useState(false);
+
+  // Random glitch effect for header
+  useEffect(() => {
+    const glitchInterval = setInterval(() => {
+      const shouldGlitch = Math.random() > 0.7;
+      if (shouldGlitch) {
+        setHeaderGlitch(true);
+        setTimeout(() => setHeaderGlitch(false), 150);
+      }
+    }, 3000);
+    
+    return () => clearInterval(glitchInterval);
+  }, []);
 
   // Add glitch effect when changing tabs
   const triggerGlitch = () => {
@@ -221,24 +237,45 @@ export const WalletManagerPage: React.FC<WalletManagerPageProps> = ({ onBack }) 
       default: // 'list'
         return (
           <div className="space-y-4">
-            <div className="border border-cyber-green/20 p-4 rounded-sm">
-              <h3 className="text-cyber-green font-terminal text-sm mb-3">YOUR WALLETS [{wallets.length}]</h3>
+            <div className="border border-cyber-green/30 p-4 rounded-sm bg-gradient-to-b from-cyber-black to-cyber-black/70 relative overflow-hidden">
+              {/* Terminal-like decoration */}
+              <div className="absolute top-0 left-0 w-full h-1 flex space-x-1 p-0.5">
+                <div className="w-1 h-1 rounded-full bg-cyber-green/70"></div>
+                <div className="w-1 h-1 rounded-full bg-cyber-pink/70"></div>
+                <div className="w-1 h-1 rounded-full bg-cyber-purple/70"></div>
+              </div>
+              
+              {/* Terminal prompt decoration */}
+              <h3 className="text-cyber-green font-terminal text-sm mb-3 flex items-center">
+                <TerminalSquare className="w-4 h-4 mr-1" />
+                <span className="text-cyber-green/70 mr-1">$&gt;</span>
+                YOUR WALLETS [{wallets.length}]
+              </h3>
+              
               {wallets.length === 0 ? (
-                <div className="text-cyber-green/60 font-terminal text-xs italic p-2">
-                  No wallets available. Create your first wallet below.
+                <div className="text-cyber-green/60 font-terminal text-xs italic p-4 border border-dashed border-cyber-green/20 bg-cyber-black/30 rounded-sm">
+                  <div className="flex items-center justify-center">
+                    <Lock className="w-5 h-5 mr-2 text-cyber-green/40" />
+                    <span>No wallets available. Create your first wallet below.</span>
+                  </div>
                 </div>
               ) : (
-                <div className="space-y-2 max-h-[300px] overflow-y-auto scrollbar-thin scrollbar-thumb-cyber-green/50 scrollbar-track-cyber-black">
+                <div className="space-y-2 max-h-[300px] overflow-y-auto scrollbar-thin scrollbar-thumb-cyber-green/50 scrollbar-track-cyber-black/50">
                   {wallets.map((wallet) => (
                     <div 
                       key={wallet.id}
-                      className={`wallet-item border ${wallet.isActive 
-                        ? 'border-cyber-green bg-cyber-green/10' 
-                        : 'border-cyber-green/20 hover:border-cyber-green/50'
+                      className={`wallet-item border backdrop-blur-sm ${wallet.isActive 
+                        ? 'border-cyber-green bg-gradient-to-r from-cyber-green/20 to-cyber-green/5 shadow-[0_0_8px_rgba(0,255,100,0.2)]' 
+                        : 'border-cyber-green/20 hover:border-cyber-green/50 bg-cyber-black/40'
                       } rounded-sm transition-all duration-200 overflow-hidden`}
                     >
                       {/* Wallet header */}
-                      <div className="flex items-center justify-between p-2">
+                      <div className={`flex items-center justify-between p-2 relative ${wallet.isActive ? 'text-glow-green' : ''}`}>
+                        {/* Animation frame for active wallet */}
+                        {wallet.isActive && (
+                          <div className="absolute inset-0 border border-cyber-green/30 rounded-sm animate-pulse-slow opacity-70 pointer-events-none"></div>
+                        )}
+                        
                         <div 
                           className="flex-1 cursor-pointer flex items-center"
                           onClick={() => toggleWalletExpansion(wallet.id)}
@@ -254,9 +291,11 @@ export const WalletManagerPage: React.FC<WalletManagerPageProps> = ({ onBack }) 
                             {wallet.avatar && (
                               <div className="mr-2 flex-shrink-0">
                                 {wallet.avatar.startsWith('data:') ? (
-                                  <img src={wallet.avatar} alt={wallet.name} className="w-6 h-6 rounded-full" />
+                                  <img src={wallet.avatar} alt={wallet.name} className="w-6 h-6 rounded-full border border-cyber-green/30" />
                                 ) : (
-                                  <Jdenticon size={24} value={wallet.avatar} className="rounded-full" />
+                                  <div className="border border-cyber-green/30 rounded-full p-0.5">
+                                    <Jdenticon size={24} value={wallet.avatar} className="rounded-full" />
+                                  </div>
                                 )}
                               </div>
                             )}
@@ -271,15 +310,16 @@ export const WalletManagerPage: React.FC<WalletManagerPageProps> = ({ onBack }) 
                                   autoFocus
                                 />
                               ) : (
-                                <div className="font-terminal text-sm">
+                                <div className="font-terminal text-sm group flex items-center">
                                   {wallet.name}
                                   {wallet.isActive && (
-                                    <span className="ml-2 text-xs text-cyber-purple">[ACTIVE]</span>
+                                    <span className="ml-2 text-xs text-cyber-green bg-cyber-green/10 px-1.5 py-0.5 rounded-sm border border-cyber-green/30 animate-pulse-slow group-hover:animate-none">ACTIVE</span>
                                   )}
                                 </div>
                               )}
                               
-                              <div className="text-xs text-cyber-green/60 font-mono truncate">
+                              <div className="text-xs text-cyber-green/60 font-mono truncate flex items-center">
+                                <span className="mr-1 text-cyber-green/40">0x</span>
                                 {wallet.publicKey.substring(0, 12)}...{wallet.publicKey.substring(wallet.publicKey.length - 4)}
                               </div>
                             </div>
@@ -289,7 +329,7 @@ export const WalletManagerPage: React.FC<WalletManagerPageProps> = ({ onBack }) 
                         {!wallet.isActive && (
                           <button
                             onClick={() => handleSwitchWallet(wallet.id)}
-                            className="p-1.5 bg-cyber-green/10 hover:bg-cyber-green/20 text-cyber-green rounded-sm ml-2 transition-colors"
+                            className="p-1.5 bg-cyber-green/10 hover:bg-cyber-green/20 text-cyber-green rounded-sm ml-2 transition-colors hover:shadow-[0_0_8px_rgba(0,255,100,0.3)] border border-cyber-green/30"
                             title="Switch to this wallet"
                           >
                             <Zap className="w-4 h-4" />
@@ -299,12 +339,19 @@ export const WalletManagerPage: React.FC<WalletManagerPageProps> = ({ onBack }) 
                       
                       {/* Expanded wallet details */}
                       {expandedWalletId === wallet.id && (
-                        <div className="bg-cyber-black/40 border-t border-cyber-green/20 p-3 space-y-3 animate-slide-down">
+                        <div className="bg-cyber-black/40 border-t border-cyber-green/20 p-3 space-y-3 animate-slide-down relative overflow-hidden">
+                          {/* Grid decoration */}
+                          <div className="absolute inset-0 grid grid-cols-12 grid-rows-12 gap-6 opacity-5 pointer-events-none">
+                            {Array.from({ length: 144 }).map((_, i) => (
+                              <div key={i} className="w-full h-full border-b border-r border-cyber-green/30"></div>
+                            ))}
+                          </div>
+                          
                           {editingWalletId === wallet.id ? (
                             <div className="flex space-x-2">
                               <button
                                 onClick={() => saveWalletName(wallet.id)}
-                                className="flex-1 p-2 bg-cyber-green/10 text-cyber-green border border-cyber-green/50 rounded-sm hover:bg-cyber-green/20 transition-colors font-terminal text-xs"
+                                className="flex-1 p-2 bg-cyber-green/10 text-cyber-green border border-cyber-green/50 rounded-sm hover:bg-cyber-green/20 transition-colors font-terminal text-xs hover:shadow-[0_0_8px_rgba(0,255,100,0.2)]"
                               >
                                 SAVE NAME
                               </button>
@@ -319,7 +366,7 @@ export const WalletManagerPage: React.FC<WalletManagerPageProps> = ({ onBack }) 
                             <div className="flex space-x-2">
                               <button
                                 onClick={() => handleEditWallet(wallet)}
-                                className="flex-1 p-2 bg-cyber-black text-cyber-green/80 border border-cyber-green/30 rounded-sm hover:bg-cyber-green/10 hover:text-cyber-green hover:border-cyber-green/50 transition-colors font-terminal text-xs flex items-center justify-center"
+                                className="flex-1 p-2 bg-cyber-black text-cyber-green/80 border border-cyber-green/30 rounded-sm hover:bg-cyber-green/10 hover:text-cyber-green hover:border-cyber-green/50 transition-colors font-terminal text-xs flex items-center justify-center hover:shadow-[0_0_8px_rgba(0,255,100,0.15)]"
                               >
                                 <Pen className="w-3 h-3 mr-1" />
                                 RENAME
@@ -328,7 +375,7 @@ export const WalletManagerPage: React.FC<WalletManagerPageProps> = ({ onBack }) 
                               {!wallet.isActive && wallets.length > 1 && (
                                 <button
                                   onClick={() => setConfirmingDelete(wallet.id)}
-                                  className="flex-1 p-2 bg-cyber-black text-cyber-pink/80 border border-cyber-pink/30 rounded-sm hover:bg-cyber-pink/10 hover:text-cyber-pink hover:border-cyber-pink/50 transition-colors font-terminal text-xs flex items-center justify-center"
+                                  className="flex-1 p-2 bg-cyber-black text-cyber-pink/80 border border-cyber-pink/30 rounded-sm hover:bg-cyber-pink/10 hover:text-cyber-pink hover:border-cyber-pink/50 transition-colors font-terminal text-xs flex items-center justify-center hover:shadow-[0_0_8px_rgba(255,50,100,0.15)]"
                                 >
                                   <Trash2 className="w-3 h-3 mr-1" />
                                   REMOVE
@@ -348,7 +395,7 @@ export const WalletManagerPage: React.FC<WalletManagerPageProps> = ({ onBack }) 
                               <div className="flex space-x-2">
                                 <button
                                   onClick={() => handleDeleteWallet(wallet.id)}
-                                  className="flex-1 p-2 bg-cyber-pink/20 text-cyber-pink border border-cyber-pink rounded-sm hover:bg-cyber-pink/30 transition-colors font-terminal text-xs flex items-center justify-center"
+                                  className="flex-1 p-2 bg-cyber-pink/20 text-cyber-pink border border-cyber-pink rounded-sm hover:bg-cyber-pink/30 transition-colors font-terminal text-xs flex items-center justify-center hover:shadow-[0_0_8px_rgba(255,50,100,0.3)]"
                                 >
                                   <Trash2 className="w-3 h-3 mr-1" />
                                   CONFIRM DELETE
@@ -364,10 +411,13 @@ export const WalletManagerPage: React.FC<WalletManagerPageProps> = ({ onBack }) 
                           )}
                           
                           {/* Avatar update */}
-                          <div className="space-y-2">
-                            <label className="text-xs text-cyber-green/70 font-terminal">Avatar</label>
+                          <div className="space-y-2 relative z-10">
+                            <label className="text-xs text-cyber-green/70 font-terminal flex items-center">
+                              <span className="text-cyber-green/50 mr-1">&gt;</span>
+                              Avatar
+                            </label>
                             <div className="flex items-center space-x-3">
-                              <div className="flex-shrink-0">
+                              <div className="flex-shrink-0 p-1 border border-cyber-green/30 rounded-full bg-cyber-black/60">
                                 {wallet.avatar ? (
                                   wallet.avatar.startsWith('data:') ? (
                                     <img src={wallet.avatar} alt={wallet.name} className="w-12 h-12 rounded-full" />
@@ -388,28 +438,32 @@ export const WalletManagerPage: React.FC<WalletManagerPageProps> = ({ onBack }) 
                               <button
                                 type="button"
                                 onClick={() => document.getElementById(`avatar-input-${wallet.id}`)?.click()}
-                                className="p-2 text-cyber-green bg-cyber-black/80 border border-cyber-green/40 rounded-sm hover:bg-cyber-green/10 transition-colors font-terminal text-xs"
+                                className="p-2 text-cyber-green bg-cyber-black/80 border border-cyber-green/40 rounded-sm hover:bg-cyber-green/10 transition-colors font-terminal text-xs hover:shadow-[0_0_5px_rgba(0,255,100,0.2)]"
                               >
                                 Upload
                               </button>
                               <button
                                 type="button"
                                 onClick={() => handleGenerateRandomAvatar(wallet.id)}
-                                className="p-2 text-cyber-green bg-cyber-black/80 border border-cyber-green/40 rounded-sm hover:bg-cyber-green/10 transition-colors font-terminal text-xs"
+                                className="p-2 text-cyber-green bg-cyber-black/80 border border-cyber-green/40 rounded-sm hover:bg-cyber-green/10 transition-colors font-terminal text-xs hover:shadow-[0_0_5px_rgba(0,255,100,0.2)]"
                               >
                                 Random
                               </button>
                             </div>
                           </div>
                           {/* Public key */}
-                          <div className="font-mono text-xs bg-cyber-dark/80 p-2 rounded-sm border border-cyber-green/20 text-cyber-green/90 break-all">
-                            {wallet.publicKey}
+                          <div className="font-mono text-xs bg-cyber-black/70 p-2 rounded-sm border border-cyber-green/20 text-cyber-green/90 break-all relative z-10">
+                            <div className="flex items-center">
+                              <span className="text-cyber-green/50 font-terminal mr-1">&gt;</span>
+                              <span className="text-cyber-green/50 mr-1">0x</span>
+                              {wallet.publicKey}
+                            </div>
                           </div>
                           
                           {wallet.isActive && (
-                            <div className="bg-cyber-purple/10 text-cyber-purple border border-cyber-purple/30 p-2 rounded-sm text-xs font-terminal flex items-center">
+                            <div className="bg-cyber-purple/10 text-cyber-purple border border-cyber-purple/30 p-2 rounded-sm text-xs font-terminal flex items-center shadow-[0_0_10px_rgba(180,100,255,0.1)] relative z-10">
                               <Check className="w-3 h-3 mr-1" />
-                              CURRENTLY ACTIVE WALLETs
+                              CURRENTLY ACTIVE WALLET
                             </div>
                           )}
                         </div>
@@ -425,7 +479,7 @@ export const WalletManagerPage: React.FC<WalletManagerPageProps> = ({ onBack }) 
                     setActiveTab('create');
                     triggerGlitch();
                   }}
-                  className="flex-1 p-2 bg-cyber-black border border-cyber-green/50 text-cyber-green rounded-sm hover:bg-cyber-green/10 hover:border-cyber-green transition-colors font-terminal text-xs flex items-center justify-center"
+                  className="flex-1 p-2 bg-cyber-black border border-cyber-green/50 text-cyber-green rounded-sm hover:bg-cyber-green/10 hover:border-cyber-green transition-colors font-terminal text-xs flex items-center justify-center hover:shadow-[0_0_10px_rgba(0,255,100,0.2)]"
                 >
                   <Plus className="w-3 h-3 mr-1" />
                   CREATE NEW
@@ -435,7 +489,7 @@ export const WalletManagerPage: React.FC<WalletManagerPageProps> = ({ onBack }) 
                     setActiveTab('import');
                     triggerGlitch();
                   }}
-                  className="flex-1 p-2 bg-cyber-black border border-cyber-purple/50 text-cyber-purple rounded-sm hover:bg-cyber-purple/10 hover:border-cyber-purple transition-colors font-terminal text-xs flex items-center justify-center"
+                  className="flex-1 p-2 bg-cyber-black border border-cyber-purple/50 text-cyber-purple rounded-sm hover:bg-cyber-purple/10 hover:border-cyber-purple transition-colors font-terminal text-xs flex items-center justify-center hover:shadow-[0_0_10px_rgba(180,100,255,0.2)]"
                 >
                   <Download className="w-3 h-3 mr-1" />
                   IMPORT
@@ -443,9 +497,26 @@ export const WalletManagerPage: React.FC<WalletManagerPageProps> = ({ onBack }) 
               </div>
             </div>
             
-            <div className="border border-cyber-green/20 bg-cyber-black/40 p-3 rounded-sm text-xs text-cyber-green/60 font-terminal italic text-center">
-              <p>Encrypted with AES-256</p>
-              <p>Your keys never leave this device</p>
+            <div className="border border-cyber-green/20 bg-cyber-black/40 p-3 rounded-sm text-xs text-cyber-green/60 font-terminal text-center relative overflow-hidden">
+              {/* Decorative circuit pattern in background */}
+              <div className="absolute inset-0 opacity-5 pointer-events-none">
+                <div className="w-full h-full flex items-center justify-center">
+                  <div className="w-32 h-32 border-2 border-cyber-green/50 rounded-full"></div>
+                  <div className="absolute w-24 h-24 border border-cyber-green/50 rounded-full"></div>
+                  <div className="absolute w-48 h-16 border border-cyber-green/30"></div>
+                  <div className="absolute w-16 h-48 border border-cyber-green/30"></div>
+                  <div className="absolute w-full h-[1px] bg-cyber-green/20"></div>
+                  <div className="absolute w-[1px] h-full bg-cyber-green/20"></div>
+                </div>
+              </div>
+              
+              <div className="relative z-10">
+                <p className="flex items-center justify-center text-cyber-green/70">
+                  <Shield className="w-3 h-3 mr-1" />
+                  Encrypted with AES-256
+                </p>
+                <p className="mt-1">Your keys never leave this device</p>
+              </div>
             </div>
           </div>
         );
@@ -471,6 +542,9 @@ const handleConfirmBackup = () => {
 
   return (
     <div className={`py-5 px-4 relative ${glitching ? 'animate-glitch' : ''}`}>
+      {/* CRT Scanlines effect */}
+      <div className="fixed inset-0 pointer-events-none z-10 bg-scanlines opacity-5"></div>
+      
       {/* Backup mnemonic modal */}
       {createdMnemonic && (
         <BackupMnemonicModal
@@ -480,30 +554,47 @@ const handleConfirmBackup = () => {
           onConfirm={handleConfirmBackup}
         />
       )}
-      {/* Page Header */}
-      <div className="flex items-center justify-between mb-6">
-        <button 
-          onClick={onBack}
-          className="flex items-center text-cyber-green hover:text-cyber-green/80 transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5 mr-1" />
-          <span className="font-terminal text-sm">BACK</span>
-        </button>
-        <h1 className="text-center text-xl font-terminal text-cyber-green tracking-widest uppercase">
-          WALLET MANAGER
-        </h1>
-        <div className="w-20"></div> {/* Spacer for alignment */}
+      {/* Sleeker Page Header */}
+      <div className="relative mb-6 border-b border-cyber-green/20 pb-3">
+        <div className="absolute inset-0 flex justify-center items-center pointer-events-none overflow-hidden opacity-10">
+          <div className="h-[1px] w-full bg-gradient-to-r from-transparent via-cyber-green/50 to-transparent"></div>
+          <div className="absolute -bottom-3 left-1/2 h-6 w-[1px] bg-cyber-green/30"></div>
+          <div className="absolute -bottom-3 left-1/3 h-3 w-[1px] bg-cyber-green/20"></div>
+          <div className="absolute -bottom-3 right-1/3 h-3 w-[1px] bg-cyber-green/20"></div>
+        </div>
+        
+        <div className="flex items-center justify-between">
+          <button 
+            onClick={onBack}
+            className="flex items-center text-cyber-green hover:text-cyber-green/80 transition-colors hover:shadow-[0_0_5px_rgba(0,255,100,0.3)] z-10 group rounded-sm px-2 py-1 border border-cyber-green/10 hover:border-cyber-green/30 bg-cyber-black/50"
+          >
+            <ArrowLeft className="w-4 h-4 mr-1.5 group-hover:translate-x-[-2px] transition-transform" />
+            <span className="font-terminal text-sm tracking-wide">BACK</span>
+          </button>
+          
+          {/* Central subtle indicator replacing the title */}
+          <div className="absolute left-1/2 transform -translate-x-1/2 flex items-center space-x-2">
+            <div className="w-2 h-2 bg-cyber-green/30 rounded-full animate-pulse-slow"></div>
+            <div className="w-1 h-1 bg-cyber-green/20 rounded-full"></div>
+          </div>
+          
+          {/* Status pill indicator on the right */}
+          <div className="flex items-center text-xs font-terminal text-cyber-green/60 border border-cyber-green/20 rounded-full px-2 py-0.5 bg-cyber-black/50">
+            <Shield className="w-3 h-3 mr-1 text-cyber-green/40" />
+            <span>{wallets.length} WALLET{wallets.length !== 1 ? 'S' : ''}</span>
+          </div>
+        </div>
       </div>
 
       {/* Status messages */}
       {successMessage && (
-        <div className="bg-cyber-green/10 border border-cyber-green text-cyber-green p-3 rounded-sm font-terminal text-sm animate-pulse mb-4">
+        <div className="bg-cyber-green/10 border border-cyber-green text-cyber-green p-3 rounded-sm font-terminal text-sm animate-pulse mb-4 shadow-[0_0_10px_rgba(0,255,100,0.2)]">
           {successMessage}
         </div>
       )}
       
       {error && (
-        <div className="bg-cyber-pink/10 border border-cyber-pink text-cyber-pink p-3 rounded-sm font-terminal text-sm mb-4">
+        <div className="bg-cyber-pink/10 border border-cyber-pink text-cyber-pink p-3 rounded-sm font-terminal text-sm mb-4 shadow-[0_0_10px_rgba(255,50,100,0.2)]">
           {error}
           <button 
             onClick={() => setError('')} 
@@ -517,26 +608,76 @@ const handleConfirmBackup = () => {
       {/* Page Content */}
       {renderTabContent()}
       
-      {/* Matrix rain effect */}
-      <div className="absolute inset-0 pointer-events-none opacity-5 overflow-hidden">
-        {[...Array(5)].map((_, i) => (
+      {/* Enhanced Matrix rain effect */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-[-1]">
+        {[...Array(20)].map((_, i) => (
           <div 
             key={i}
-            className="absolute text-cyber-green font-mono text-xs"
+            className="absolute text-cyber-green font-mono text-sm"
             style={{
               top: -20,
-              left: `${(i * 20) + Math.random() * 5}%`,
-              animation: `float ${5 + Math.random() * 10}s linear infinite`,
-              animationDelay: `${Math.random() * 2}s`
+              left: `${(i * 5) + Math.random() * 5}%`,
+              animation: `matrix-rain ${5 + Math.random() * 15}s linear infinite`,
+              animationDelay: `${Math.random() * 5}s`,
+              opacity: Math.random() * 0.5
             }}
           >
-            {[...Array(10)].map((_, j) => (
-              <div key={j} style={{ opacity: Math.random() > 0.5 ? 0.3 : 0.7 }}>
+            {[...Array(50)].map((_, j) => (
+              <div 
+                key={j} 
+                style={{ 
+                  opacity: Math.random() > 0.5 ? 0.3 : 0.7,
+                  textShadow: Math.random() > 0.9 ? '0 0 8px #00ff66' : 'none',
+                  transform: `translateY(${Math.random() * 2}px)`,
+                  fontSize: Math.random() > 0.8 ? '16px' : '10px'
+                }}
+              >
                 {Math.random() > 0.5 ? '1' : '0'}
               </div>
             ))}
           </div>
         ))}
+      </div>
+      
+      {/* Add circuit board patterns in the background */}
+      <div className="fixed inset-0 pointer-events-none z-[-2] opacity-[0.03]">
+        <div className="w-full h-full">
+          <div className="absolute top-0 left-0 w-1/4 h-1/4 border-r border-b border-cyber-green"></div>
+          <div className="absolute top-0 right-0 w-1/4 h-1/4 border-l border-b border-cyber-green"></div>
+          <div className="absolute bottom-0 left-0 w-1/4 h-1/4 border-r border-t border-cyber-green"></div>
+          <div className="absolute bottom-0 right-0 w-1/4 h-1/4 border-l border-t border-cyber-green"></div>
+          <div className="absolute top-1/4 left-1/4 w-1/2 h-1/2 border border-cyber-green/50 rounded-full"></div>
+          <div className="absolute top-[15%] left-[15%] w-[70%] h-[70%] border border-cyber-green/30 rounded-full"></div>
+          <div className="absolute w-full h-[1px] top-1/2 bg-cyber-green/30"></div>
+          <div className="absolute h-full w-[1px] left-1/2 bg-cyber-green/30"></div>
+          
+          {/* Add some circuit paths */}
+          {[...Array(10)].map((_, i) => (
+            <div 
+              key={i}
+              className="absolute bg-cyber-green/50"
+              style={{
+                height: '1px',
+                width: `${20 + Math.random() * 30}%`,
+                top: `${Math.random() * 100}%`,
+                left: `${Math.random() * 100}%`,
+                transform: `rotate(${Math.random() * 360}deg)`,
+              }}
+            ></div>
+          ))}
+          
+          {/* Add circuit connection points */}
+          {[...Array(20)].map((_, i) => (
+            <div 
+              key={i}
+              className="absolute w-1 h-1 rounded-full bg-cyber-green/80"
+              style={{
+                top: `${Math.random() * 100}%`,
+                left: `${Math.random() * 100}%`,
+              }}
+            ></div>
+          ))}
+        </div>
       </div>
     </div>
   );
