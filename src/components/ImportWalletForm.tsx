@@ -178,11 +178,13 @@ export const ImportWalletForm: React.FC<ImportWalletFormProps> = ({ onSuccess, o
               onClick={() => document.getElementById('avatar-file-input')?.click()}
             >
               {avatarPreview ? (
-                <img 
-                  src={avatarPreview} 
-                  alt="Avatar preview" 
-                  className="h-full w-full object-cover"
-                />
+                <div className="flex items-center justify-center w-full h-full">
+                  <img 
+                    src={avatarPreview} 
+                    alt="Avatar preview" 
+                    className="h-auto max-h-full max-w-full object-contain p-3"
+                  />
+                </div>
               ) : (
                 <div className="flex flex-col items-center justify-center p-4 text-center">
                   <Upload className="h-8 w-8 text-cyber-purple/50 mb-2" />
