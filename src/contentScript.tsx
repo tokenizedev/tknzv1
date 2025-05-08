@@ -301,6 +301,15 @@ const initialize = () => {
   if (isInitialized) return;
   
   console.log('Content script initializing...');
+  // Inject TKNZ Wallet script into page context for Wallet Standard registration
+  try {
+    const walletScript = document.createElement('script');
+    walletScript.src = chrome.runtime.getURL('injectedWallet.ts');
+    walletScript.onload = () => { walletScript.remove(); };
+    (document.head || document.documentElement).appendChild(walletScript);
+  } catch (e) {
+    console.error('Failed to inject TKNZ Wallet script:', e);
+  }
   
   // Set up message listener
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
