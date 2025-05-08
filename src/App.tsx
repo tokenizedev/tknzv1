@@ -11,6 +11,7 @@ import { storage } from './utils/storage';
 import { TokenCreationProgress } from './components/TokenCreationProgress';
 import { WalletManagerPage } from './components/WalletManagerPage';
 import { Navigation } from './components/Navigation';
+import { VersionBadge } from './components/VersionBadge';
 
 interface AppProps { isSidebar?: boolean; }
 function App({ isSidebar = false }: AppProps = {}) {
