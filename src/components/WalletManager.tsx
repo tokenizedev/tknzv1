@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ChevronDown, ChevronUp, Plus, Pen, Trash2, Key, Shield, Wallet, Check, X, Zap, Download, Upload } from 'lucide-react';
 import { useStore } from '../store';
 import { WalletInfo } from '../types';
+import { ImportWalletForm } from './ImportWalletForm';
 
 interface WalletManagerProps {
   onClose: () => void;
@@ -201,73 +202,13 @@ export const WalletManager: React.FC<WalletManagerProps> = ({ onClose }) => {
         
       case 'import':
         return (
-          <div className="border border-cyber-purple p-3 rounded-sm animate-slide-up">
-            <h3 className="text-cyber-purple font-terminal text-sm mb-2 flex items-center">
-              <Download className="w-4 h-4 mr-1 text-cyber-purple" />
-              IMPORT EXISTING WALLET
-            </h3>
-            
-            <div className="space-y-3">
-              <div>
-                <label className="text-xs text-cyber-purple/80 font-terminal mb-1 block">
-                  Wallet Name
-                </label>
-                <input
-                  type="text"
-                  value={importName}
-                  onChange={(e) => setImportName(e.target.value)}
-                  placeholder="Enter a name for this wallet"
-                  className="w-full bg-cyber-black border border-cyber-purple/50 rounded-sm p-2 text-cyber-purple font-terminal text-sm focus:border-cyber-purple focus:outline-none"
-                  autoFocus
-                />
-              </div>
-              
-              <div>
-                <label className="text-xs text-cyber-purple/80 font-terminal mb-1 block flex justify-between">
-                  <span>Private Key</span>
-                  <span className="text-cyber-purple/50">Hex or Base58 Format</span>
-                </label>
-                <textarea
-                  value={privateKey}
-                  onChange={(e) => setPrivateKey(e.target.value)}
-                  placeholder="Enter private key (remains encrypted locally)"
-                  className="w-full h-20 bg-cyber-black border border-cyber-purple/50 rounded-sm p-2 text-cyber-purple font-mono text-sm focus:border-cyber-purple focus:outline-none"
-                />
-              </div>
-              
-              <div className="bg-cyber-purple/10 border border-cyber-purple/30 p-2 rounded-sm">
-                <p className="text-xs text-cyber-purple/90 font-terminal">
-                  Your private key is never sent to any server and will be securely encrypted on this device.
-                </p>
-              </div>
-              
-              <div className="flex space-x-2">
-                <button
-                  onClick={handleImportWallet}
-                  disabled={isImporting}
-                  className="flex-1 p-2 bg-cyber-purple/10 text-cyber-purple border border-cyber-purple rounded-sm hover:bg-cyber-purple/20 transition-colors font-terminal text-xs flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isImporting ? (
-                    <>
-                      <Shield className="w-3 h-3 mr-1 animate-spin" />
-                      IMPORTING...
-                    </>
-                  ) : (
-                    <>
-                      <Download className="w-3 h-3 mr-1" />
-                      IMPORT WALLET
-                    </>
-                  )}
-                </button>
-                <button
-                  onClick={() => setActiveTab('list')}
-                  className="p-2 border border-cyber-purple/30 text-cyber-purple/70 rounded-sm hover:text-cyber-purple hover:border-cyber-purple/50 transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          </div>
+          <ImportWalletForm 
+            onSuccess={() => {
+              setActiveTab('list');
+              setSuccessMessage('Wallet imported successfully');
+            }}
+            onCancel={() => setActiveTab('list')}
+          />
         );
         
       default: // 'list'
