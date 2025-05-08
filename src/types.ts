@@ -7,6 +7,7 @@ export interface WalletInfo {
     publicKey: string; // Public key in string format for easy use
     keypair: Keypair; // The actual wallet keypair
     isActive: boolean; // Whether this is the currently active wallet
+    avatar?: string; // Optional avatar image (data URI or URL)
 }
 
 export interface CreatedCoin {
@@ -75,6 +76,10 @@ export interface WalletState {
     getTokenCreationData: (article: ArticleData, level: number) => Promise<TokenCreationData>;
     checkVersion: () => Promise<void>;
     migrateLocalStorageToFirestore: (wallet: Keypair) => Promise<void>;
+    /**
+     * Update the avatar for a given wallet
+     */
+    updateWalletAvatar: (walletId: string, avatar: string) => Promise<void>;
 }
   
 export interface ArticleData {
