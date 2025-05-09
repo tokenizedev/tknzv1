@@ -374,6 +374,17 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
     ? (balances[fromToken.id]?.uiAmount ?? 0) >= parseFloat(fromAmount)
     : false;
 
+  // Special mapping for wrapped SOL to native SOL balance
+  const WSOL_MINT = 'So11111111111111111111111111111111111111112';
+  const SOL_BALANCE_KEY = 'SOL';
+  // Helper to get UI balance for a token or native SOL
+  const getUiBalance = (tokenId: string, decimals: number): number => {
+    if (tokenId === WSOL_MINT) {
+      return balances[SOL_BALANCE_KEY]?.uiAmount ?? 0;
+    }
+    return balances[tokenId]?.uiAmount ?? 0;
+  };
+
   return (
     <div className="flex flex-col items-center justify-start h-full p-4">
       <div className="w-full max-w-md">
@@ -387,7 +398,7 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
             tokenLogo={fromToken?.logoURI}
             balance={
               fromToken
-                ? `Balance: ${balances[fromToken.id]?.uiAmount?.toFixed(fromToken.decimals) ?? '0'}`
+                ? `Balance: ${getUiBalance(fromToken.id, fromToken.decimals).toFixed(fromToken.decimals)}`
                 : undefined
             }
             onClick={() => setShowFromTokenList(true)}
@@ -414,7 +425,7 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
             tokenLogo={toToken?.logoURI}
             balance={
               toToken
-                ? `Balance: ${balances[toToken.id]?.uiAmount?.toFixed(toToken.decimals) ?? '0'}`
+                ? `Balance: ${getUiBalance(toToken.id, toToken.decimals).toFixed(toToken.decimals)}`
                 : undefined
             }
             onClick={() => setShowToTokenList(true)}
