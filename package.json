@@ -18,7 +18,7 @@
     "test:watch": "node ./node_modules/vitest/vitest.mjs",
     "test:ci": "node ./node_modules/vitest/vitest.mjs run",
     "test:coverage": "node ./node_modules/vitest/vitest.mjs run --coverage",
-    "watch:build": "nodemon --watch src --ext ts,tsx,js,jsx --exec \"yarn build\" --delay 500"
+    "watch:build": "nodemon --watch src/**/** --ext ts,tsx,js,jsx --exec \"yarn build\" --delay 500"
   },
   "dependencies": {
     "@solana/web3.js": "^1.91.1",
