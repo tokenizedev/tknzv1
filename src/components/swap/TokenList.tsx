@@ -5,7 +5,7 @@ interface TokenInfo {
   id: string;
   symbol: string;
   name: string;
-  logoUrl?: string;
+  logoURI?: string;
   balance?: string;
   balanceUsd?: string;
   decimals: number;
@@ -71,9 +71,9 @@ export const TokenList: React.FC<TokenListProps> = ({
                   onClick={() => onSelect(token)}
                 >
                   <div className="flex items-center">
-                    {token.logoUrl ? (
+                    {token.logoURI ? (
                       <div className="w-8 h-8 rounded-full bg-cyber-gray flex items-center justify-center mr-3 border border-cyber-green/20">
-                        <img src={token.logoUrl} alt={token.symbol} className="w-6 h-6" />
+                        <img src={token.logoURI} alt={token.symbol} className="w-6 h-6" />
                       </div>
                     ) : (
                       <div className="w-8 h-8 rounded-full bg-cyber-gray flex items-center justify-center mr-3 border border-cyber-green/20">
