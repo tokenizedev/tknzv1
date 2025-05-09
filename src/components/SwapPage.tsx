@@ -80,7 +80,7 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
           address: 'AfyDiEptGHEDgD69y56XjNSbTs23LaF1YHANVKnWpump',
           name: 'TKNZ.fun',
           symbol: 'TKNZ',
-          decimals: 9,
+          decimals: 6,
           logoURI: 'https://ipfs.io/ipfs/QmPjLEGEcvEDgGrxNPZdFy1RzfiWRyJYu6YaicM6oZGddQ',
           tags: [],
           daily_volume: 0,
@@ -268,29 +268,40 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
       .catch(err => console.error('Price fetch error:', err));
   };
 
-  // Manual reverse conversion using previewData rate
-  const calculateFromAmount = (_amount: string) => {
-    if (!fromToken || !toToken || !previewData || !_amount || parseFloat(_amount) <= 0) {
+  // Manual reverse conversion using Jupiter order preview
+  const calculateFromAmount = async (_amount: string) => {
+    if (!fromToken || !toToken || !_amount || parseFloat(_amount) <= 0 || !activeWallet) {
       setFromAmount('');
       setFromAmountUsd('');
       return;
     }
-    const toTokens = parseFloat(_amount);
-    // Compute inverse rate: inputTokens per outputToken
-    const rate =
-      (previewData.inputAmount / Math.pow(10, fromToken.decimals)) /
-      (previewData.outputAmount / Math.pow(10, toToken.decimals));
-    const inTokens = toTokens * rate;
-    setFromAmount(inTokens.toFixed(fromToken.decimals));
-    // Update USD values
-    getPrices([fromToken.id, toToken.id], 'usd')
-      .then(prices => {
-        const fromPrice = parseFloat(prices.data[fromToken.id].price);
-        const toPrice = parseFloat(prices.data[toToken.id].price);
-        setFromAmountUsd((inTokens * fromPrice).toFixed(2));
-        setToAmountUsd((toTokens * toPrice).toFixed(2));
-      })
-      .catch(err => console.error('Price fetch error:', err));
+    setIsPreviewLoading(true);
+    try {
+      // Convert the entered 'to' value to raw units
+      const rawToAmount = Math.floor(parseFloat(_amount) * 10 ** toToken.decimals);
+      // Fetch a reverse order quote
+      const reverseOrder = await getOrder({
+        inputMint: toToken.id,
+        outputMint: fromToken.id,
+        amount: rawToAmount,
+        taker: activeWallet.publicKey,
+      });
+      // Parse raw 'from' output
+      const fromRaw = parseInt(reverseOrder.outAmount);
+      const fromTokens = fromRaw / 10 ** fromToken.decimals;
+      setFromAmount(fromTokens.toFixed(fromToken.decimals));
+      // Update USD values
+      const prices = await getPrices([fromToken.id, toToken.id], 'usd');
+      const fromPrice = parseFloat(prices.data[fromToken.id].price);
+      const toPrice = parseFloat(prices.data[toToken.id].price);
+      setFromAmountUsd((fromTokens * fromPrice).toFixed(2));
+      const toTokens = parseFloat(_amount);
+      setToAmountUsd((toTokens * toPrice).toFixed(2));
+    } catch (err) {
+      console.error('Reverse preview error:', err);
+    } finally {
+      setIsPreviewLoading(false);
+    }
   };
 
   // Handle token selection
