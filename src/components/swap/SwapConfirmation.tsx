@@ -5,13 +5,13 @@ interface SwapConfirmationProps {
   fromToken: {
     symbol: string;
     amount: string;
-    logoUrl?: string;
+    logoURI?: string;
     fiatValue?: string;
   };
   toToken: {
     symbol: string;
     amount: string;
-    logoUrl?: string;
+    logoURI?: string;
     fiatValue?: string;
   };
   rate: string;
@@ -56,8 +56,8 @@ export const SwapConfirmation: React.FC<SwapConfirmationProps> = ({
             <div className="flex justify-between items-center mb-4">
               <div>
                 <div className="flex items-center">
-                  {fromToken.logoUrl && (
-                    <img src={fromToken.logoUrl} alt={fromToken.symbol} className="w-6 h-6 mr-2 rounded-full" />
+                  {fromToken.logoURI && (
+                    <img src={fromToken.logoURI} alt={fromToken.symbol} className="w-6 h-6 mr-2 rounded-full" />
                   )}
                   <span className="text-white font-terminal">{fromToken.symbol}</span>
                 </div>
@@ -80,8 +80,8 @@ export const SwapConfirmation: React.FC<SwapConfirmationProps> = ({
             <div className="flex justify-between items-center">
               <div>
                 <div className="flex items-center">
-                  {toToken.logoUrl && (
-                    <img src={toToken.logoUrl} alt={toToken.symbol} className="w-6 h-6 mr-2 rounded-full" />
+                  {toToken.logoURI && (
+                    <img src={toToken.logoURI} alt={toToken.symbol} className="w-6 h-6 mr-2 rounded-full" />
                   )}
                   <span className="text-white font-terminal">{toToken.symbol}</span>
                 </div>
