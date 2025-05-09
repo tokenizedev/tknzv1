@@ -10,6 +10,8 @@ import {
   executeOrder,
   getPrices,
 } from '../services/jupiterService';
+import { getAllCreatedCoins } from '../firebase';
+import type { CreatedCoin } from '../types';
 import { TokenSelector } from './swap/TokenSelector';
 import { AmountInput } from './swap/AmountInput';
 import { SwapDetails } from './swap/SwapDetails';
@@ -38,9 +40,10 @@ interface SwapPageProps {
 }
 
 export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
-  // Wallet and created tokens state
+  // Wallet state
   const activeWallet = useStore(state => state.activeWallet);
-  const createdCoins = useStore(state => state.createdCoins);
+  // Platform-wide created tokens
+  const [platformCoins, setPlatformCoins] = useState<CreatedCoin[]>([]);
   // Token list fetched from Jupiter
   const [tokenList, setTokenList] = useState<TokenInfoAPI[]>([]);
   const [loadingTokens, setLoadingTokens] = useState(false);
@@ -62,6 +65,12 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
       .then(setBalances)
       .catch(err => console.error('Balance load error:', err));
   }, [activeWallet]);
+  // Load all platform-created tokens from Firebase
+  useEffect(() => {
+    getAllCreatedCoins()
+      .then(coins => setPlatformCoins(coins))
+      .catch(err => console.error('Failed to load platform coins:', err));
+  }, []);
   // Fetch verified tokens and merge custom + created tokens
   useEffect(() => {
     setLoadingTokens(true);
@@ -90,8 +99,8 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
         const remaining = tokens.filter(
           t => t.address !== solMint && t.address !== customToken.address
         );
-        // Map created coins from store into token info objects
-        const createdTokens: TokenInfoAPI[] = createdCoins.map(c => ({
+        // Map platform-created coins into token info objects
+        const createdTokens: TokenInfoAPI[] = platformCoins.map(c => ({
           address: c.address,
           name: c.name,
           symbol: c.ticker,
@@ -115,7 +124,7 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
       })
       .catch(err => setTokenError(err instanceof Error ? err.message : String(err)))
       .finally(() => setLoadingTokens(false));
-  }, [createdCoins]);
+  }, [platformCoins]);
   // Token states
   const [fromToken, setFromToken] = useState<TokenOption | null>(null);
   const [toToken, setToToken] = useState<TokenOption | null>(null);
