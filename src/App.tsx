@@ -11,6 +11,7 @@ import { storage } from './utils/storage';
 import { TokenCreationProgress } from './components/TokenCreationProgress';
 import { WalletManagerPage } from './components/WalletManagerPage';
 import { Navigation } from './components/Navigation';
+import { SwapPage } from './components/SwapPage';
 import { VersionBadge } from './components/VersionBadge';
 
 interface AppProps { isSidebar?: boolean; }
@@ -50,6 +51,8 @@ function App({ isSidebar = false }: AppProps = {}) {
   const [showWallet, setShowWallet] = useState(false);
   const [showWalletDrawer, setShowWalletDrawer] = useState(false);
   const [showWalletManager, setShowWalletManager] = useState(false);
+  // Token swap page visibility
+  const [showSwapPage, setShowSwapPage] = useState(false);
   // Timeout for wallet unlock in milliseconds (1 hour)
   const UNLOCK_TIMEOUT = 60 * 60 * 1000;
   
@@ -192,6 +195,13 @@ function App({ isSidebar = false }: AppProps = {}) {
   const toggleWallet = () => {
     setShowWallet(!showWallet);
     setShowWalletManager(false); // Close wallet manager when toggling wallet view
+  };
+  // Toggle swap page
+  const toggleSwapPage = () => {
+    setShowSwapPage(prev => !prev);
+    // Close other views
+    setShowWallet(false);
+    setShowWalletManager(false);
   };
 
   // After setting up password or unlocking, initialize and record unlock time
@@ -348,6 +358,8 @@ function App({ isSidebar = false }: AppProps = {}) {
             onManageWallets={openWalletManager}
             onOpenSidebar={openSidebar}
             onCloseSidebar={closeSidebar}
+            onSwap={toggleSwapPage}
+            showSwap={showSwapPage}
             copyConfirm={copyConfirm}
           />
           
@@ -371,6 +383,8 @@ function App({ isSidebar = false }: AppProps = {}) {
             {/* Conditional rendering of main content */}
             {!activeWallet ? (
               <WalletSetup />
+            ) : showSwapPage ? (
+              <SwapPage isSidebar={isSidebar} />
             ) : showWalletManager ? (
               <WalletManagerPage onBack={closeWalletManager} />
             ) : isCreatingCoin ? (
