@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Terminal, RefreshCw, PanelRight, PanelLeft } from 'lucide-react';
+import { Terminal, RefreshCw, PanelRight, PanelLeft, Repeat } from 'lucide-react';
 import { WalletIndicator } from './WalletIndicator';
 import { WalletDrawer } from './WalletDrawer';
 import { useStore } from '../store';
@@ -23,6 +23,9 @@ interface NavigationProps {
   onManageWallets: () => void;
   onOpenSidebar: () => void;
   onCloseSidebar: () => void;
+  // Swap page handler
+  onSwap: () => void;
+  showSwap: boolean;
   copyConfirm: boolean;
 }
 
@@ -40,7 +43,10 @@ export const Navigation: React.FC<NavigationProps> = ({
   onToggleWalletDrawer,
   onManageWallets,
   onOpenSidebar,
-  onCloseSidebar
+  onCloseSidebar,
+  onSwap,
+  showSwap,
+  copyConfirm
 }) => {
   const { wallets } = useStore();
   const [copiedWallet, setCopiedWallet] = useState<string | null>(null);
@@ -82,6 +88,18 @@ export const Navigation: React.FC<NavigationProps> = ({
                   title="View Wallet"
                 >
                   <Terminal className="w-4 h-4" />
+                </button>
+                {/* Swap page button */}
+                <button
+                  className={`h-full w-14 transition-colors flex items-center justify-center ${
+                    showSwap
+                      ? 'bg-cyber-green/20 text-cyber-green'
+                      : 'hover:bg-cyber-green/10 text-cyber-green/80 hover:text-cyber-green'
+                  }`}
+                  onClick={onSwap}
+                  title="Swap Tokens"
+                >
+                  <Repeat className="w-4 h-4" />
                 </button>
 
                 {/* SOL balance indicator with sequential animation */}
