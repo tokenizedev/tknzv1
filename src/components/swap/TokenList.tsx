@@ -8,6 +8,7 @@ interface TokenInfo {
   logoUrl?: string;
   balance?: string;
   balanceUsd?: string;
+  decimals: number;
 }
 
 interface TokenListProps {
