@@ -2,11 +2,37 @@ import { PublicKey, Transaction, Commitment } from '@solana/web3.js';
 import { Buffer } from 'buffer';
 import { createConnection, web3Connection } from '../utils/connection';
 import { useStore } from '../store';
-
+import axios from 'axios';
 // Jupiter API endpoints
 const JUPITER_QUOTE_API = 'https://quote-api.jup.ag/v4/quote';
 const JUPITER_SWAP_API = 'https://quote-api.jup.ag/v4/swap';
 
+/**
+ * Jupiter Token API base URL
+ */
+const TOKEN_API_BASE = 'https://lite-api.jup.ag/tokens/v1';
+
+/**
+ * Jupiter Price API base URL
+ */
+// const PRICE_API_BASE = 'https://lite-api.jup.ag/price/v2';
+
+/**
+ * Jupiter Ultra Balances API base URL
+ */
+// const ULTRA_BALANCES_BASE = 'https://lite-api.jup.ag/ultra/v1/balances';
+
+function createClient() {
+  return axios.create({
+    baseURL: 'https://lite-api.jup.ag/',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': import.meta.env.VITE_JUPITER_API_KEY,
+    },
+  });
+}
+
+const client = createClient();
 /**
  * Response type for a single route/quote from Jupiter
  */
@@ -194,5 +220,148 @@ export async function confirmTransaction(
     return await web3Connection.confirmTransaction(signature, commitment);
   } catch (err) {
     throw new Error(`confirmTransaction error: ${(err as Error).message}`);
+  }
+}
+
+/**
+ * Token info returned by Jupiter Token API
+ */
+export interface TokenInfoAPI {
+  address: string;
+  name: string;
+  symbol: string;
+  decimals: number;
+  logoURI: string;
+  tags: string[];
+  daily_volume: number;
+  created_at: string;
+  freeze_authority: string | null;
+  mint_authority: string | null;
+  permanent_delegate: string | null;
+  minted_at: string | null;
+  extensions: Record<string, any>;
+}
+
+/**
+ * Fetches all tradable token mint addresses
+ */
+export async function getTradableMints(): Promise<string[]> {
+  try {
+    const response = await client.get<string[]>(`tokens/v1/mints/tradable`);
+    return response.data;
+  } catch (err) {
+    if (axios.isAxiosError(err) && err.response) {
+      throw new Error(`getTradableMints HTTP ${err.response.status}: ${err.response.statusText}`);
+    }
+    throw new Error(`getTradableMints network error: ${(err as Error).message}`);
+  }
+}
+
+/**
+ * Fetch token metadata for a given mint address
+ */
+export async function getTokenInfo(mintAddress: string): Promise<TokenInfoAPI> {
+  try {
+    const response = await client.get<TokenInfoAPI>(`tokens/v1/token/${encodeURIComponent(mintAddress)}`);
+    const data = response.data;
+    if (!data || typeof data.address !== 'string') {
+      throw new Error('getTokenInfo: invalid token data');
+    }
+    return data;
+  } catch (err) {
+    if (axios.isAxiosError(err) && err.response) {
+      throw new Error(`getTokenInfo HTTP ${err.response.status}: ${err.response.statusText}`);
+    }
+    throw new Error(`getTokenInfo network error: ${(err as Error).message}`);
+  }
+}
+
+/**
+ * Fetch tokens for a given tag (e.g. 'verified', 'lst')
+ */
+export async function getTaggedTokens(tag: string): Promise<TokenInfoAPI[]> {
+  try {
+    const response = await client.get<TokenInfoAPI[]>(`tokens/v1/tagged/${encodeURIComponent(tag)}`);
+    return response.data;
+  } catch (err) {
+    if (axios.isAxiosError(err) && err.response) {
+      throw new Error(`getTaggedTokens HTTP ${err.response.status}: ${err.response.statusText}`);
+    }
+    throw new Error(`getTaggedTokens network error: ${(err as Error).message}`);
+  }
+}
+
+/**
+ * Price detail for a single token
+ */
+export interface PriceDetail {
+  id: string;
+  type: string;
+  price: string;
+  extraInfo?: any;
+}
+
+/**
+ * Response from Jupiter Price API
+ */
+export interface PriceResponse {
+  data: Record<string, PriceDetail>;
+  timeTaken: number;
+}
+
+/**
+ * Fetches price data for given token IDs
+ */
+export async function getPrices(
+  ids: string[],
+  vsToken?: string,
+  showExtraInfo: boolean = false
+): Promise<PriceResponse> {
+  try {
+    const response = await client.get<PriceResponse>('price/v2', {
+      params: {
+        ids: ids.join(','),
+        ...(vsToken && !showExtraInfo ? { vsToken } : {}),
+        ...(showExtraInfo ? { showExtraInfo: true } : {}),
+      },
+    });
+    if (!response.data?.data) {
+      throw new Error('getPrices: missing data field');
+    }
+    return response.data;
+  } catch (err) {
+    if (axios.isAxiosError(err) && err.response) {
+      throw new Error(`getPrices HTTP ${err.response.status}: ${err.response.statusText}`);
+    }
+    throw new Error(`getPrices network error: ${(err as Error).message}`);
+  }
+}
+
+/**
+ * Balance info for a token in user's wallet
+ */
+export interface BalanceInfo {
+  amount: string;
+  uiAmount: number;
+  slot: number;
+  isFrozen: boolean;
+}
+
+/**
+ * Fetches all token balances for a wallet address
+ */
+export async function getUltraBalances(
+  walletAddress: string
+): Promise<Record<string, BalanceInfo>> {
+  try {
+    const response = await client.get<Record<string, BalanceInfo>>(
+      `ultra/v1/balances/${encodeURIComponent(walletAddress)}`
+    );
+    return response.data;
+  } catch (err) {
+    if (axios.isAxiosError(err) && err.response) {
+      throw new Error(`getUltraBalances HTTP ${err.response.status}: ${err.response.statusText}`);
+    }
+    throw new Error(`getUltraBalances network error: ${(err as Error).message}`);
   }
 }
