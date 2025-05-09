@@ -3,6 +3,7 @@ import { VersionedTransaction } from '@solana/web3.js';
 import { useStore } from '../store';
 import {
   getTaggedTokens,
+  getTokenInfo,
   TokenInfoAPI,
   getUltraBalances,
   BalanceInfo,
@@ -75,12 +76,12 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
       try {
         // Fetch verified tokens from Jupiter
         const tokens = await getTaggedTokens('verified');
-        // Define custom TKNZ token
-        const customToken: TokenInfoAPI = {
+        // Define custom TKNZ stub
+        const customStub: TokenInfoAPI = {
           address: 'AfyDiEptGHEDgD69y56XjNSbTs23LaF1YHANVKnWpump',
           name: 'TKNZ.fun',
           symbol: 'TKNZ',
-          decimals: 6,
+          decimals: 0, // placeholder
           logoURI: 'https://ipfs.io/ipfs/QmPjLEGEcvEDgGrxNPZdFy1RzfiWRyJYu6YaicM6oZGddQ',
           tags: [],
           daily_volume: 0,
@@ -91,6 +92,13 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
           minted_at: null,
           extensions: {},
         };
+        // Fetch real metadata for custom token
+        const customMeta = await getTokenInfo(customStub.address);
+        const customToken: TokenInfoAPI = {
+          ...customStub,
+          decimals: customMeta.decimals,
+          logoURI: customStub.logoURI || customMeta.logoURI,
+        };
         // Identify SOL token
         const solMint = 'So11111111111111111111111111111111111111112';
         const solToken = tokens.find(t => t.address === solMint);
@@ -98,24 +106,29 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
         const remaining = tokens.filter(
           t => t.address !== solMint && t.address !== customToken.address
         );
-        // Map platform-created coins into token info objects
-        const createdTokens: TokenInfoAPI[] = platformCoins.map(c => ({
-          address: c.address,
-          name: c.name,
-          symbol: c.ticker,
-          decimals: 9,
-          logoURI: '',
-          tags: [],
-          daily_volume: 0,
-          created_at: c.createdAt
-            ? new Date(c.createdAt).toISOString()
-            : new Date().toISOString(),
-          freeze_authority: null,
-          mint_authority: null,
-          permanent_delegate: null,
-          minted_at: null,
-          extensions: {},
-        }));
+        // Map platform-created coins into token info objects with on-chain decimals
+        const createdTokens: TokenInfoAPI[] = await Promise.all(
+          platformCoins.map(async c => {
+            const info = await getTokenInfo(c.address);
+            return {
+              address: c.address,
+              name: c.name,
+              symbol: c.ticker,
+              decimals: info.decimals,
+              logoURI: info.logoURI || '',
+              tags: [],
+              daily_volume: 0,
+              created_at: c.createdAt
+                ? new Date(c.createdAt).toISOString()
+                : new Date().toISOString(),
+              freeze_authority: info.freeze_authority,
+              mint_authority: info.mint_authority,
+              permanent_delegate: info.permanent_delegate,
+              minted_at: info.minted_at,
+              extensions: info.extensions,
+            };
+          })
+        );
         // Build the final token list: custom, SOL, created, verified remaining
         const finalList: TokenInfoAPI[] = [customToken];
         if (solToken) finalList.push(solToken);
@@ -130,23 +143,29 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
         const lbData = await lbResponse.json()
         const { entries: lbTokens } = lbData
         
-        const leaderboardTokens = lbTokens.map(r => ({
-          address: r.address,
-          name: r.name,
-          symbol: (r.symbol || '').toString(),
-          decimals: 9,
-          logoURI: r.logoURI,
-          tags: [],
-          daily_volume: 0,
-          created_at: r.launchTime
-            ? new Date(r.launchTime).toISOString()
-            : new Date().toISOString(),
-          freeze_authority: null,
-          mint_authority: null,
-          permanent_delegate: null,
-          minted_at: null,
-          extensions: {},
-        }));
+        // Map leaderboard tokens with on-chain decimals
+        const leaderboardTokens: TokenInfoAPI[] = await Promise.all(
+          lbTokens.map(async r => {
+            const info = await getTokenInfo(r.address);
+            return {
+              address: r.address,
+              name: r.name,
+              symbol: (r.symbol || '').toString(),
+              decimals: info.decimals,
+              logoURI: r.logoURI || info.logoURI,
+              tags: [],
+              daily_volume: 0,
+              created_at: r.launchTime
+                ? new Date(r.launchTime).toISOString()
+                : new Date().toISOString(),
+              freeze_authority: info.freeze_authority,
+              mint_authority: info.mint_authority,
+              permanent_delegate: info.permanent_delegate,
+              minted_at: info.minted_at,
+              extensions: info.extensions,
+            };
+          })
+        );
 
         if (leaderboardTokens.find(t => t.address === SYSTEM_TOKEN)) {
           leaderboardTokens.splice(leaderboardTokens.findIndex(t => t.address === SYSTEM_TOKEN), 1)
