@@ -2,10 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { PublicKey, VersionedTransaction } from '@solana/web3.js';
 import { useStore } from '../store';
 import {
-  getQuote,
-  previewSwap,
-  QuoteResponse,
-  PreviewData,
   getTaggedTokens,
   TokenInfoAPI,
   getUltraBalances,
@@ -96,16 +92,20 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
     show: false,
     status: 'pending',
   });
-  // Jupiter quote preview state
-  const [quote, setQuote] = useState<QuoteResponse | null>(null);
-  const [previewData, setPreviewData] = useState<PreviewData | null>(null);
+  // Jupiter order preview state
+  const [previewData, setPreviewData] = useState<{
+    inputAmount: number;
+    outputAmount: number;
+    priceImpactPct: number;
+    minimumOutAmount: number;
+    feeBps: number;
+  } | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
   // Live preview: fetch quote whenever inputs change
   useEffect(() => {
     async function fetchPreview() {
-      if (!fromToken || !toToken || !fromAmount || parseFloat(fromAmount) <= 0) {
-        setQuote(null);
+      if (!fromToken || !toToken || !fromAmount || parseFloat(fromAmount) <= 0 || !activeWallet) {
         setPreviewData(null);
         return;
       }
@@ -113,31 +113,34 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
       setPreviewError(null);
       try {
         const rawAmount = Math.floor(parseFloat(fromAmount) * 10 ** fromToken.decimals);
-        const slippageBps = Math.floor(parseFloat(slippage) * 100);
-        const quoteRes = await getQuote({
+        // taker is wallet address
+        const order = await getOrder({
           inputMint: fromToken.id,
           outputMint: toToken.id,
           amount: rawAmount,
-          slippageBps,
+          taker: activeWallet.publicKey,
         });
-        const pd = previewSwap(quoteRes);
-        setQuote(quoteRes);
-        setPreviewData(pd);
-        // update output amount
-        const outTokens = pd.outputAmount / 10 ** toToken.decimals;
+        // parse numeric fields
+        const inAmt = parseInt(order.inAmount);
+        const outAmt = parseInt(order.outAmount);
+        const minOut = parseInt(order.otherAmountThreshold || order.outAmount);
+        const priceImpact = order.priceImpactPct != null ? parseFloat(order.priceImpactPct) : 0;
+        const feeBps = order.feeBps != null ? order.feeBps : 0;
+        setPreviewData({ inputAmount: inAmt, outputAmount: outAmt, priceImpactPct: priceImpact, minimumOutAmount: minOut, feeBps });
+        // update output amount in UI
+        const outTokens = outAmt / 10 ** toToken.decimals;
         setToAmount(outTokens.toFixed(toToken.decimals));
-        // approximate USD: mirror input USD as conservative estimate
-        setToAmountUsd(fromAmountUsd);
+        setToAmountUsd((outTokens * (parseFloat(toToken.balanceUsd) / parseFloat(toToken.balance))).toFixed(2));
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        console.error('Quote preview error:', msg);
+        console.error('Order preview error:', msg);
         setPreviewError(msg);
       } finally {
         setIsPreviewLoading(false);
       }
     }
     fetchPreview();
-  }, [fromToken, toToken, fromAmount, slippage]);
+  }, [fromToken, toToken, fromAmount, slippage, activeWallet]);
 
   // Swap calculations
   const calculateToAmount = (amount: string) => {
@@ -367,8 +370,8 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
               : undefined
           }
           fee={
-            previewData && fromToken
-              ? `${((previewData.feeAmount ?? 0) / 10 ** fromToken.decimals).toFixed(fromToken.decimals)} ${fromToken.symbol}`
+            previewData
+              ? `${(previewData.feeBps / 100).toFixed(2)}%`
               : undefined
           }
           slippage={slippage}
@@ -454,8 +457,8 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
           }
           priceImpact={previewData ? previewData.priceImpactPct.toFixed(2) : '0'}
           fee={
-            previewData && fromToken
-              ? `${((previewData.feeAmount ?? 0) / 10 ** fromToken.decimals).toFixed(fromToken.decimals)} ${fromToken.symbol}`
+            previewData
+              ? `${(previewData.feeBps / 100).toFixed(2)}%`
               : undefined
           }
           estimatedGas="~0.0005 SOL"
