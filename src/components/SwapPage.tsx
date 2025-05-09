@@ -1,7 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { PublicKey } from '@solana/web3.js';
 import { useStore } from '../store';
-import { getQuote, buildSwapTransaction, executeSwap, confirmTransaction, previewSwap, QuoteResponse, PreviewData } from '../services/jupiterService';
+import {
+  getQuote,
+  buildSwapTransaction,
+  executeSwap,
+  confirmTransaction,
+  previewSwap,
+  QuoteResponse,
+  PreviewData,
+  getTaggedTokens,
+  TokenInfoAPI,
+  getUltraBalances,
+  BalanceInfo,
+} from '../services/jupiterService';
 import { TokenSelector } from './swap/TokenSelector';
 import { AmountInput } from './swap/AmountInput';
 import { SwapDetails } from './swap/SwapDetails';
@@ -11,59 +23,19 @@ import { SwapConfirmation } from './swap/SwapConfirmation';
 import { SwapStatus, SwapStatusType } from './swap/SwapStatus';
 import { FaInfoCircle } from 'react-icons/fa';
 
-// Mock token data with mint addresses (used as id) and decimals for Jupiter integration
-const MOCK_TOKENS = [
-  {
-    id: 'So11111111111111111111111111111111111111112', // Wrapped SOL
-    mintAddress: 'So11111111111111111111111111111111111111112',
-    decimals: 9,
-    symbol: 'SOL',
-    name: 'Solana',
-    logoUrl: 'https://assets.coingecko.com/coins/images/4128/small/solana.png',
-    balance: '12.5',
-    balanceUsd: '420.75',
-  },
-  {
-    id: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', // USDC
-    mintAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-    decimals: 6,
-    symbol: 'USDC',
-    name: 'USD Coin',
-    logoUrl: 'https://assets.coingecko.com/coins/images/6319/small/USD_Coin_icon.png',
-    balance: '1503.25',
-    balanceUsd: '1503.25',
-  },
-  {
-    id: 'DezXAZ8z7PnrnRJjz1YzWfe1mqwMTZ7iZw6NtGuxKP7', // BONK
-    mintAddress: 'DezXAZ8z7PnrnRJjz1YzWfe1mqwMTZ7iZw6NtGuxKP7',
-    decimals: 9,
-    symbol: 'BONK',
-    name: 'Bonk',
-    logoUrl: 'https://assets.coingecko.com/coins/images/28600/small/bonk.jpg',
-    balance: '15000000',
-    balanceUsd: '125.35',
-  },
-  {
-    id: '6oHdWzevEn9us1psSf81qChMfx7tcTtq7Xg4mP83GmZt', // JUP
-    mintAddress: '6oHdWzevEn9us1psSf81qChMfx7tcTtq7Xg4mP83GmZt',
-    decimals: 6,
-    symbol: 'JUP',
-    name: 'Jupiter',
-    logoUrl: 'https://assets.coingecko.com/coins/images/34173/small/jup.png',
-    balance: '950',
-    balanceUsd: '712.50',
-  },
-  {
-    id: '2yY2L9fQD4XD9FxwERp4fapBhDSR6hS73fckMhPwLjPc', // RNDR (example)
-    mintAddress: '2yY2L9fQD4XD9FxwERp4fapBhDSR6hS73fckMhPwLjPc',
-    decimals: 6,
-    symbol: 'RNDR',
-    name: 'Render Token',
-    logoUrl: 'https://assets.coingecko.com/coins/images/11636/small/rndr.png',
-    balance: '85.2',
-    balanceUsd: '563.17',
-  },
-];
+// Simplified token option for UI
+interface TokenOption {
+  id: string;
+  symbol: string;
+  name: string;
+  logoUrl?: string;
+  decimals: number;
+}
+
+// Token list state (fetched via Jupiter Token API)
+interface SwapPageProps {
+  isSidebar?: boolean;
+}
 
 interface SwapPageProps {
   isSidebar?: boolean;
@@ -72,9 +44,38 @@ interface SwapPageProps {
 export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
   // Wallet state
   const activeWallet = useStore(state => state.activeWallet);
+  // Token list fetched from Jupiter
+  const [tokenList, setTokenList] = useState<TokenInfoAPI[]>([]);
+  const [loadingTokens, setLoadingTokens] = useState(false);
+  const [tokenError, setTokenError] = useState<string | null>(null);
+  // UI tokens array for TokenList component
+  const uiTokens = tokenList.map(t => ({
+    id: t.address,
+    symbol: t.symbol,
+    name: t.name,
+    logoUrl: t.logoURI,
+    decimals: t.decimals,
+  }));
+  
+  // Fetch user balances via Jupiter Ultra API
+  const [balances, setBalances] = useState<Record<string, BalanceInfo>>({});
+  useEffect(() => {
+    if (!activeWallet) return;
+    getUltraBalances(activeWallet.publicKey)
+      .then(setBalances)
+      .catch(err => console.error('Balance load error:', err));
+  }, [activeWallet]);
+  // Fetch verified tokens on mount
+  useEffect(() => {
+    setLoadingTokens(true);
+    getTaggedTokens('verified')
+      .then(setTokenList)
+      .catch(err => setTokenError(err instanceof Error ? err.message : String(err)))
+      .finally(() => setLoadingTokens(false));
+  }, []);
   // Token states
-  const [fromToken, setFromToken] = useState<typeof MOCK_TOKENS[0] | null>(null);
-  const [toToken, setToToken] = useState<typeof MOCK_TOKENS[0] | null>(null);
+  const [fromToken, setFromToken] = useState<TokenOption | null>(null);
+  const [toToken, setToToken] = useState<TokenOption | null>(null);
   
   // Amount states
   const [fromAmount, setFromAmount] = useState('');
@@ -115,8 +116,8 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
         const rawAmount = Math.floor(parseFloat(fromAmount) * 10 ** fromToken.decimals);
         const slippageBps = Math.floor(parseFloat(slippage) * 100);
         const quoteRes = await getQuote({
-          inputMint: fromToken.mintAddress,
-          outputMint: toToken.mintAddress,
+          inputMint: fromToken.id,
+          outputMint: toToken.id,
           amount: rawAmount,
           slippageBps,
         });
@@ -177,7 +178,7 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
   };
 
   // Handle token selection
-  const handleFromTokenSelect = (token: typeof MOCK_TOKENS[0]) => {
+  const handleFromTokenSelect = (token: TokenOption) => {
     if (toToken && token.id === toToken.id) {
       setToToken(fromToken);
     }
@@ -188,7 +189,7 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
     }
   };
 
-  const handleToTokenSelect = (token: typeof MOCK_TOKENS[0]) => {
+  const handleToTokenSelect = (token: TokenOption) => {
     if (fromToken && token.id === fromToken.id) {
       setFromToken(toToken);
     }
@@ -252,8 +253,8 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
         throw new Error('Wallet not initialized.');
       }
       // Prepare quote parameters
-      const inputMint = fromToken.mintAddress;
-      const outputMint = toToken.mintAddress;
+      const inputMint = fromToken.id;
+      const outputMint = toToken.id;
       const rawAmount = Math.floor(parseFloat(fromAmount) * Math.pow(10, fromToken.decimals));
       const slippageBps = Math.floor(parseFloat(slippage) * 100);
       // Fetch quote
@@ -306,7 +307,11 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
             tokenSymbol={fromToken?.symbol}
             tokenName={fromToken?.name}
             tokenLogo={fromToken?.logoUrl}
-            balance={fromToken ? `Balance: ${fromToken.balance}` : undefined}
+            balance={
+              fromToken
+                ? `Balance: ${balances[fromToken.id]?.uiAmount?.toFixed(fromToken.decimals) ?? '0'}`
+                : undefined
+            }
             onClick={() => setShowFromTokenList(true)}
             label="You pay"
           />
@@ -329,7 +334,11 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
             tokenSymbol={toToken?.symbol}
             tokenName={toToken?.name}
             tokenLogo={toToken?.logoUrl}
-            balance={toToken ? `Balance: ${toToken.balance}` : undefined}
+            balance={
+              toToken
+                ? `Balance: ${balances[toToken.id]?.uiAmount?.toFixed(toToken.decimals) ?? '0'}`
+                : undefined
+            }
             onClick={() => setShowToTokenList(true)}
             label="You receive"
           />
@@ -401,7 +410,7 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
       {/* Token selection modal */}
       {showFromTokenList && (
         <TokenList
-          tokens={MOCK_TOKENS}
+          tokens={uiTokens}
           onSelect={handleFromTokenSelect}
           onClose={() => setShowFromTokenList(false)}
         />
@@ -409,7 +418,7 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
       
       {showToTokenList && (
         <TokenList
-          tokens={MOCK_TOKENS}
+          tokens={uiTokens}
           onSelect={handleToTokenSelect}
           onClose={() => setShowToTokenList(false)}
         />
