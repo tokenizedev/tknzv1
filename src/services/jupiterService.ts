@@ -365,3 +365,66 @@ export async function getUltraBalances(
     throw new Error(`getUltraBalances network error: ${(err as Error).message}`);
   }
 }
+/**
+ * Order response from Jupiter Ultra API
+ */
+export interface OrderResponse {
+  swapType: string;
+  requestId: string;
+  inAmount: string;
+  outAmount: string;
+  otherAmountThreshold: string;
+  transaction: string | null;
+  [key: string]: any;
+}
+
+/**
+ * Execution response from Jupiter Ultra API
+ */
+export interface ExecuteResponse {
+  status: 'Success' | 'Failed';
+  signature: string;
+  code: number;
+  error?: string;
+  [key: string]: any;
+}
+
+/**
+ * Retrieves a swap order (transaction + requestId) from Jupiter Ultra API
+ */
+export async function getOrder(params: {
+  inputMint: string;
+  outputMint: string;
+  amount: number;
+  taker?: string;
+  referralAccount?: string;
+  referralFee?: number;
+}): Promise<OrderResponse> {
+  try {
+    const response = await client.get<OrderResponse>('ultra/v1/order', { params });
+    return response.data;
+  } catch (err) {
+    if (axios.isAxiosError(err) && err.response) {
+      throw new Error(`getOrder HTTP ${err.response.status}: ${err.response.statusText}`);
+    }
+    throw new Error(`getOrder network error: ${(err as Error).message}`);
+  }
+}
+
+/**
+ * Executes a previously signed swap order via Jupiter Ultra API
+ */
+export async function executeOrder(params: {
+  signedTransaction: string;
+  requestId: string;
+}): Promise<ExecuteResponse> {
+  try {
+    const response = await client.post<ExecuteResponse>('ultra/v1/execute', params);
+    return response.data;
+  } catch (err) {
+    if (axios.isAxiosError(err) && err.response) {
+      throw new Error(`executeOrder HTTP ${err.response.status}: ${err.response.statusText}`);
+    }
+    throw new Error(`executeOrder network error: ${(err as Error).message}`);
+  }
+}
