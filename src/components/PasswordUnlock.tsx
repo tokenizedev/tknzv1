@@ -128,7 +128,7 @@ export const PasswordUnlock: React.FC<PasswordUnlockProps> = ({ onUnlock }) => {
         
         <div className="leaderboard-title text-center p-4 border-b border-cyber-green/30 relative">
           <Terminal className="absolute left-3 top-4 w-4 h-4 text-cyber-pink/70" />
-          <span className="text-cyber-green font-bold tracking-widest">TKNZ VAULT AUTHENTICATION</span>
+          <span className="text-cyber-green font-bold tracking-widest">TKNZ VAULT UNLOCK</span>
           <Code className="absolute right-3 top-4 w-4 h-4 text-cyber-pink/70" />
         </div>
         <div className="p-6 space-y-6 relative bg-gradient-to-b from-cyber-black to-cyber-black/80">
