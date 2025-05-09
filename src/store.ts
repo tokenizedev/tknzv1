@@ -806,6 +806,11 @@ export const useStore = create<WalletState>((set, get) => ({
       throw new Error('Wallet not initialized');
     }
 
+    // Prevent creation of tokens with reserved symbol TKNZ
+    if (ticker.trim().toUpperCase() === 'TKNZ') {
+      throw new Error("Ticker 'TKNZ' is reserved and cannot be used.");
+    }
+
     try {
       // Generate a random keypair for the token
       const mintKeypair = Keypair.generate();
