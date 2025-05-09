@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { PublicKey, VersionedTransaction } from '@solana/web3.js';
+import { VersionedTransaction } from '@solana/web3.js';
 import { useStore } from '../store';
 import {
   getTaggedTokens,
@@ -10,7 +10,6 @@ import {
   executeOrder,
   getPrices,
 } from '../services/jupiterService';
-import { getAllCreatedCoins } from '../firebase';
 import type { CreatedCoin } from '../types';
 import { TokenSelector } from './swap/TokenSelector';
 import { AmountInput } from './swap/AmountInput';
@@ -60,6 +59,7 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
   
   // Fetch user balances via Jupiter Ultra API
   const [balances, setBalances] = useState<Record<string, BalanceInfo>>({});
+
   useEffect(() => {
     if (!activeWallet) return;
     getUltraBalances(activeWallet.publicKey)
@@ -84,7 +84,7 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
           logoURI: 'https://ipfs.io/ipfs/QmPjLEGEcvEDgGrxNPZdFy1RzfiWRyJYu6YaicM6oZGddQ',
           tags: [],
           daily_volume: 0,
-          created_at: new Date().toISOString(),
+          created_at: new Date('2025-04-30 17:07:42').toISOString(),
           freeze_authority: null,
           mint_authority: null,
           permanent_delegate: null,
