@@ -69,6 +69,36 @@ export async function getCreatedCoins(walletAddress: string): Promise<CreatedCoi
     return []; 
   }
 }
+/**
+ * Fetches all created coins across all wallets from Firestore.
+ */
+export async function getAllCreatedCoins(): Promise<CreatedCoin[]> {
+  try {
+    const coinsRef = collection(db, 'createdCoins');
+    const querySnapshot = await getDocs(coinsRef);
+    const coins: CreatedCoin[] = [];
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      const createdAt = data.createdAt instanceof Timestamp
+        ? data.createdAt.toDate()
+        : data.createdAt;
+      coins.push({
+        ...(data as Omit<CreatedCoin, 'createdAt'>),
+        createdAt,
+      });
+    });
+    // Sort by creation time descending
+    coins.sort((a, b) => {
+      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return timeB - timeA;
+    });
+    return coins;
+  } catch (error) {
+    console.error('Error fetching all created coins from Firestore:', error);
+    return [];
+  }
+}
 
 /**
  * Adds a newly created coin record to Firestore.
