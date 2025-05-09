@@ -38,8 +38,9 @@ interface SwapPageProps {
 }
 
 export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
-  // Wallet state
+  // Wallet and created tokens state
   const activeWallet = useStore(state => state.activeWallet);
+  const createdCoins = useStore(state => state.createdCoins);
   // Token list fetched from Jupiter
   const [tokenList, setTokenList] = useState<TokenInfoAPI[]>([]);
   const [loadingTokens, setLoadingTokens] = useState(false);
@@ -61,13 +62,13 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
       .then(setBalances)
       .catch(err => console.error('Balance load error:', err));
   }, [activeWallet]);
-  // Fetch verified tokens on mount
+  // Fetch verified tokens and merge custom + created tokens
   useEffect(() => {
     setLoadingTokens(true);
     getTaggedTokens('verified')
       .then(tokens => {
-        // Prepend custom TKNZ token and ensure SOL token is second
-        const customToken = {
+        // Define custom TKNZ token
+        const customToken: TokenInfoAPI = {
           address: 'AfyDiEptGHEDgD69y56XjNSbTs23LaF1YHANVKnWpump',
           name: 'TKNZ',
           symbol: 'TKNZ',
@@ -82,19 +83,39 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
           minted_at: null,
           extensions: {},
         };
+        // Identify SOL token
         const solMint = 'So11111111111111111111111111111111111111112';
         const solToken = tokens.find(t => t.address === solMint);
-        const otherTokens = tokens.filter(
+        // Filter out duplicates
+        const remaining = tokens.filter(
           t => t.address !== solMint && t.address !== customToken.address
         );
-        const newTokens = [customToken];
-        if (solToken) newTokens.push(solToken);
-        newTokens.push(...otherTokens);
-        setTokenList(newTokens);
+        // Map created coins from store into token info objects
+        const createdTokens: TokenInfoAPI[] = createdCoins.map(c => ({
+          address: c.address,
+          name: c.name,
+          symbol: c.ticker,
+          decimals: 9,
+          logoURI: '',
+          tags: [],
+          daily_volume: 0,
+          created_at: c.createdAt ? new Date(c.createdAt).toISOString() : new Date().toISOString(),
+          freeze_authority: null,
+          mint_authority: null,
+          permanent_delegate: null,
+          minted_at: null,
+          extensions: {},
+        }));
+        // Build the final token list: custom, SOL, created, then the rest
+        const finalList: TokenInfoAPI[] = [customToken];
+        if (solToken) finalList.push(solToken);
+        finalList.push(...createdTokens);
+        finalList.push(...remaining);
+        setTokenList(finalList);
       })
       .catch(err => setTokenError(err instanceof Error ? err.message : String(err)))
       .finally(() => setLoadingTokens(false));
-  }, []);
+  }, [createdCoins]);
   // Token states
   const [fromToken, setFromToken] = useState<TokenOption | null>(null);
   const [toToken, setToToken] = useState<TokenOption | null>(null);
