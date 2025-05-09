@@ -17,7 +17,8 @@
     "test": "node ./node_modules/vitest/vitest.mjs run",
     "test:watch": "node ./node_modules/vitest/vitest.mjs",
     "test:ci": "node ./node_modules/vitest/vitest.mjs run",
-    "test:coverage": "node ./node_modules/vitest/vitest.mjs run --coverage"
+    "test:coverage": "node ./node_modules/vitest/vitest.mjs run --coverage",
+    "watch:build": "nodemon --watch src --ext ts,tsx,js,jsx --exec \"yarn build\" --delay 500"
   },
   "dependencies": {
     "@solana/web3.js": "^1.91.1",
@@ -58,7 +59,8 @@
     "typescript": "^5.2.2",
     "vite": "^5.1.5",
     "vitest": "^0.34.3",
-    "vitest-fetch-mock": "^0.4.5"
+    "vitest-fetch-mock": "^0.4.5",
+    "nodemon": "^2.0.22"
   },
   "commit-and-tag-version": {
     "bumpFiles": [
