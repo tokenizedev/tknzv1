@@ -65,7 +65,7 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
       .then(setBalances)
       .catch(err => console.error('Balance load error:', err));
   }, [activeWallet]);
-  // Load all platform-created tokens from Firebase
+  // Load all platform-created tokens from the api
   useEffect(() => {
     getAllCreatedCoins()
       .then(coins => setPlatformCoins(coins))
@@ -129,23 +129,14 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
         if (!lbResponse.ok) {
           throw new Error(`Leaderboard fetch error: ${lbResponse.status} ${lbResponse.statusText}`);
         }
-        const lbData = (await lbResponse.json()) as Array<{
-          address: string;
-          name: string;
-          symbol: string;
-          logoURI: string;
-          price: number;
-          supply: number;
-          creatorWallet: string;
-          lastUpdated: number;
-          marketCap: number;
-          launchTime: number;
-        }>;
-        console.log('lbData', lbData)
-        const leaderboardTokens: TokenInfoAPI[] = lbData.map(r => ({
+
+        const lbData = await lbResponse.json()
+        const { entries: lbTokens } = lbData
+        console.log('lbTokensMap', lbTokens.map(r => r.logoURI))
+        const leaderboardTokens: TokenInfoAPI[] = lbTokens.map(r => ({
           address: r.address,
           name: r.name,
-          symbol: r.symbol,
+          symbol: (r.symbol || '').toString(),
           decimals: 9,
           logoURI: r.logoURI,
           tags: [],
@@ -159,10 +150,16 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
           minted_at: null,
           extensions: {},
         }));
-        console.log('finalList', finalList)
+
+        console.log('leaderboardTokens', leaderboardTokens)
+        
         finalList.push(...leaderboardTokens);
-        setTokenList(finalList);
+
+        console.log('finalList', finalList)
+        
+        setTokenList(leaderboardTokens);
       } catch (err) {
+        console.log('error', err)
         setTokenError(err instanceof Error ? err.message : String(err));
       } finally {
         setLoadingTokens(false);
@@ -391,7 +388,7 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
           <TokenSelector
             tokenSymbol={fromToken?.symbol}
             tokenName={fromToken?.name}
-            tokenLogo={fromToken?.logoUrl}
+            tokenLogo={fromToken?.logoURI}
             balance={
               fromToken
                 ? `Balance: ${balances[fromToken.id]?.uiAmount?.toFixed(fromToken.decimals) ?? '0'}`
@@ -418,7 +415,7 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
           <TokenSelector
             tokenSymbol={toToken?.symbol}
             tokenName={toToken?.name}
-            tokenLogo={toToken?.logoUrl}
+            tokenLogo={toToken?.logoURI}
             balance={
               toToken
                 ? `Balance: ${balances[toToken.id]?.uiAmount?.toFixed(toToken.decimals) ?? '0'}`
