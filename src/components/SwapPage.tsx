@@ -291,7 +291,7 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
   // Handle max button click
   const handleMaxClick = () => {
     if (fromToken) {
-      const bal = balances[fromToken.id]?.uiAmount ?? 0;
+      const bal = getUiBalance(fromToken);
       setFromAmount(bal.toString());
       setFromAmountUsd('');
       // preview fetch will recalc USD and toAmount
@@ -369,20 +369,23 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
     toAmount && 
     parseFloat(toAmount) > 0;
 
-  // Check if user has enough balance
+  // Check if user has enough balance (handles SOL specially)
   const hasEnoughBalance = fromToken && fromAmount
-    ? (balances[fromToken.id]?.uiAmount ?? 0) >= parseFloat(fromAmount)
+    ? (() => {
+        const bal = getUiBalance(fromToken);
+        return bal >= parseFloat(fromAmount);
+      })()
     : false;
 
-  // Special mapping for wrapped SOL to native SOL balance
-  const WSOL_MINT = 'So11111111111111111111111111111111111111112';
-  const SOL_BALANCE_KEY = 'SOL';
-  // Helper to get UI balance for a token or native SOL
-  const getUiBalance = (tokenId: string, decimals: number): number => {
-    if (tokenId === WSOL_MINT) {
-      return balances[SOL_BALANCE_KEY]?.uiAmount ?? 0;
+  /**
+   * Helper to get UI balance for a token (handling native SOL as special case).
+   */
+  const getUiBalance = (token: TokenOption): number => {
+    // Ultra API returns native SOL under key 'SOL'
+    if (token.symbol === 'SOL') {
+      return balances['SOL']?.uiAmount ?? 0;
     }
-    return balances[tokenId]?.uiAmount ?? 0;
+    return balances[token.id]?.uiAmount ?? 0;
   };
 
   return (
@@ -398,7 +401,7 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
             tokenLogo={fromToken?.logoURI}
             balance={
               fromToken
-                ? `Balance: ${getUiBalance(fromToken.id, fromToken.decimals).toFixed(fromToken.decimals)}`
+                ? `Balance: ${getUiBalance(fromToken).toFixed(fromToken.decimals)}`
                 : undefined
             }
             onClick={() => setShowFromTokenList(true)}
@@ -425,7 +428,7 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
             tokenLogo={toToken?.logoURI}
             balance={
               toToken
-                ? `Balance: ${getUiBalance(toToken.id, toToken.decimals).toFixed(toToken.decimals)}`
+                ? `Balance: ${getUiBalance(toToken).toFixed(toToken.decimals)}`
                 : undefined
             }
             onClick={() => setShowToTokenList(true)}
@@ -471,7 +474,7 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
             <div className="flex items-start">
               <FaInfoCircle className="mt-0.5 mr-2 flex-shrink-0" />
               <span>
-                Insufficient {fromToken.symbol} balance. You need {(parseFloat(fromAmount) - (balances[fromToken.id]?.uiAmount ?? 0)).toFixed(fromToken.decimals)} more {fromToken.symbol}.
+                Insufficient {fromToken.symbol} balance. You need {(parseFloat(fromAmount) - getUiBalance(fromToken)).toFixed(fromToken.decimals)} more {fromToken.symbol}.
               </span>
             </div>
           </div>
