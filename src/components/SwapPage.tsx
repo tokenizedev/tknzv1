@@ -65,7 +65,33 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
   useEffect(() => {
     setLoadingTokens(true);
     getTaggedTokens('verified')
-      .then(setTokenList)
+      .then(tokens => {
+        // Prepend custom TKNZ token and ensure SOL token is second
+        const customToken = {
+          address: 'AfyDiEptGHEDgD69y56XjNSbTs23LaF1YHANVKnWpump',
+          name: 'TKNZ',
+          symbol: 'TKNZ',
+          decimals: 9,
+          logoURI: 'https://tknz.fun/assets/logo.png',
+          tags: [],
+          daily_volume: 0,
+          created_at: new Date().toISOString(),
+          freeze_authority: null,
+          mint_authority: null,
+          permanent_delegate: null,
+          minted_at: null,
+          extensions: {},
+        };
+        const solMint = 'So11111111111111111111111111111111111111112';
+        const solToken = tokens.find(t => t.address === solMint);
+        const otherTokens = tokens.filter(
+          t => t.address !== solMint && t.address !== customToken.address
+        );
+        const newTokens = [customToken];
+        if (solToken) newTokens.push(solToken);
+        newTokens.push(...otherTokens);
+        setTokenList(newTokens);
+      })
       .catch(err => setTokenError(err instanceof Error ? err.message : String(err)))
       .finally(() => setLoadingTokens(false));
   }, []);
