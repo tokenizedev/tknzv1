@@ -1,4 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { PublicKey } from '@solana/web3.js';
+import { useStore } from '../store';
+import { getQuote, buildSwapTransaction, executeSwap, confirmTransaction, previewSwap, QuoteResponse, PreviewData } from '../services/jupiterService';
 import { TokenSelector } from './swap/TokenSelector';
 import { AmountInput } from './swap/AmountInput';
 import { SwapDetails } from './swap/SwapDetails';
@@ -8,10 +11,12 @@ import { SwapConfirmation } from './swap/SwapConfirmation';
 import { SwapStatus, SwapStatusType } from './swap/SwapStatus';
 import { FaInfoCircle } from 'react-icons/fa';
 
-// Mock token data
+// Mock token data with mint addresses (used as id) and decimals for Jupiter integration
 const MOCK_TOKENS = [
   {
-    id: '1',
+    id: 'So11111111111111111111111111111111111111112', // Wrapped SOL
+    mintAddress: 'So11111111111111111111111111111111111111112',
+    decimals: 9,
     symbol: 'SOL',
     name: 'Solana',
     logoUrl: 'https://assets.coingecko.com/coins/images/4128/small/solana.png',
@@ -19,7 +24,9 @@ const MOCK_TOKENS = [
     balanceUsd: '420.75',
   },
   {
-    id: '2',
+    id: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', // USDC
+    mintAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+    decimals: 6,
     symbol: 'USDC',
     name: 'USD Coin',
     logoUrl: 'https://assets.coingecko.com/coins/images/6319/small/USD_Coin_icon.png',
@@ -27,7 +34,9 @@ const MOCK_TOKENS = [
     balanceUsd: '1503.25',
   },
   {
-    id: '3',
+    id: 'DezXAZ8z7PnrnRJjz1YzWfe1mqwMTZ7iZw6NtGuxKP7', // BONK
+    mintAddress: 'DezXAZ8z7PnrnRJjz1YzWfe1mqwMTZ7iZw6NtGuxKP7',
+    decimals: 9,
     symbol: 'BONK',
     name: 'Bonk',
     logoUrl: 'https://assets.coingecko.com/coins/images/28600/small/bonk.jpg',
@@ -35,7 +44,9 @@ const MOCK_TOKENS = [
     balanceUsd: '125.35',
   },
   {
-    id: '4',
+    id: '6oHdWzevEn9us1psSf81qChMfx7tcTtq7Xg4mP83GmZt', // JUP
+    mintAddress: '6oHdWzevEn9us1psSf81qChMfx7tcTtq7Xg4mP83GmZt',
+    decimals: 6,
     symbol: 'JUP',
     name: 'Jupiter',
     logoUrl: 'https://assets.coingecko.com/coins/images/34173/small/jup.png',
@@ -43,7 +54,9 @@ const MOCK_TOKENS = [
     balanceUsd: '712.50',
   },
   {
-    id: '5',
+    id: '2yY2L9fQD4XD9FxwERp4fapBhDSR6hS73fckMhPwLjPc', // RNDR (example)
+    mintAddress: '2yY2L9fQD4XD9FxwERp4fapBhDSR6hS73fckMhPwLjPc',
+    decimals: 6,
     symbol: 'RNDR',
     name: 'Render Token',
     logoUrl: 'https://assets.coingecko.com/coins/images/11636/small/rndr.png',
@@ -57,6 +70,8 @@ interface SwapPageProps {
 }
 
 export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
+  // Wallet state
+  const activeWallet = useStore(state => state.activeWallet);
   // Token states
   const [fromToken, setFromToken] = useState<typeof MOCK_TOKENS[0] | null>(null);
   const [toToken, setToToken] = useState<typeof MOCK_TOKENS[0] | null>(null);
@@ -81,6 +96,48 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
     show: false,
     status: 'pending',
   });
+  // Jupiter quote preview state
+  const [quote, setQuote] = useState<QuoteResponse | null>(null);
+  const [previewData, setPreviewData] = useState<PreviewData | null>(null);
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  // Live preview: fetch quote whenever inputs change
+  useEffect(() => {
+    async function fetchPreview() {
+      if (!fromToken || !toToken || !fromAmount || parseFloat(fromAmount) <= 0) {
+        setQuote(null);
+        setPreviewData(null);
+        return;
+      }
+      setIsPreviewLoading(true);
+      setPreviewError(null);
+      try {
+        const rawAmount = Math.floor(parseFloat(fromAmount) * 10 ** fromToken.decimals);
+        const slippageBps = Math.floor(parseFloat(slippage) * 100);
+        const quoteRes = await getQuote({
+          inputMint: fromToken.mintAddress,
+          outputMint: toToken.mintAddress,
+          amount: rawAmount,
+          slippageBps,
+        });
+        const pd = previewSwap(quoteRes);
+        setQuote(quoteRes);
+        setPreviewData(pd);
+        // update output amount
+        const outTokens = pd.outputAmount / 10 ** toToken.decimals;
+        setToAmount(outTokens.toFixed(toToken.decimals));
+        // approximate USD: mirror input USD as conservative estimate
+        setToAmountUsd(fromAmountUsd);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error('Quote preview error:', msg);
+        setPreviewError(msg);
+      } finally {
+        setIsPreviewLoading(false);
+      }
+    }
+    fetchPreview();
+  }, [fromToken, toToken, fromAmount, slippage]);
 
   // Swap calculations
   const calculateToAmount = (amount: string) => {
@@ -183,33 +240,37 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
     setToAmountUsd(tempAmountUsd);
   };
 
-  // Mock swap execution
-  const handleSwap = () => {
+  // Real swap execution using Jupiter service
+  const handleSwap = async () => {
     setShowConfirmation(false);
-    setSwapStatus({
-      show: true,
-      status: 'pending',
-    });
-
-    // Simulate network delay
-    setTimeout(() => {
-      // 90% chance of success
-      const isSuccess = Math.random() > 0.1;
-      
-      if (isSuccess) {
-        setSwapStatus({
-          show: true,
-          status: 'success',
-          hash: '0x' + Array(64).fill(0).map(() => Math.floor(Math.random() * 16).toString(16)).join(''),
-        });
-      } else {
-        setSwapStatus({
-          show: true,
-          status: 'error',
-          error: 'Transaction failed due to network congestion.',
-        });
+    setSwapStatus({ show: true, status: 'pending' });
+    try {
+      if (!fromToken || !toToken) {
+        throw new Error('Please select both tokens to swap.');
       }
-    }, 2000);
+      if (!activeWallet) {
+        throw new Error('Wallet not initialized.');
+      }
+      // Prepare quote parameters
+      const inputMint = fromToken.mintAddress;
+      const outputMint = toToken.mintAddress;
+      const rawAmount = Math.floor(parseFloat(fromAmount) * Math.pow(10, fromToken.decimals));
+      const slippageBps = Math.floor(parseFloat(slippage) * 100);
+      // Fetch quote
+      const quote = await getQuote({ inputMint, outputMint, amount: rawAmount, slippageBps });
+      // Build transaction
+      const tx = await buildSwapTransaction(quote, new PublicKey(activeWallet.publicKey));
+      // Execute swap
+      const sig = await executeSwap(tx);
+      // Update status with tx hash
+      setSwapStatus({ show: true, status: 'pending', hash: sig });
+      // Wait for confirmation
+      await confirmTransaction(sig);
+      setSwapStatus({ show: true, status: 'success', hash: sig });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      setSwapStatus({ show: true, status: 'error', error: message });
+    }
   };
 
   // Calculate swap rate
@@ -283,11 +344,26 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
         
         {/* Swap details */}
         <SwapDetails
-          rate={getSwapRate() || undefined}
-          fee="0.3%"
+          rate={
+            previewData && fromToken && toToken
+              ? `1 ${fromToken.symbol} = ${(
+                  (previewData.outputAmount / 10 ** toToken.decimals) /
+                  (previewData.inputAmount / 10 ** fromToken.decimals)
+                ).toFixed(6)} ${toToken.symbol}`
+              : undefined
+          }
+          fee={
+            previewData && fromToken
+              ? `${((previewData.feeAmount ?? 0) / 10 ** fromToken.decimals).toFixed(fromToken.decimals)} ${fromToken.symbol}`
+              : undefined
+          }
           slippage={slippage}
           estimatedGas="~0.0005 SOL"
-          minimumReceived={toToken && toAmount ? `${(parseFloat(toAmount) * (1 - parseFloat(slippage) / 100)).toFixed(6)} ${toToken.symbol}` : undefined}
+          minimumReceived={
+            previewData && toToken
+              ? `${(previewData.minimumOutAmount / 10 ** toToken.decimals).toFixed(toToken.decimals)} ${toToken.symbol}`
+              : undefined
+          }
           onSlippageChange={setSlippage}
         />
         
@@ -354,11 +430,26 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
             logoUrl: toToken.logoUrl,
             fiatValue: toAmountUsd,
           }}
-          rate={getSwapRate() || ''}
-          priceImpact="0.05"
-          fee="0.3%"
+          rate={
+            previewData && fromToken && toToken
+              ? `1 ${fromToken.symbol} = ${(
+                  (previewData.outputAmount / 10 ** toToken.decimals) /
+                  (previewData.inputAmount / 10 ** fromToken.decimals)
+                ).toFixed(6)} ${toToken.symbol}`
+              : ''
+          }
+          priceImpact={previewData ? previewData.priceImpactPct.toFixed(2) : '0'}
+          fee={
+            previewData && fromToken
+              ? `${((previewData.feeAmount ?? 0) / 10 ** fromToken.decimals).toFixed(fromToken.decimals)} ${fromToken.symbol}`
+              : undefined
+          }
           estimatedGas="~0.0005 SOL"
-          minimumReceived={`${(parseFloat(toAmount) * (1 - parseFloat(slippage) / 100)).toFixed(6)} ${toToken.symbol}`}
+          minimumReceived={
+            previewData && toToken
+              ? `${(previewData.minimumOutAmount / 10 ** toToken.decimals).toFixed(toToken.decimals)} ${toToken.symbol}`
+              : undefined
+          }
           onConfirm={handleSwap}
           onCancel={() => setShowConfirmation(false)}
         />
