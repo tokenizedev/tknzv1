@@ -369,6 +369,17 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
     toAmount && 
     parseFloat(toAmount) > 0;
 
+    /**
+   * Helper to get UI balance for a token (handling native SOL as special case).
+   */
+    const getUiBalance = (token: TokenOption): number => {
+      // Ultra API returns native SOL under key 'SOL'
+      if (token.symbol === 'SOL') {
+        return balances['SOL']?.uiAmount ?? 0;
+      }
+      return balances[token.id]?.uiAmount ?? 0;
+    };
+    
   // Check if user has enough balance (handles SOL specially)
   const hasEnoughBalance = fromToken && fromAmount
     ? (() => {
@@ -377,16 +388,7 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
       })()
     : false;
 
-  /**
-   * Helper to get UI balance for a token (handling native SOL as special case).
-   */
-  const getUiBalance = (token: TokenOption): number => {
-    // Ultra API returns native SOL under key 'SOL'
-    if (token.symbol === 'SOL') {
-      return balances['SOL']?.uiAmount ?? 0;
-    }
-    return balances[token.id]?.uiAmount ?? 0;
-  };
+
 
   return (
     <div className="flex flex-col items-center justify-start h-full p-4">
