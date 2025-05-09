@@ -20,7 +20,7 @@ import { TokenList } from './swap/TokenList';
 import { SwapConfirmation } from './swap/SwapConfirmation';
 import { SwapStatus, SwapStatusType } from './swap/SwapStatus';
 import { FaInfoCircle } from 'react-icons/fa';
-
+const SYSTEM_TOKEN = 'AfyDiEptGHEDgD69y56XjNSbTs23LaF1YHANVKnWpump'
 // Simplified token option for UI
 interface TokenOption {
   id: string;
@@ -120,7 +120,7 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
         const finalList: TokenInfoAPI[] = [customToken];
         if (solToken) finalList.push(solToken);
         finalList.push(...createdTokens);
-        finalList.push(...remaining);
+        
         // Fetch leaderboard tokens
         const lbResponse = await fetch('https://tknz.fun/.netlify/functions/leaderboard');
         if (!lbResponse.ok) {
@@ -148,8 +148,12 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
           extensions: {},
         }));
 
+        if (leaderboardTokens.find(t => t.address === SYSTEM_TOKEN)) {
+          leaderboardTokens.splice(leaderboardTokens.findIndex(t => t.address === SYSTEM_TOKEN), 1)
+        }
+
         const allTokens = [...finalList, ...leaderboardTokens]
-        
+        allTokens.push(...remaining);
         setTokenList(allTokens);
       } catch (err) {
         console.log('error', err)
