@@ -71,18 +71,20 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
       .then(coins => setPlatformCoins(coins))
       .catch(err => console.error('Failed to load platform coins:', err));
   }, []);
-  // Fetch verified tokens and merge custom + created tokens
+  // Fetch verified Jupiter tokens, merge with custom TKNZ, SOL, platform-created, and leaderboard tokens
   useEffect(() => {
     setLoadingTokens(true);
-    getTaggedTokens('verified')
-      .then(tokens => {
+    (async () => {
+      try {
+        // Fetch verified tokens from Jupiter
+        const tokens = await getTaggedTokens('verified');
         // Define custom TKNZ token
         const customToken: TokenInfoAPI = {
           address: 'AfyDiEptGHEDgD69y56XjNSbTs23LaF1YHANVKnWpump',
-          name: 'TKNZ',
+          name: 'TKNZ.fun',
           symbol: 'TKNZ',
           decimals: 9,
-          logoURI: 'https://tknz.fun/assets/logo.png',
+          logoURI: 'https://ipfs.io/ipfs/QmPjLEGEcvEDgGrxNPZdFy1RzfiWRyJYu6YaicM6oZGddQ',
           tags: [],
           daily_volume: 0,
           created_at: new Date().toISOString(),
@@ -108,22 +110,64 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
           logoURI: '',
           tags: [],
           daily_volume: 0,
-          created_at: c.createdAt ? new Date(c.createdAt).toISOString() : new Date().toISOString(),
+          created_at: c.createdAt
+            ? new Date(c.createdAt).toISOString()
+            : new Date().toISOString(),
           freeze_authority: null,
           mint_authority: null,
           permanent_delegate: null,
           minted_at: null,
           extensions: {},
         }));
-        // Build the final token list: custom, SOL, created, then the rest
+        // Build the final token list: custom, SOL, created, verified remaining
         const finalList: TokenInfoAPI[] = [customToken];
         if (solToken) finalList.push(solToken);
         finalList.push(...createdTokens);
         finalList.push(...remaining);
+        // Fetch leaderboard tokens
+        const lbResponse = await fetch('https://tknz.fun/.netlify/functions/leaderboard');
+        if (!lbResponse.ok) {
+          throw new Error(`Leaderboard fetch error: ${lbResponse.status} ${lbResponse.statusText}`);
+        }
+        const lbData = (await lbResponse.json()) as Array<{
+          address: string;
+          name: string;
+          symbol: string;
+          logoURI: string;
+          price: number;
+          supply: number;
+          creatorWallet: string;
+          lastUpdated: number;
+          marketCap: number;
+          launchTime: number;
+        }>;
+        console.log('lbData', lbData)
+        const leaderboardTokens: TokenInfoAPI[] = lbData.map(r => ({
+          address: r.address,
+          name: r.name,
+          symbol: r.symbol,
+          decimals: 9,
+          logoURI: r.logoURI,
+          tags: [],
+          daily_volume: 0,
+          created_at: r.launchTime
+            ? new Date(r.launchTime).toISOString()
+            : new Date().toISOString(),
+          freeze_authority: null,
+          mint_authority: null,
+          permanent_delegate: null,
+          minted_at: null,
+          extensions: {},
+        }));
+        console.log('finalList', finalList)
+        finalList.push(...leaderboardTokens);
         setTokenList(finalList);
-      })
-      .catch(err => setTokenError(err instanceof Error ? err.message : String(err)))
-      .finally(() => setLoadingTokens(false));
+      } catch (err) {
+        setTokenError(err instanceof Error ? err.message : String(err));
+      } finally {
+        setLoadingTokens(false);
+      }
+    })();
   }, [platformCoins]);
   // Token states
   const [fromToken, setFromToken] = useState<TokenOption | null>(null);
