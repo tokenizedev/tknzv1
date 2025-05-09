@@ -243,14 +243,54 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
     fetchPreview();
   }, [fromToken, toToken, fromAmount, slippage, activeWallet]);
 
-  // Manual conversion disabled: preview fetch will update amounts and USD
+  // Manual forward conversion using previewData rate
   const calculateToAmount = (_amount: string) => {
-    // No-op: preview fetch handles output amount and USD conversion
+    if (!fromToken || !toToken || !previewData || !_amount || parseFloat(_amount) <= 0) {
+      setToAmount('');
+      setToAmountUsd('');
+      return;
+    }
+    const inTokens = parseFloat(_amount);
+    // Compute rate from previewData: outputTokens per inputToken
+    const rate =
+      (previewData.outputAmount / Math.pow(10, toToken.decimals)) /
+      (previewData.inputAmount / Math.pow(10, fromToken.decimals));
+    const outTokens = inTokens * rate;
+    setToAmount(outTokens.toFixed(toToken.decimals));
+    // Update USD values
+    getPrices([fromToken.id, toToken.id], 'usd')
+      .then(prices => {
+        const fromPrice = parseFloat(prices.data[fromToken.id].price);
+        const toPrice = parseFloat(prices.data[toToken.id].price);
+        setFromAmountUsd((inTokens * fromPrice).toFixed(2));
+        setToAmountUsd((outTokens * toPrice).toFixed(2));
+      })
+      .catch(err => console.error('Price fetch error:', err));
   };
 
-  // Manual reverse conversion disabled: preview fetch handles amounts
+  // Manual reverse conversion using previewData rate
   const calculateFromAmount = (_amount: string) => {
-    // No-op
+    if (!fromToken || !toToken || !previewData || !_amount || parseFloat(_amount) <= 0) {
+      setFromAmount('');
+      setFromAmountUsd('');
+      return;
+    }
+    const toTokens = parseFloat(_amount);
+    // Compute inverse rate: inputTokens per outputToken
+    const rate =
+      (previewData.inputAmount / Math.pow(10, fromToken.decimals)) /
+      (previewData.outputAmount / Math.pow(10, toToken.decimals));
+    const inTokens = toTokens * rate;
+    setFromAmount(inTokens.toFixed(fromToken.decimals));
+    // Update USD values
+    getPrices([fromToken.id, toToken.id], 'usd')
+      .then(prices => {
+        const fromPrice = parseFloat(prices.data[fromToken.id].price);
+        const toPrice = parseFloat(prices.data[toToken.id].price);
+        setFromAmountUsd((inTokens * fromPrice).toFixed(2));
+        setToAmountUsd((toTokens * toPrice).toFixed(2));
+      })
+      .catch(err => console.error('Price fetch error:', err));
   };
 
   // Handle token selection
@@ -286,7 +326,7 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
   const handleToAmountChange = (value: string) => {
     setToAmount(value);
     setToAmountUsd('');
-    // manual reverse conversion disabled
+    calculateFromAmount(value);
   };
 
   // Handle max button click
