@@ -26,7 +26,7 @@ interface TokenOption {
   id: string;
   symbol: string;
   name: string;
-  logoUrl?: string;
+  logoURI?: string;
   decimals: number;
 }
 
@@ -53,7 +53,7 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
     id: t.address,
     symbol: t.symbol,
     name: t.name,
-    logoUrl: t.logoURI,
+    logoURI: t.logoURI,
     decimals: t.decimals,
   }));
   
@@ -120,7 +120,7 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
           extensions: {},
         }));
         // Build the final token list: custom, SOL, created, verified remaining
-        const finalList = [customToken];
+        const finalList: TokenInfoAPI[] = [customToken];
         if (solToken) finalList.push(solToken);
         finalList.push(...createdTokens);
         finalList.push(...remaining);
@@ -151,11 +151,8 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
           extensions: {},
         }));
 
-        console.log('leaderboardTokens', leaderboardTokens)
-        console.log('finalList', finalList)
-
         const allTokens = [...finalList, ...leaderboardTokens]
-        console.log('allTokens', allTokens)
+        
         setTokenList(allTokens);
       } catch (err) {
         console.log('error', err)
@@ -511,13 +508,13 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
           fromToken={{
             symbol: fromToken.symbol,
             amount: fromAmount,
-            logoUrl: fromToken.logoUrl,
+            logoURI: fromToken.logoURI,
             fiatValue: fromAmountUsd,
           }}
           toToken={{
             symbol: toToken.symbol,
             amount: toAmount,
-            logoUrl: toToken.logoUrl,
+            logoURI: toToken.logoURI,
             fiatValue: toAmountUsd,
           }}
           rate={
