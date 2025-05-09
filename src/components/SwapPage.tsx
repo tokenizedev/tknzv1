@@ -8,6 +8,7 @@ import {
   BalanceInfo,
   getOrder,
   executeOrder,
+  getPrices,
 } from '../services/jupiterService';
 import { TokenSelector } from './swap/TokenSelector';
 import { AmountInput } from './swap/AmountInput';
@@ -127,10 +128,16 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
         const priceImpact = order.priceImpactPct != null ? parseFloat(order.priceImpactPct) : 0;
         const feeBps = order.feeBps != null ? order.feeBps : 0;
         setPreviewData({ inputAmount: inAmt, outputAmount: outAmt, priceImpactPct: priceImpact, minimumOutAmount: minOut, feeBps });
-        // update output amount in UI
+        // update UI amounts and USD values
+        const inTokens = inAmt / 10 ** fromToken.decimals;
         const outTokens = outAmt / 10 ** toToken.decimals;
         setToAmount(outTokens.toFixed(toToken.decimals));
-        setToAmountUsd((outTokens * (parseFloat(toToken.balanceUsd) / parseFloat(toToken.balance))).toFixed(2));
+        // fetch USD price quotes
+        const prices = await getPrices([fromToken.id, toToken.id], 'usd');
+        const fromPrice = parseFloat(prices.data[fromToken.id].price);
+        const toPrice = parseFloat(prices.data[toToken.id].price);
+        setFromAmountUsd((inTokens * fromPrice).toFixed(2));
+        setToAmountUsd((outTokens * toPrice).toFixed(2));
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         console.error('Order preview error:', msg);
@@ -142,41 +149,14 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
     fetchPreview();
   }, [fromToken, toToken, fromAmount, slippage, activeWallet]);
 
-  // Swap calculations
-  const calculateToAmount = (amount: string) => {
-    if (!fromToken || !toToken || !amount || parseFloat(amount) === 0) {
-      setToAmount('');
-      setToAmountUsd('');
-      return;
-    }
-
-    // Mock price calculation - in real app this would come from an API
-    const fromTokenPrice = parseFloat(fromToken.balanceUsd) / parseFloat(fromToken.balance);
-    const toTokenPrice = parseFloat(toToken.balanceUsd) / parseFloat(toToken.balance);
-    
-    const fromValue = parseFloat(amount) * fromTokenPrice;
-    const toValue = fromValue / toTokenPrice;
-    
-    setToAmount(toValue.toFixed(6));
-    setToAmountUsd(fromValue.toFixed(2));
+  // Manual conversion disabled: preview fetch will update amounts and USD
+  const calculateToAmount = (_amount: string) => {
+    // No-op: preview fetch handles output amount and USD conversion
   };
 
-  const calculateFromAmount = (amount: string) => {
-    if (!fromToken || !toToken || !amount || parseFloat(amount) === 0) {
-      setFromAmount('');
-      setFromAmountUsd('');
-      return;
-    }
-
-    // Mock price calculation
-    const fromTokenPrice = parseFloat(fromToken.balanceUsd) / parseFloat(fromToken.balance);
-    const toTokenPrice = parseFloat(toToken.balanceUsd) / parseFloat(toToken.balance);
-    
-    const toValue = parseFloat(amount) * toTokenPrice;
-    const fromValue = toValue / fromTokenPrice;
-    
-    setFromAmount(fromValue.toFixed(6));
-    setFromAmountUsd(toValue.toFixed(2));
+  // Manual reverse conversion disabled: preview fetch handles amounts
+  const calculateFromAmount = (_amount: string) => {
+    // No-op
   };
 
   // Handle token selection
@@ -205,26 +185,23 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
   // Handle amount changes
   const handleFromAmountChange = (value: string) => {
     setFromAmount(value);
-    if (fromToken && toToken) {
-      const fromTokenPrice = parseFloat(fromToken.balanceUsd) / parseFloat(fromToken.balance);
-      setFromAmountUsd((parseFloat(value || '0') * fromTokenPrice).toFixed(2));
-      calculateToAmount(value);
-    }
+    setFromAmountUsd('');
+    // preview useEffect will update toAmount and toAmountUsd
   };
 
   const handleToAmountChange = (value: string) => {
     setToAmount(value);
-    if (fromToken && toToken) {
-      const toTokenPrice = parseFloat(toToken.balanceUsd) / parseFloat(toToken.balance);
-      setToAmountUsd((parseFloat(value || '0') * toTokenPrice).toFixed(2));
-      calculateFromAmount(value);
-    }
+    setToAmountUsd('');
+    // manual reverse conversion disabled
   };
 
   // Handle max button click
   const handleMaxClick = () => {
     if (fromToken) {
-      handleFromAmountChange(fromToken.balance);
+      const bal = balances[fromToken.id]?.uiAmount ?? 0;
+      setFromAmount(bal.toString());
+      setFromAmountUsd('');
+      // preview fetch will recalc USD and toAmount
     }
   };
 
@@ -300,8 +277,8 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
     parseFloat(toAmount) > 0;
 
   // Check if user has enough balance
-  const hasEnoughBalance = fromToken && fromAmount 
-    ? parseFloat(fromToken.balance) >= parseFloat(fromAmount)
+  const hasEnoughBalance = fromToken && fromAmount
+    ? (balances[fromToken.id]?.uiAmount ?? 0) >= parseFloat(fromAmount)
     : false;
 
   return (
@@ -390,7 +367,7 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
             <div className="flex items-start">
               <FaInfoCircle className="mt-0.5 mr-2 flex-shrink-0" />
               <span>
-                Insufficient {fromToken.symbol} balance. You need {parseFloat(fromAmount) - parseFloat(fromToken.balance)} more {fromToken.symbol}.
+                Insufficient {fromToken.symbol} balance. You need {(parseFloat(fromAmount) - (balances[fromToken.id]?.uiAmount ?? 0)).toFixed(fromToken.decimals)} more {fromToken.symbol}.
               </span>
             </div>
           </div>
