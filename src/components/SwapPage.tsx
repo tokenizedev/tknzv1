@@ -120,7 +120,7 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
           extensions: {},
         }));
         // Build the final token list: custom, SOL, created, verified remaining
-        const finalList: TokenInfoAPI[] = [customToken];
+        const finalList = [customToken];
         if (solToken) finalList.push(solToken);
         finalList.push(...createdTokens);
         finalList.push(...remaining);
@@ -132,8 +132,8 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
 
         const lbData = await lbResponse.json()
         const { entries: lbTokens } = lbData
-        console.log('lbTokensMap', lbTokens.map(r => r.logoURI))
-        const leaderboardTokens: TokenInfoAPI[] = lbTokens.map(r => ({
+        
+        const leaderboardTokens = lbTokens.map(r => ({
           address: r.address,
           name: r.name,
           symbol: (r.symbol || '').toString(),
@@ -152,12 +152,11 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
         }));
 
         console.log('leaderboardTokens', leaderboardTokens)
-        
-        finalList.push(...leaderboardTokens);
-
         console.log('finalList', finalList)
-        
-        setTokenList(leaderboardTokens);
+
+        const allTokens = [...finalList, ...leaderboardTokens]
+        console.log('allTokens', allTokens)
+        setTokenList(allTokens);
       } catch (err) {
         console.log('error', err)
         setTokenError(err instanceof Error ? err.message : String(err));
