@@ -56,6 +56,7 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
     logoURI: t.logoURI,
     decimals: t.decimals,
   }));
+  console.log('uiTokens', uiTokens)
   
   // Fetch user balances via Jupiter Ultra API
   const [balances, setBalances] = useState<Record<string, BalanceInfo>>({});
@@ -66,11 +67,7 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
       .catch(err => console.error('Balance load error:', err));
   }, [activeWallet]);
   // Load all platform-created tokens from the api
-  useEffect(() => {
-    getAllCreatedCoins()
-      .then(coins => setPlatformCoins(coins))
-      .catch(err => console.error('Failed to load platform coins:', err));
-  }, []);
+  
   // Fetch verified Jupiter tokens, merge with custom TKNZ, SOL, platform-created, and leaderboard tokens
   useEffect(() => {
     setLoadingTokens(true);
@@ -379,7 +376,7 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
       }
       return balances[token.id]?.uiAmount ?? 0;
     };
-    
+
   // Check if user has enough balance (handles SOL specially)
   const hasEnoughBalance = fromToken && fromAmount
     ? (() => {
