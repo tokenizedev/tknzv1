@@ -1,11 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { PublicKey } from '@solana/web3.js';
+import { PublicKey, VersionedTransaction } from '@solana/web3.js';
 import { useStore } from '../store';
 import {
   getQuote,
-  buildSwapTransaction,
-  executeSwap,
-  confirmTransaction,
   previewSwap,
   QuoteResponse,
   PreviewData,
@@ -13,6 +10,8 @@ import {
   TokenInfoAPI,
   getUltraBalances,
   BalanceInfo,
+  getOrder,
+  executeOrder,
 } from '../services/jupiterService';
 import { TokenSelector } from './swap/TokenSelector';
 import { AmountInput } from './swap/AmountInput';
@@ -241,7 +240,7 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
     setToAmountUsd(tempAmountUsd);
   };
 
-  // Real swap execution using Jupiter service
+  // Execute swap order using Jupiter Ultra API
   const handleSwap = async () => {
     setShowConfirmation(false);
     setSwapStatus({ show: true, status: 'pending' });
@@ -252,22 +251,28 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
       if (!activeWallet) {
         throw new Error('Wallet not initialized.');
       }
-      // Prepare quote parameters
+      // Prepare order parameters
       const inputMint = fromToken.id;
       const outputMint = toToken.id;
-      const rawAmount = Math.floor(parseFloat(fromAmount) * Math.pow(10, fromToken.decimals));
-      const slippageBps = Math.floor(parseFloat(slippage) * 100);
-      // Fetch quote
-      const quote = await getQuote({ inputMint, outputMint, amount: rawAmount, slippageBps });
-      // Build transaction
-      const tx = await buildSwapTransaction(quote, new PublicKey(activeWallet.publicKey));
-      // Execute swap
-      const sig = await executeSwap(tx);
-      // Update status with tx hash
-      setSwapStatus({ show: true, status: 'pending', hash: sig });
-      // Wait for confirmation
-      await confirmTransaction(sig);
-      setSwapStatus({ show: true, status: 'success', hash: sig });
+      const amount = Math.floor(parseFloat(fromAmount) * 10 ** fromToken.decimals);
+      const taker = activeWallet.publicKey;
+      // Fetch swap order
+      const order = await getOrder({ inputMint, outputMint, amount, taker });
+      if (!order.transaction) {
+        throw new Error('No transaction returned from order.');
+      }
+      // Deserialize and sign
+      const txBuffer = Buffer.from(order.transaction, 'base64');
+      const versionedTx = VersionedTransaction.deserialize(txBuffer);
+      versionedTx.sign([useStore.getState().wallet]);
+      const signedBase64 = Buffer.from(versionedTx.serialize()).toString('base64');
+      // Execute order
+      const exec = await executeOrder({ signedTransaction: signedBase64, requestId: order.requestId });
+      if (exec.status === 'Success') {
+        setSwapStatus({ show: true, status: 'success', hash: exec.signature });
+      } else {
+        throw new Error(exec.error || `Swap failed: ${exec.status}`);
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       setSwapStatus({ show: true, status: 'error', error: message });
