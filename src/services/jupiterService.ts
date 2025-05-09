@@ -264,6 +264,7 @@ export async function getTokenInfo(mintAddress: string): Promise<TokenInfoAPI> {
   try {
     const response = await client.get<TokenInfoAPI>(`tokens/v1/token/${encodeURIComponent(mintAddress)}`);
     const data = response.data;
+    console.log('jp tokens', data)
     if (!data || typeof data.address !== 'string') {
       throw new Error('getTokenInfo: invalid token data');
     }
@@ -282,6 +283,7 @@ export async function getTokenInfo(mintAddress: string): Promise<TokenInfoAPI> {
 export async function getTaggedTokens(tag: string): Promise<TokenInfoAPI[]> {
   try {
     const response = await client.get<TokenInfoAPI[]>(`tokens/v1/tagged/${encodeURIComponent(tag)}`);
+    console.log('jp tokens', response.data)
     return response.data;
   } catch (err) {
     if (axios.isAxiosError(err) && err.response) {
