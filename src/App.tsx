@@ -1,13 +1,20 @@
 import { useEffect, useState, useRef } from 'react';
-import { Wallet, RefreshCw, Sidebar, X, Copy, ChevronDown, ChevronUp, Menu, CheckCircle, Terminal } from 'lucide-react';
 import { useStore } from './store';
 import { WalletSetup } from './components/WalletSetup';
 import { CoinCreator } from './components/CoinCreator';
 import { WalletPageCyber } from './components/WalletPageCyber';
+import { CreatedCoinsPage } from './components/CreatedCoinsPage';
+import { MyCreatedCoinsPage } from './components/MyCreatedCoinsPage';
 import { VersionCheck } from './components/VersionCheck';
 import { Loader } from './components/Loader';
+import { PasswordSetup } from './components/PasswordSetup';
+import { PasswordUnlock } from './components/PasswordUnlock';
+import { storage } from './utils/storage';
 import { TokenCreationProgress } from './components/TokenCreationProgress';
-import { PrivacyPolicy } from './components/PrivacyPolicy';
+import { WalletManagerPage } from './components/WalletManagerPage';
+import { Navigation } from './components/Navigation';
+import { SwapPage } from './components/SwapPage';
+import { VersionBadge } from './components/VersionBadge';
 
 interface AppProps { isSidebar?: boolean; }
 function App({ isSidebar = false }: AppProps = {}) {
@@ -29,7 +36,7 @@ function App({ isSidebar = false }: AppProps = {}) {
   }, [isSidebar]);
   
   const { 
-    wallet, 
+    activeWallet, 
     balance, 
     initializeWallet, 
     getBalance, 
@@ -40,9 +47,22 @@ function App({ isSidebar = false }: AppProps = {}) {
   } = useStore();
   
   const [loading, setLoading] = useState(true);
-  const [showWallet, setShowWallet] = useState(false);
+  // Show initial password & passkey setup or unlock guard
+  const [showPasswordSetup, setShowPasswordSetup] = useState(false);
+  const [showUnlock, setShowUnlock] = useState(false);
+  // Wallet drawer visibility
   const [showWalletDrawer, setShowWalletDrawer] = useState(false);
-  const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
+  // Exclusive UI panels: 'wallet', 'swap', 'manager'
+  const [activeView, setActiveView] = useState<'wallet' | 'swap' | 'manager' | 'createdCoins' | 'myCoins' | null>(null);
+
+  // Derived view flags
+  const showWallet = activeView === 'wallet';
+  const showSwapPage = activeView === 'swap';
+  const showWalletManager = activeView === 'manager';
+  const showCreatedCoins = activeView === 'createdCoins';
+  const showMyCoins = activeView === 'myCoins';
+  // Timeout for wallet unlock in milliseconds (1 hour)
+  const UNLOCK_TIMEOUT = 60 * 60 * 1000;
   
   // Add this for cypherpunk animation effects
   const [_animateZap, setAnimateZap] = useState(false);
@@ -60,7 +80,7 @@ function App({ isSidebar = false }: AppProps = {}) {
   const [controlsAnimated, setControlsAnimated] = useState(false);
   
   // Wallet address and copy handler
-  const address = wallet?.publicKey.toString() || '';
+  const address = activeWallet?.publicKey || '';
   
   const copyAddress = async () => {
     try {
@@ -163,6 +183,75 @@ function App({ isSidebar = false }: AppProps = {}) {
     setTimeout(() => setGlitching(false), 200);
   };
 
+  // Function to handle wallet manager navigation
+  const openWalletManager = () => {
+    // Switch to wallet-manager view
+    setActiveView('manager');
+    setShowWalletDrawer(false);
+    setGlitching(true);
+    setTimeout(() => setGlitching(false), 200);
+  };
+
+  // Open Created Coins page for all wallets (community)
+  const openCreatedCoins = () => {
+    setActiveView('createdCoins');
+    setShowWalletDrawer(false);
+    setGlitching(true);
+    setTimeout(() => setGlitching(false), 200);
+  };
+  // Open My Created Coins page (user-specific)
+  const openMyCoins = () => {
+    setActiveView('myCoins');
+    setShowWalletDrawer(false);
+    setGlitching(true);
+    setTimeout(() => setGlitching(false), 200);
+  };
+
+  const closeWalletManager = () => {
+    // Close wallet-manager view if active
+    if (activeView === 'manager') {
+      setActiveView(null);
+    }
+    setGlitching(true);
+    setTimeout(() => setGlitching(false), 200);
+  };
+
+  // Toggle wallet view
+  const toggleWallet = () => {
+    // Toggle wallet view, ensuring exclusivity
+    setActiveView(prev => (prev === 'wallet' ? null : 'wallet'));
+  };
+  // Toggle swap page
+  const toggleSwapPage = () => {
+    // Toggle swap view, ensuring exclusivity
+    setActiveView(prev => (prev === 'swap' ? null : 'swap'));
+  };
+  // Open wallet details view
+  const openWalletView = () => {
+    setActiveView('wallet');
+  };
+
+  // Navigate to token create panel
+  const navigateToTokenCreate = () => {
+    setActiveView(null);
+    // Close any open drawers
+    setShowWalletDrawer(false);
+    // Add a glitch effect for transition
+    setGlitching(true);
+    setTimeout(() => setGlitching(false), 200);
+  };
+
+  // After setting up password or unlocking, initialize and record unlock time
+  const handlePostUnlock = async () => {
+    setShowPasswordSetup(false);
+    setShowUnlock(false);
+    setLoading(true);
+    await storage.set({ walletLastUnlocked: Date.now() });
+    await initializeWallet();
+    await checkVersion();
+    setLoading(false);
+  };
+
   // Function to handle coin creation state
   const handleCoinCreationStart = async (innerHandleSubmit: () => Promise<void>) => {
     setIsCreatingCoin(true);
@@ -196,8 +285,8 @@ function App({ isSidebar = false }: AppProps = {}) {
     setGlitching(true);
     setTimeout(() => {
       setGlitching(false);
-      // Transition to wallet view
-      setShowWallet(true);
+      // Transition to My Created Coins view
+      setActiveView('myCoins');
       // Reset creation state after transition
       setTimeout(() => {
         setIsCreatingCoin(false);
@@ -214,6 +303,29 @@ function App({ isSidebar = false }: AppProps = {}) {
 
   useEffect(() => {
     const init = async () => {
+      try {
+        // Check if password is configured
+        const { walletPasswordHash } = await storage.get('walletPasswordHash');
+        if (!walletPasswordHash) {
+          // Prompt initial password setup
+          setShowPasswordSetup(true);
+          setLoading(false);
+          return;
+        }
+        // Check last unlock timestamp
+        const { walletLastUnlocked } = await storage.get('walletLastUnlocked');
+        const now = Date.now();
+        if (!walletLastUnlocked || now - walletLastUnlocked > UNLOCK_TIMEOUT) {
+          // Require unlock
+          setShowUnlock(true);
+          setLoading(false);
+          return;
+        }
+      } catch (e) {
+        console.error('Failed to load password settings:', e);
+        // Proceed with initialization on error
+      }
+      // Already unlocked or no guard needed, initialize wallet and version
       await initializeWallet();
       await checkVersion();
       setLoading(false);
@@ -253,128 +365,49 @@ function App({ isSidebar = false }: AppProps = {}) {
         ))}
       </div>
       
-      {loading ? (
-        <Loader isSidebar={isSidebar} />
+      {loading || showPasswordSetup || showUnlock ? (
+        showPasswordSetup ? (
+          <PasswordSetup onComplete={handlePostUnlock} />
+        ) : showUnlock ? (
+          <PasswordUnlock onUnlock={handlePostUnlock} />
+        ) : (
+          <Loader isSidebar={isSidebar} />
+        )
       ) : (
         <>
-          {/* Streamlined cyberpunk header with slide-down animation */}
-          <header className="fixed top-0 left-0 right-0 z-20 nav-placeholder nav-animated nav-glow">
-            <div className={`border-b border-cyber-green/20 bg-cyber-black/90 backdrop-blur-sm ${navAnimated ? 'nav-border-animated border-highlight' : ''}`}>
-              <div className="flex items-center h-14">
-                {/* Logo with sequential animation */}
-                <div className={`px-5 flex-none transition-all duration-300 ${logoAnimated ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'}`}>
-                  <h1 className="leaderboard-title text-2xl tracking-widest">
-                    {/* Individual letter animation */}
-                    <span className="inline-block" style={{ animationDelay: '0.1s', animation: logoAnimated ? 'float 3s ease-in-out infinite' : 'none' }}>T</span>
-                    <span className="inline-block" style={{ animationDelay: '0.2s', animation: logoAnimated ? 'float 3s ease-in-out infinite' : 'none' }}>K</span>
-                    <span className="inline-block" style={{ animationDelay: '0.3s', animation: logoAnimated ? 'float 3s ease-in-out infinite' : 'none' }}>N</span>
-                    <span className="inline-block" style={{ animationDelay: '0.4s', animation: logoAnimated ? 'float 3s ease-in-out infinite' : 'none' }}>Z</span>
-                  </h1>
-                </div>
-                
-                {wallet && (
-                  <>
-                    {/* SOL balance indicator with sequential animation */}
-                    <div className={`ml-auto flex h-full transition-all duration-500 ${controlsAnimated ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-10'}`}>
-                      <div className="border-l border-r border-cyber-green/20 px-4 flex items-center">
-                        <div className="flex flex-col items-end mr-2">
-                          <div className="font-terminal text-sm text-cyber-green tabular-nums">
-                            {balance.toFixed(2)} <span className="text-cyber-green/70">SOL</span>
-                          </div>
-                        </div>
-                        <button
-                          onClick={triggerBalanceEffect}
-                          disabled={isRefreshing}
-                          className="p-1.5 hover:bg-cyber-green/10 rounded-full"
-                        >
-                          <RefreshCw className={`w-3.5 h-3.5 text-cyber-green/80 hover:text-cyber-green ${isRefreshing ? 'animate-cyber-spin' : ''}`} />
-                        </button>
-                      </div>
-                      
-                      {/* Wallet controls with sequential animation */}
-                      <button 
-                        className={`h-full w-14 transition-colors flex items-center justify-center ${
-                          showWallet 
-                            ? 'bg-cyber-green/20 text-cyber-green' 
-                            : 'hover:bg-cyber-green/10 text-cyber-green/80 hover:text-cyber-green'
-                        }`}
-                        onClick={() => setShowWallet(!showWallet)}
-                        title="View Wallet"
-                      >
-                        <Wallet className="w-4 h-4" />
-                      </button>
-                      <button 
-                        onClick={toggleWalletDrawer}
-                        className="border-r border-cyber-green/20 w-14 h-full flex items-center justify-center hover:bg-cyber-green/10 transition-colors relative"
-                        title="Toggle wallet address"
-                      >
-                        {copyConfirm ? (
-                          <div className="absolute inset-0 flex items-center justify-center bg-cyber-green/10 text-cyber-green animate-pulse-fast">
-                            <CheckCircle className="w-4 h-4" />
-                          </div>
-                        ) : (
-                          <Copy className="w-4 h-4 text-cyber-green/80 hover:text-cyber-green" onClick={(e) => {
-                            e.stopPropagation();
-                            copyAddress();
-                          }} />
-                        )}
-                      </button>
-                      
-                      {/* Control buttons with sequential animation */}
-                      <div className="flex h-full">
-                        {!isSidebar ? (
-                          <button
-                            onClick={openSidebar}
-                            className="border-r border-cyber-green/20 h-full w-14 flex items-center justify-center hover:bg-cyber-green/10 transition-colors"
-                            title="Open Sidebar"
-                          >
-                            <Sidebar className="w-4 h-4 text-cyber-green/80 hover:text-cyber-green" />
-                          </button>
-                        ) : (
-                          <button
-                            onClick={closeSidebar}
-                            className="border-r border-cyber-green/20 h-full w-14 flex items-center justify-center hover:bg-cyber-green/10 transition-colors"
-                            title="Close Sidebar"
-                          >
-                            <X className="w-4 h-4 text-cyber-green/80 hover:text-cyber-green" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* Wallet drawer with slide animation */}
-            <div className={`overflow-hidden transition-all duration-200 border-b border-cyber-green/20 bg-cyber-black/80 backdrop-blur-md ${
-              showWalletDrawer ? 'max-h-12 nav-drawer-animated nav-border-animated' : 'max-h-0'
-            }`}>
-              <div className="flex items-center px-5 h-12">
-                {/* Full wallet address */}
-                <div className="font-terminal text-xs text-cyber-green/90 flex-1 truncate">
-                  {address}
-                </div>
-                <button
-                  onClick={copyAddress}
-                  className="ml-2 p-1.5 hover:bg-cyber-green/10 rounded-sm transition-colors text-cyber-green/80 hover:text-cyber-green relative"
-                  title="Copy address"
-                >
-                  {copyConfirm ? (
-                    <CheckCircle className="w-3.5 h-3.5 text-cyber-green animate-pulse-fast" />
-                  ) : (
-                    <Copy className="w-3.5 h-3.5" />
-                  )}
-                </button>
-              </div>
-            </div>
-          </header>
+          {/* Use the Navigation component here */}
+          <Navigation
+            isSidebar={isSidebar}
+            activeWallet={activeWallet}
+            balance={balance}
+            isRefreshing={isRefreshing}
+            address={address}
+            logoAnimated={logoAnimated}
+            navAnimated={navAnimated}
+            controlsAnimated={controlsAnimated}
+            showWallet={showWallet}
+            showWalletDrawer={showWalletDrawer}
+            glitching={glitching}
+            onRefresh={triggerBalanceEffect}
+            onToggleWallet={toggleWallet}
+            onViewWallet={openWalletView}
+            onCopyAddress={copyAddress}
+            onToggleWalletDrawer={toggleWalletDrawer}
+            onManageWallets={openWalletManager}
+            onOpenSidebar={openSidebar}
+            onCloseSidebar={closeSidebar}
+            onSwap={toggleSwapPage}
+            onTokenCreate={navigateToTokenCreate}
+            onViewCreatedCoins={openCreatedCoins}
+            onViewMyCoins={openMyCoins}
+            showSwap={showSwapPage}
+            copyConfirm={copyConfirm}
+          />
           
           <main 
             className={`overflow-auto px-4 relative main-content-transition ${glitching ? 'animate-glitch' : ''}`}
             style={{ 
-              height: '85%', 
-              paddingTop: showWalletDrawer ? '56px' : '0',
+              height: '90%', 
               transition: 'padding-top 0.3s ease-out'
             }}
             ref={mainAreaRef}
@@ -389,15 +422,21 @@ function App({ isSidebar = false }: AppProps = {}) {
             </div>
 
             {/* Conditional rendering of main content */}
-            {showPrivacyPolicy ? (
-              <PrivacyPolicy onBack={() => setShowPrivacyPolicy(false)} />
-            ) : !wallet ? (
+            {!activeWallet ? (
               <WalletSetup />
+            ) : showSwapPage ? (
+              <SwapPage isSidebar={isSidebar} />
+            ) : showWalletManager ? (
+              <WalletManagerPage onBack={closeWalletManager} />
             ) : isCreatingCoin ? (
               /* Using our new TokenCreationProgress component */
               <TokenCreationProgress progress={creationProgress} />
             ) : showWallet ? (
               <WalletPageCyber highlightCoinAddress={newCoinAddress} />
+            ) : showMyCoins ? (
+              <MyCreatedCoinsPage highlightCoinAddress={newCoinAddress} />
+            ) : showCreatedCoins ? (
+              <CreatedCoinsPage />
             ) : !isLatestVersion ? (
               <VersionCheck updateAvailable={updateAvailable || ''} />
             ) : (
@@ -426,18 +465,6 @@ function App({ isSidebar = false }: AppProps = {}) {
               ))}
             </div>
           </main>
-          
-          {/* Footer with privacy policy link */}
-          <footer className="absolute bottom-0 left-0 w-full border-t border-cyber-green/20 bg-cyber-black/90 backdrop-blur-sm py-2 px-4 z-20">
-            <div className="flex justify-center items-center">
-              <button 
-                onClick={() => setShowPrivacyPolicy(true)}
-                className="text-cyber-green/60 hover:text-cyber-green text-xs font-terminal transition-colors"
-              >
-                Privacy Policy
-              </button>
-            </div>
-          </footer>
         </>
       )}
     </div>

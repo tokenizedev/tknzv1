@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Image, Type, FileText, Send, Loader2, AlertCircle, Globe, Sparkles, DollarSign, Hand as BrandX, GitBranch as BrandTelegram, Terminal, Zap, Target, X, Upload, ChevronLeft, ChevronRight, CheckCircle, Copy, ExternalLink, Hash } from 'lucide-react';
 import { useStore } from '../store';
 import { TerminalLoader } from './TerminalLoader';
+import { VersionBadge } from './VersionBadge';
 import { Loader } from './Loader';
 
 interface ArticleData {
@@ -17,6 +18,7 @@ interface ArticleData {
 }
 
 const DEV_MODE = process.env.NODE_ENV === 'development' && !chrome?.tabs;
+const version = import.meta.env.VITE_APP_VERSION || '0.0.0';
 
 const MOCK_ARTICLE_DATA: ArticleData = {
   title: "Bitcoin Reaches New All-Time High",
@@ -581,7 +583,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   return (
     <div className="py-2">
       {/* Compact header with logo, address dropdown, and action buttons */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between my-4">
         <div className="inline-flex rounded-sm overflow-hidden">
           <button
             onClick={handleSelectContent}
@@ -613,6 +615,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
             <span className="sr-only">Clear</span>
           </button>
         </div>
+        <VersionBadge version={version} className="ml-auto mt-3" />
       </div>
       
       {(error || walletError) && (
@@ -908,7 +911,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
           ) : (
             <div className="flex items-center justify-center space-x-2 w-full h-full">
               <Zap className="w-5 h-5" />
-              <span>CREATE MEME COIN</span>
+              <span>CREATE COIN</span>
             </div>
           )}
         </button>

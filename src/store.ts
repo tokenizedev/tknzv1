@@ -11,22 +11,48 @@ import { storage } from './utils/storage';
 import { createConnection, web3Connection } from './utils/connection';
 const DEV_MODE = process.env.NODE_ENV === 'development' && !chrome?.tabs;
 import { compareVersions } from 'compare-versions'
-import { WalletState, CreatedCoin, ArticleData, CoinCreationParams, TokenCreationData } from './types';
-
+import { WalletState, CreatedCoin, ArticleData, CoinCreationParams, TokenCreationData, WalletInfo } from './types';
+import { v4 as uuidv4 } from 'uuid';
 
 const TOKEN_CREATION_API_URL = 'https://tknz.fun/.netlify/functions/article-token';
 const APP_VERSION_API_URL = 'https://tknz.fun/.netlify/functions/version';
-
-
-
-
 
 const connection = createConnection();
 
 // Refresh interval in milliseconds (1 minute)
 const REFRESH_INTERVAL = 60 * 1000;
 
+/**
+ * Derive seed from mnemonic using PBKDF2-HMAC-SHA512 via Web Crypto API.
+ * Returns a 64-byte Uint8Array.
+ */
+async function deriveSeedFromMnemonic(mnemonic: string, password: string = ''): Promise<Uint8Array> {
+  const encoder = new TextEncoder();
+  const mnemonicBuffer = encoder.encode(mnemonic.normalize('NFKD'));
+  const saltBuffer = encoder.encode(('mnemonic' + password).normalize('NFKD'));
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    mnemonicBuffer,
+    { name: 'PBKDF2' },
+    false,
+    ['deriveBits']
+  );
+  const derivedBits = await crypto.subtle.deriveBits(
+    {
+      name: 'PBKDF2',
+      salt: saltBuffer,
+      iterations: 2048,
+      hash: 'SHA-512'
+    },
+    keyMaterial,
+    512
+  );
+  return new Uint8Array(derivedBits);
+}
+
 export const useStore = create<WalletState>((set, get) => ({
+  wallets: [],
+  activeWallet: null,
   wallet: null,
   balance: 0,
   error: null,
@@ -41,36 +67,117 @@ export const useStore = create<WalletState>((set, get) => ({
     try {
       set({ error: null });
 
-      const stored = await storage.get('walletSecret');
+      // Get wallet data from storage
+      const storedWallets = await storage.get('wallets');
+      const storedActiveWalletId = await storage.get('activeWalletId');
       const storedInvestment = await storage.get('investmentAmount');
-      let wallet: Keypair;
-      
-      if (stored.walletSecret && Array.isArray(stored.walletSecret)) {
-        try {
-          const secret = new Uint8Array(stored.walletSecret);
-          wallet = Keypair.fromSecretKey(secret);
-        } catch (e) {
-          console.error('Invalid stored wallet secret, generating new wallet');
-          wallet = Keypair.generate();
-          await storage.set({
-            walletSecret: Array.from(wallet.secretKey)
-          });
+      let wallets: WalletInfo[] = [];
+      let activeWallet: WalletInfo | null = null;
+
+      // Check if we have stored wallets
+      if (storedWallets.wallets && Array.isArray(storedWallets.wallets) && storedWallets.wallets.length > 0) {
+        // Convert stored wallet data back to WalletInfo objects with Keypair
+        wallets = storedWallets.wallets.map((walletData: any) => {
+          // Convert secretKey from array to Uint8Array for Keypair
+          const secretKey = new Uint8Array(walletData.keypairSecretKey);
+          const keypair = Keypair.fromSecretKey(secretKey);
+
+          return {
+            id: walletData.id,
+            name: walletData.name,
+            publicKey: walletData.publicKey,
+            keypair,
+            isActive: walletData.id === storedActiveWalletId.activeWalletId
+          };
+        });
+
+        // Find the active wallet
+        activeWallet = wallets.find(w => w.isActive) || wallets[0];
+        
+        // If no active wallet set, mark first one as active
+        if (!activeWallet.isActive) {
+          activeWallet.isActive = true;
         }
       } else {
-        wallet = Keypair.generate();
+        // Check for legacy wallet data
+        const storedLegacySecret = await storage.get('walletSecret');
+        
+        if (storedLegacySecret.walletSecret && Array.isArray(storedLegacySecret.walletSecret)) {
+          try {
+            // Convert legacy wallet to new format
+            const secret = new Uint8Array(storedLegacySecret.walletSecret);
+            const keypair = Keypair.fromSecretKey(secret);
+            const walletId = uuidv4();
+            
+            activeWallet = {
+              id: walletId,
+              name: 'Primary Wallet',
+              publicKey: keypair.publicKey.toString(),
+              keypair,
+              isActive: true
+            };
+            
+            wallets = [activeWallet];
+          } catch (e) {
+            console.error('Invalid stored wallet secret, generating new wallet');
+            // Create a new wallet
+            const keypair = Keypair.generate();
+            const walletId = uuidv4();
+            
+            activeWallet = {
+              id: walletId,
+              name: 'Primary Wallet',
+              publicKey: keypair.publicKey.toString(),
+              keypair,
+              isActive: true
+            };
+            
+            wallets = [activeWallet];
+          }
+        } else {
+          // No wallets found, create a new wallet
+          const keypair = Keypair.generate();
+          const walletId = uuidv4();
+          
+          activeWallet = {
+            id: walletId,
+            name: 'Primary Wallet',
+            publicKey: keypair.publicKey.toString(),
+            keypair,
+            isActive: true
+          };
+          
+          wallets = [activeWallet];
+        }
+        
+        // Save the new wallet data
         await storage.set({
-          walletSecret: Array.from(wallet.secretKey)
+          wallets: wallets.map(w => ({
+            id: w.id,
+            name: w.name,
+            publicKey: w.publicKey,
+            keypairSecretKey: Array.from(w.keypair.secretKey), // Store as array for JSON serialization
+            avatar: (w as any).avatar
+          })),
+          activeWalletId: activeWallet.id
         });
       }
+
+      // Run Migration for the active wallet
+      if (activeWallet) {
+        await get().migrateLocalStorageToFirestore(activeWallet.keypair);
+      }
       
-      // Run Migration BEFORE fetching coins
-      await get().migrateLocalStorageToFirestore(wallet);
+      // Fetch created coins from Firestore for active wallet
+      const fetchedCoins = activeWallet 
+        ? await getCreatedCoins(activeWallet.publicKey) 
+        : [];
       
-      // Fetch created coins from Firestore
-      const fetchedCoins = await getCreatedCoins(wallet.publicKey.toString());
-      
+      // Set state with wallet data
       set({ 
-        wallet,
+        wallets,
+        activeWallet,
+        wallet: activeWallet?.keypair || null, // Backwards compatibility
         createdCoins: fetchedCoins || [],
         investmentAmount: storedInvestment.investmentAmount || 0
       });
@@ -81,7 +188,7 @@ export const useStore = create<WalletState>((set, get) => ({
 
       // Set up auto-refresh every minute
       const autoRefresh = setInterval(async () => {
-        if (get().wallet) {
+        if (get().activeWallet) {
           await get().getBalance();
           await get().refreshTokenBalances();
         } else {
@@ -92,7 +199,7 @@ export const useStore = create<WalletState>((set, get) => ({
       // Add visibility change listener for Chrome extension
       if (!DEV_MODE && document.hidden !== undefined) {
         document.addEventListener('visibilitychange', async () => {
-          if (!document.hidden && get().wallet) {
+          if (!document.hidden && get().activeWallet) {
             await get().getBalance();
             await get().refreshTokenBalances();
           }
@@ -104,8 +211,326 @@ export const useStore = create<WalletState>((set, get) => ({
       console.error('Failed to initialize wallet:', error);
       set({ 
         error: `Failed to initialize wallet: ${errorMessage}. Please try reloading the extension.`,
+        wallets: [],
+        activeWallet: null,
         wallet: null 
       });
+    }
+  },
+
+  createNewWallet: async (name: string) => {
+    try {
+      const { wallets } = get();
+      
+      // Generate new wallet via a mnemonic seed phrase and derive keypair
+      const bip39 = await import('bip39');
+      const mnemonic: string = bip39.generateMnemonic();
+      // Derive seed using Web Crypto instead of Buffer-dependent bip39.mnemonicToSeed
+      const seedArray = await deriveSeedFromMnemonic(mnemonic);
+      const seed = seedArray.slice(0, 32);
+      const keypair = Keypair.fromSeed(seed);
+      const walletId = uuidv4();
+      
+      // Create wallet info
+      const newWallet: WalletInfo = {
+        id: walletId,
+        name: name.trim(),
+        publicKey: keypair.publicKey.toString(),
+        keypair,
+        isActive: false
+      };
+      
+      // Add to existing wallets (not making it active by default)
+      const updatedWallets = [...wallets, newWallet];
+      
+      // Save to storage
+      await storage.set({
+        wallets: updatedWallets.map(w => ({
+          id: w.id,
+          name: w.name,
+          publicKey: w.publicKey,
+          keypairSecretKey: Array.from(w.keypair.secretKey),
+          avatar: w.avatar
+        }))
+      });
+      
+      // Log wallet creation event
+      await logEventToFirestore('wallet_created', {
+        walletAddress: newWallet.publicKey,
+        timestamp: new Date().toISOString()
+      });
+      
+      // Update state
+      set({ wallets: updatedWallets });
+      
+      // Return wallet info along with the mnemonic for backup
+      return Object.assign(newWallet, { mnemonic });
+    } catch (error) {
+      console.error('Failed to create new wallet:', error);
+      throw error;
+    }
+  },
+
+  importWallet: async (name: string, privateKeyString: string) => {
+    try {
+      const { wallets } = get();
+      
+      // Parse input: JSON, seed phrase (mnemonic), or raw private key (hex/base58)
+      let keypair: Keypair | undefined;
+      // 1. Try JSON input (array of bytes or object with secretKey/data)
+      try {
+        const parsed = JSON.parse(privateKeyString);
+        if (Array.isArray(parsed)) {
+          if (parsed.length === 64) {
+            keypair = Keypair.fromSecretKey(new Uint8Array(parsed));
+          } else if (parsed.length === 32) {
+            keypair = Keypair.fromSeed(new Uint8Array(parsed));
+          }
+        } else if (parsed && typeof parsed === 'object') {
+          const arr = (parsed as any).secretKey ?? (parsed as any).data;
+          if (Array.isArray(arr) && arr.length === 64) {
+            keypair = Keypair.fromSecretKey(new Uint8Array(arr));
+          }
+        }
+      } catch {
+        // Not JSON or invalid JSON
+      }
+      // 2. Try seed phrase (mnemonic) if not JSON keypair
+      if (!keypair) {
+        const words = privateKeyString.trim().split(/\s+/);
+        if (words.length >= 12 && words.length % 3 === 0) {
+          try {
+            const bip39 = await import('bip39');
+            if (bip39.validateMnemonic(privateKeyString.trim())) {
+              // Derive seed from mnemonic using Web Crypto
+              const seedArray = await deriveSeedFromMnemonic(privateKeyString.trim());
+              const seed = seedArray.slice(0, 32);
+              keypair = Keypair.fromSeed(seed);
+            } else {
+              throw new Error('Invalid seed phrase');
+            }
+          } catch {
+            throw new Error('Invalid seed phrase. Please provide a valid mnemonic.');
+          }
+        }
+      }
+      // 3. Fallback: raw private key (hex or base58)
+      if (!keypair) {
+        let privateKeyBytes: Uint8Array;
+        const cleanHex = privateKeyString.replace(/\s+/g, '').replace(/^0x/i, '');
+        if (/^[0-9a-fA-F]{128}$/.test(cleanHex)) {
+          privateKeyBytes = new Uint8Array(
+            cleanHex.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16))
+          );
+        } else {
+          const bs58 = await import('bs58');
+          privateKeyBytes = bs58.decode(privateKeyString.trim());
+        }
+        if (privateKeyBytes.length !== 64) {
+          throw new Error('Invalid private key length. Expected 64-byte secret key.');
+        }
+        keypair = Keypair.fromSecretKey(privateKeyBytes);
+      }
+      const walletId = uuidv4();
+      
+      // Check if this wallet already exists
+      const publicKey = keypair.publicKey.toString();
+      const existingWallet = wallets.find(w => w.publicKey === publicKey);
+      
+      if (existingWallet) {
+        throw new Error('This wallet has already been imported.');
+      }
+      
+      // Create wallet info
+      const importedWallet: WalletInfo = {
+        id: walletId,
+        name: name.trim(),
+        publicKey,
+        keypair,
+        isActive: false
+      };
+      
+      // Add to existing wallets
+      const updatedWallets = [...wallets, importedWallet];
+      
+      // Save to storage
+      await storage.set({
+        wallets: updatedWallets.map(w => ({
+          id: w.id,
+          name: w.name,
+          publicKey: w.publicKey,
+          keypairSecretKey: Array.from(w.keypair.secretKey),
+          avatar: w.avatar
+        }))
+      });
+      
+      // Log wallet import event
+      await logEventToFirestore('wallet_imported', {
+        walletAddress: importedWallet.publicKey,
+        timestamp: new Date().toISOString()
+      });
+      
+      // Update state
+      set({ wallets: updatedWallets });
+      
+      return importedWallet;
+    } catch (error) {
+      console.error('Failed to import wallet:', error);
+      throw error;
+    }
+  },
+
+  switchWallet: async (walletId: string) => {
+    try {
+      const { wallets } = get();
+      
+      // Find the wallet to switch to
+      const targetWallet = wallets.find(w => w.id === walletId);
+      
+      if (!targetWallet) {
+        throw new Error('Wallet not found');
+      }
+      
+      // Update all wallets to set the active one
+      const updatedWallets = wallets.map(w => ({
+        ...w,
+        isActive: w.id === walletId
+      }));
+      
+      // Save the active wallet ID to storage
+      await storage.set({
+        activeWalletId: walletId,
+        wallets: updatedWallets.map(w => ({
+          id: w.id,
+          name: w.name,
+          publicKey: w.publicKey,
+          keypairSecretKey: Array.from(w.keypair.secretKey),
+          avatar: w.avatar
+        }))
+      });
+      
+      // Fetch created coins for the new active wallet
+      const fetchedCoins = await getCreatedCoins(targetWallet.publicKey);
+      
+      // Update state
+      set({ 
+        wallets: updatedWallets,
+        activeWallet: targetWallet,
+        wallet: targetWallet.keypair, // Backwards compatibility
+        createdCoins: fetchedCoins || []
+      });
+      
+      // Get balance for new active wallet
+      await get().getBalance();
+      await get().refreshTokenBalances();
+
+    } catch (error) {
+      console.error('Failed to switch wallet:', error);
+      throw error;
+    }
+  },
+
+  removeWallet: async (walletId: string) => {
+    try {
+      const { wallets, activeWallet } = get();
+      
+      // Cannot remove the active wallet
+      if (activeWallet?.id === walletId) {
+        throw new Error('Cannot remove the active wallet. Switch to another wallet first.');
+      }
+      
+      // Need at least one wallet
+      if (wallets.length <= 1) {
+        throw new Error('Cannot remove the only wallet.');
+      }
+      
+      // Remove the wallet
+      const updatedWallets = wallets.filter(w => w.id !== walletId);
+      
+      // Save to storage
+      await storage.set({
+        wallets: updatedWallets.map(w => ({
+          id: w.id,
+          name: w.name,
+          publicKey: w.publicKey,
+          keypairSecretKey: Array.from(w.keypair.secretKey),
+          avatar: w.avatar
+        }))
+      });
+      
+      // Update state
+      set({ wallets: updatedWallets });
+      
+    } catch (error) {
+      console.error('Failed to remove wallet:', error);
+      throw error;
+    }
+  },
+
+  renameWallet: async (walletId: string, newName: string) => {
+    try {
+      const { wallets } = get();
+      
+      if (!newName.trim()) {
+        throw new Error('Wallet name cannot be empty');
+      }
+      
+      // Update the wallet name
+      const updatedWallets = wallets.map(w => 
+        w.id === walletId 
+          ? { ...w, name: newName.trim() } 
+          : w
+      );
+      
+      // Save to storage
+      await storage.set({
+        wallets: updatedWallets.map(w => ({
+          id: w.id,
+          name: w.name,
+          publicKey: w.publicKey,
+          keypairSecretKey: Array.from(w.keypair.secretKey),
+          avatar: w.avatar
+        }))
+      });
+      
+      // Update state and activeWallet if it was the one renamed
+      const updatedActiveWallet = get().activeWallet && get().activeWallet.id === walletId
+        ? { ...get().activeWallet, name: newName.trim() }
+        : get().activeWallet;
+        
+      set({ 
+        wallets: updatedWallets,
+        activeWallet: updatedActiveWallet
+      });
+      
+    } catch (error) {
+      console.error('Failed to rename wallet:', error);
+      throw error;
+    }
+  },
+  /**
+   * Update the avatar for a wallet
+   */
+  updateWalletAvatar: async (walletId: string, avatar: string) => {
+    try {
+      const { wallets } = get();
+      const updatedWallets = wallets.map(w =>
+        w.id === walletId ? { ...w, avatar } : w
+      );
+      // Persist updated wallets with avatar
+      await storage.set({
+        wallets: updatedWallets.map(w => ({
+          id: w.id,
+          name: w.name,
+          publicKey: w.publicKey,
+          keypairSecretKey: Array.from(w.keypair.secretKey),
+          avatar: w.avatar
+        }))
+      });
+      set({ wallets: updatedWallets });
+    } catch (error) {
+      console.error('Failed to update wallet avatar:', error);
+      throw error;
     }
   },
 
@@ -193,22 +618,16 @@ export const useStore = create<WalletState>((set, get) => ({
       migrationError = error instanceof Error ? error.message : 'Unknown migration error';
       console.error('Token migration failed:', error);
       set({ migrationStatus: 'error', error: `Migration failed: ${migrationError}` });
-      // Log migration failure event? Optional.
-      // await logEventToFirestore('tokens_migration_failed', {
-      //   walletAddress,
-      //   error: migrationError,
-      //   timestamp: new Date().toISOString()
-      // });
     }
   },
 
   getBalance: async () => {
-    const { wallet } = get();
-    if (!wallet) return;
+    const { activeWallet } = get();
+    if (!activeWallet) return;
 
     try {
       set({ isRefreshing: true });
-      const lamports = await connection.getBalance(wallet.publicKey.toString());
+      const lamports = await connection.getBalance(activeWallet.publicKey);
       const solBalance = lamports / 1e9;
 
       set({ 
@@ -216,8 +635,6 @@ export const useStore = create<WalletState>((set, get) => ({
         error: null,
         isRefreshing: false
       });
-
-
     } catch (error) {
       const errorMessage = error instanceof Error 
         ? error.message 
@@ -233,28 +650,27 @@ export const useStore = create<WalletState>((set, get) => ({
 
   addCreatedCoin: async (coin: CreatedCoin) => {
     try {
-      const { wallet, createdCoins } = get();
-      if (!wallet) throw new Error('Wallet not initialized when adding coin');
+      const { activeWallet, createdCoins } = get();
+      if (!activeWallet) throw new Error('Wallet not initialized when adding coin');
 
       // Add the new coin (potentially without createdAt yet)
       let updatedCoins = [...createdCoins, { ...coin, createdAt: new Date() }]; // Add with client date temporarily
       
       // Sort immediately after adding
       updatedCoins.sort((a, b) => {
-        const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        const timeA = a.createdAt 
+          ? (a.createdAt instanceof Date ? a.createdAt.getTime() : a.createdAt.toDate().getTime()) 
+          : 0;
+        const timeB = b.createdAt 
+          ? (b.createdAt instanceof Date ? b.createdAt.getTime() : b.createdAt.toDate().getTime()) 
+          : 0;
         return timeB - timeA; // Descending order
       });
       
       set({ createdCoins: updatedCoins }); // Update state optimistically
 
       // Save to Firestore (which adds server timestamp)
-      await addCreatedCoinToFirestore(wallet.publicKey.toString(), coin); 
-      
-      // Optionally re-fetch to get server timestamp, or rely on next refresh
-      // const refreshedCoins = await getCreatedCoins(wallet.publicKey.toString());
-      // set({ createdCoins: refreshedCoins });
-
+      await addCreatedCoinToFirestore(activeWallet.publicKey, coin); 
     } catch (error) {
       console.error('Failed to add created coin:', error);
       throw error;
@@ -287,14 +703,14 @@ export const useStore = create<WalletState>((set, get) => ({
   },
 
   refreshTokenBalances: async () => {
-    const { wallet, createdCoins } = get();
-    if (!wallet || createdCoins.length === 0) return;
+    const { activeWallet, createdCoins } = get();
+    if (!activeWallet || createdCoins.length === 0) return;
 
     try {
       const balancePromises = createdCoins.map(async (coin) => {
         const balance = await connection.getTokenBalance(
           coin.address,
-          wallet.publicKey.toString()
+          activeWallet.publicKey
         );
         return { address: coin.address, balance };
       });
@@ -385,9 +801,14 @@ export const useStore = create<WalletState>((set, get) => ({
   },
 
   createCoin: async ({ name, ticker, description, imageUrl, imageFile, websiteUrl, twitter, telegram, investmentAmount }: CoinCreationParams) => {
-    const { wallet } = get();
-    if (!wallet) {
+    const { activeWallet } = get();
+    if (!activeWallet) {
       throw new Error('Wallet not initialized');
+    }
+
+    // Prevent creation of tokens with reserved symbol TKNZ
+    if (ticker.trim().toUpperCase() === 'TKNZ') {
+      throw new Error("Ticker 'TKNZ' is reserved and cannot be used.");
     }
 
     try {
@@ -437,7 +858,7 @@ export const useStore = create<WalletState>((set, get) => ({
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          publicKey: wallet.publicKey.toString(),
+          publicKey: activeWallet.publicKey,
           action: "create",
           tokenMetadata: {
             name: metadataResponseJSON.metadata.name,
@@ -461,7 +882,7 @@ export const useStore = create<WalletState>((set, get) => ({
       const tx = VersionedTransaction.deserialize(new Uint8Array(data));
       
       // Sign with both the mint keypair and wallet
-      tx.sign([mintKeypair, wallet]);
+      tx.sign([mintKeypair, activeWallet.keypair]);
       
       // Send the transaction
       const signature = await web3Connection.sendTransaction(tx);
@@ -478,7 +899,7 @@ export const useStore = create<WalletState>((set, get) => ({
 
       // Log an analytics event with relevant info
       logEventToFirestore('token_launched', {
-        walletAddress: wallet.publicKey.toString(),
+        walletAddress: activeWallet.publicKey,
         contractAddress: tokenAddress,
         name,
         ticker,
