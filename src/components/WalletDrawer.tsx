@@ -174,8 +174,7 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({
                   className="p-1.5 px-3 text-cyber-green/70 hover:text-cyber-green hover:bg-cyber-green/10 rounded border border-cyber-green/20 hover:border-cyber-green/40 transition-all duration-150 flex items-center text-xs font-terminal"
                   title="Wallet Settings"
                 >
-                  <Settings className="w-3.5 h-3.5 mr-1.5" />
-                  CONFIG
+                  <Settings className="w-3.5 h-3.5" />
                 </button>
                 <button
                   onClick={() => onCopyAddress(wallet.publicKey)}
@@ -189,8 +188,7 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({
                     </>
                   ) : (
                     <>
-                      <Copy className="w-3.5 h-3.5 mr-1.5" />
-                      COPY
+                      <Copy className="w-3.5 h-3.5" />
                     </>
                   )}
                 </button>
