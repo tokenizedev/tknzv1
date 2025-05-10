@@ -52,6 +52,23 @@
     }
   }
   
+  /* Wallet item slide-in animation */
+  @keyframes walletItemSlideIn {
+    0% {
+      transform: translateX(-20px);
+      opacity: 0;
+      filter: blur(2px);
+    }
+    70% {
+      filter: blur(0px);
+    }
+    100% {
+      transform: translateX(0);
+      opacity: 1;
+      filter: blur(0px);
+    }
+  }
+  
   /* Navigation glow pulse keyframes */
   @keyframes nav-glow-pulse {
     0% {
@@ -279,6 +296,23 @@
   /* Terminal cursor blink */
   .animate-terminal-cursor {
     animation: blink 1s step-end infinite;
+  }
+  
+  /* Cyber pulse animation for active wallet */
+  .animate-cyber-pulse {
+    animation: cyber-pulse 2s ease-in-out infinite;
+  }
+  
+  @keyframes cyber-pulse {
+    0% {
+      box-shadow: 0 0 0 0 rgba(0, 255, 65, 0.7);
+    }
+    70% {
+      box-shadow: 0 0 0 6px rgba(0, 255, 65, 0);
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgba(0, 255, 65, 0);
+    }
   }
   
   h1, h2, h3, h4, h5, h6 {
