@@ -48,11 +48,15 @@ function App({ isSidebar = false }: AppProps = {}) {
   // Show initial password & passkey setup or unlock guard
   const [showPasswordSetup, setShowPasswordSetup] = useState(false);
   const [showUnlock, setShowUnlock] = useState(false);
-  const [showWallet, setShowWallet] = useState(false);
+  // Wallet drawer visibility
   const [showWalletDrawer, setShowWalletDrawer] = useState(false);
-  const [showWalletManager, setShowWalletManager] = useState(false);
-  // Token swap page visibility
-  const [showSwapPage, setShowSwapPage] = useState(false);
+  // Exclusive UI panels: 'wallet', 'swap', 'manager'
+  const [activeView, setActiveView] = useState<'wallet' | 'swap' | 'manager' | null>(null);
+
+  // Derived view flags
+  const showWallet = activeView === 'wallet';
+  const showSwapPage = activeView === 'swap';
+  const showWalletManager = activeView === 'manager';
   // Timeout for wallet unlock in milliseconds (1 hour)
   const UNLOCK_TIMEOUT = 60 * 60 * 1000;
   
@@ -177,31 +181,31 @@ function App({ isSidebar = false }: AppProps = {}) {
 
   // Function to handle wallet manager navigation
   const openWalletManager = () => {
-    // Reset other views when opening wallet manager
-    setShowWallet(false);
-    setShowWalletManager(true);
+    // Switch to wallet-manager view
+    setActiveView('manager');
     setShowWalletDrawer(false);
     setGlitching(true);
     setTimeout(() => setGlitching(false), 200);
   };
 
   const closeWalletManager = () => {
-    setShowWalletManager(false);
+    // Close wallet-manager view if active
+    if (activeView === 'manager') {
+      setActiveView(null);
+    }
     setGlitching(true);
     setTimeout(() => setGlitching(false), 200);
   };
 
   // Toggle wallet view
   const toggleWallet = () => {
-    setShowWallet(!showWallet);
-    setShowWalletManager(false); // Close wallet manager when toggling wallet view
+    // Toggle wallet view, ensuring exclusivity
+    setActiveView(prev => (prev === 'wallet' ? null : 'wallet'));
   };
   // Toggle swap page
   const toggleSwapPage = () => {
-    setShowSwapPage(prev => !prev);
-    // Close other views
-    setShowWallet(false);
-    setShowWalletManager(false);
+    // Toggle swap view, ensuring exclusivity
+    setActiveView(prev => (prev === 'swap' ? null : 'swap'));
   };
 
   // After setting up password or unlocking, initialize and record unlock time
@@ -249,7 +253,7 @@ function App({ isSidebar = false }: AppProps = {}) {
     setTimeout(() => {
       setGlitching(false);
       // Transition to wallet view
-      setShowWallet(true);
+      setActiveView('wallet');
       // Reset creation state after transition
       setTimeout(() => {
         setIsCreatingCoin(false);
