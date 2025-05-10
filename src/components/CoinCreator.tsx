@@ -4,6 +4,7 @@ import { useStore } from '../store';
 import { TerminalLoader } from './TerminalLoader';
 import { VersionBadge } from './VersionBadge';
 import { Loader } from './Loader';
+import { InsufficientFundsModal } from './InsufficientFundsModal';
 
 interface ArticleData {
   title: string
@@ -132,6 +133,14 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [copySuccess, setCopySuccess] = useState<string | null>(null);
   const carouselRef = useRef<HTMLDivElement>(null);
+
+  // State for insufficient funds notice
+  const [insufficientFunds, setInsufficientFunds] = useState(false)
+
+  // Handle close insufficient funds modal
+  const handleCloseModal = () => {
+    setInsufficientFunds(false);
+  };
 
   // Handle content selection toggle: directly ask content script to start selection mode
   const handleSelectContent = async () => {
@@ -470,6 +479,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   }
   const handleSubmit = async () => {
     if (balance < requiredBalance) {
+      setInsufficientFunds(true);
       setError(`Insufficient balance. Please add at least ${requiredBalance.toFixed(2)} SOL to your wallet (${investmentAmount} SOL for investment + 0.03 SOL for fees).`);
       return;
     }
@@ -581,7 +591,9 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   }
 
   return (
-    <div className="py-2">
+    <div className="relative min-h-screen">
+  {/* Overlay content (will blur when modal is open) */}  
+    <div className={insufficientFunds ? "blur-sm pointer-events-none select-none" : "py-2"}>
       {/* Compact header with logo, address dropdown, and action buttons */}
       <div className="flex items-center justify-between my-4">
         <div className="inline-flex rounded-sm overflow-hidden">
@@ -664,7 +676,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
               placeholder="Enter ticker (max 10 chars)"
             />
           </div>
-
+        
           <div className="space-y-2">
             <label className="flex items-center text-sm font-terminal text-cyber-pink">
               <Image className="w-4 h-4 mr-2" />
@@ -916,6 +928,12 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
           )}
         </button>
       </div>
+    </div>
+    {/* Modal */}
+    {insufficientFunds && 
+      <InsufficientFundsModal onClose={handleCloseModal}/> 
+    }
+  
 
       {/* Image Carousel Modal */}
       {isCarouselOpen && articleData.images.length > 0 && (
