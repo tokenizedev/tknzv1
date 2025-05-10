@@ -173,6 +173,7 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
 
         const allTokens = [...finalList, ...leaderboardTokens]
         allTokens.push(...remaining);
+        console.log('allTokensMints', JSON.stringify(allTokens.map(t => t.address)) )
         setTokenList(allTokens);
       } catch (err) {
         console.log('error', err)
