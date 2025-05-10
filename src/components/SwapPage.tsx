@@ -240,8 +240,11 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
         const minOut = parseInt(order.otherAmountThreshold || order.outAmount);
         const priceImpact = order.priceImpactPct != null ? parseFloat(order.priceImpactPct) : 0;
         const feeBps = order.feeBps != null ? order.feeBps : 0;
-        // platform (referral) fee breakdown, in basis points
-        const platformFeeBps = order.platformFee?.feeBps != null ? order.platformFee.feeBps : 0;
+        // platform (referral) fee breakdown (env fallback if missing)
+        const envAffiliateFeeBps = parseInt(import.meta.env.VITE_AFFILIATE_FEE_BPS ?? '0', 10);
+        const platformFeeBps = order.platformFee?.feeBps != null
+          ? order.platformFee.feeBps
+          : envAffiliateFeeBps;
         setPreviewData({
           inputAmount: inAmt,
           outputAmount: outAmt,
