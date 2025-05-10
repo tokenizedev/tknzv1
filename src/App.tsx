@@ -285,8 +285,8 @@ function App({ isSidebar = false }: AppProps = {}) {
     setGlitching(true);
     setTimeout(() => {
       setGlitching(false);
-      // Transition to Created Coins view
-      setActiveView('createdCoins');
+      // Transition to My Created Coins view
+      setActiveView('myCoins');
       // Reset creation state after transition
       setTimeout(() => {
         setIsCreatingCoin(false);
@@ -434,7 +434,7 @@ function App({ isSidebar = false }: AppProps = {}) {
             ) : showWallet ? (
               <WalletPageCyber highlightCoinAddress={newCoinAddress} />
             ) : showMyCoins ? (
-              <MyCreatedCoinsPage />
+              <MyCreatedCoinsPage highlightCoinAddress={newCoinAddress} />
             ) : showCreatedCoins ? (
               <CreatedCoinsPage />
             ) : !isLatestVersion ? (
