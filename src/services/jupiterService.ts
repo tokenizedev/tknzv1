@@ -8,11 +8,6 @@ const JUPITER_QUOTE_API = 'https://quote-api.jup.ag/v4/quote';
 const JUPITER_SWAP_API = 'https://quote-api.jup.ag/v4/swap';
 
 /**
- * Jupiter Token API base URL
- */
-const TOKEN_API_BASE = 'https://lite-api.jup.ag/tokens/v1';
-
-/**
  * Jupiter Price API base URL
  */
 // const PRICE_API_BASE = 'https://lite-api.jup.ag/price/v2';
@@ -398,12 +393,29 @@ export async function getOrder(params: {
   inputMint: string;
   outputMint: string;
   amount: number;
-  taker?: string;
+  taker: string;
   referralAccount?: string;
   referralFee?: number;
 }): Promise<OrderResponse> {
   try {
-    const response = await client.get<OrderResponse>('ultra/v1/order', { params });
+    
+    
+    // Inject affiliate (referral) account and fee if configured via environment
+    const affiliateAccount = import.meta.env.VITE_AFFILIATE_WALLET;
+    // Default affiliate fee in basis points (bps) if not specified via env
+    const affiliateFeeBps = parseInt(import.meta.env.VITE_AFFILIATE_FEE_BPS ?? '50', 10);
+
+    // Build request parameters, merging any passed params and affiliate settings
+    const requestParams: Record<string, any> = { ...params };
+
+    if (affiliateAccount) {
+      requestParams.referralAccount = affiliateAccount
+      requestParams.referralFee = affiliateFeeBps;
+    }
+
+    const response = await client.get<OrderResponse>('ultra/v1/order', {
+      params: requestParams,
+    });
     return response.data;
   } catch (err) {
     if (axios.isAxiosError(err) && err.response) {
