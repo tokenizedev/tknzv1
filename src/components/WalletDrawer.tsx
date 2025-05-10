@@ -1,6 +1,6 @@
 import React from 'react';
 import Jdenticon from 'react-jdenticon';
-import { Users, Copy, CheckCircle, X } from 'lucide-react';
+import { Users, Copy, CheckCircle, X, Settings } from 'lucide-react';
 import { WalletInfo } from '../types';
 
 // Add declaration for react-jdenticon to fix type error
@@ -14,6 +14,7 @@ interface WalletDrawerProps {
   onManageWallets: () => void;
   onCopyAddress: (address: string) => void;
   copiedWallet: string | null;
+  onViewWallet: (walletId: string) => void;
 }
 
 export const WalletDrawer: React.FC<WalletDrawerProps> = ({
@@ -24,6 +25,7 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({
   onManageWallets,
   onCopyAddress,
   copiedWallet
+  , onViewWallet
 }) => {
   return (
     <div 
@@ -132,9 +134,18 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({
               </div>
               
               {/* Copy button */}
+              {/* Settings button: view wallet details */}
+              <button
+                onClick={() => onViewWallet(wallet.id)}
+                className="p-2 text-cyber-green/70 hover:text-cyber-green hover:bg-cyber-green/10 rounded-full transition-colors duration-150 ml-2"
+                title="Wallet Settings"
+              >
+                <Settings className="w-5 h-5" />
+              </button>
+              {/* Copy button: copy wallet address */}
               <button
                 onClick={() => onCopyAddress(wallet.publicKey)}
-                className="p-2 text-cyber-green/70 hover:text-cyber-green hover:bg-cyber-green/10 rounded-full relative transition-colors duration-150"
+                className="p-2 text-cyber-green/70 hover:text-cyber-green hover:bg-cyber-green/10 rounded-full relative transition-colors duration-150 ml-2"
               >
                 {copiedWallet === wallet.publicKey ? (
                   <CheckCircle className="w-5 h-5 text-cyber-purple animate-pulse-fast" />
