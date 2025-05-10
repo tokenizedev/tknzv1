@@ -1,6 +1,31 @@
 import React, { useState, useEffect } from 'react';
+import { Keypair } from '@solana/web3.js';
 import { Lock, Shield, Code, Terminal, KeySquare } from 'lucide-react';
 import { storage } from '../utils/storage';
+// Derive seed from mnemonic using PBKDF2-HMAC-SHA512 via Web Crypto API.
+async function deriveSeedFromMnemonic(mnemonic: string, password: string = ''): Promise<Uint8Array> {
+  const encoder = new TextEncoder();
+  const mnemonicBuffer = encoder.encode(mnemonic.normalize('NFKD'));
+  const saltBuffer = encoder.encode(('mnemonic' + password).normalize('NFKD'));
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    mnemonicBuffer,
+    { name: 'PBKDF2' },
+    false,
+    ['deriveBits']
+  );
+  const derivedBitsArray = await crypto.subtle.deriveBits(
+    {
+      name: 'PBKDF2',
+      salt: saltBuffer,
+      iterations: 2048,
+      hash: 'SHA-512'
+    },
+    keyMaterial,
+    512
+  );
+  return new Uint8Array(derivedBitsArray);
+}
 
 interface PasswordUnlockProps {
   onUnlock: () => void;
@@ -9,6 +34,8 @@ interface PasswordUnlockProps {
 export const PasswordUnlock: React.FC<PasswordUnlockProps> = ({ onUnlock }) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [forgot, setForgot] = useState(false);
+  const [mnemonic, setMnemonic] = useState('');
   const [passkeyAvailable, setPasskeyAvailable] = useState(false);
   const [passkeyId, setPasskeyId] = useState<string>();
   const [passkeyUserId, setPasskeyUserId] = useState<string>();
@@ -117,6 +144,45 @@ export const PasswordUnlock: React.FC<PasswordUnlockProps> = ({ onUnlock }) => {
       setGlitchEffect(false);
     }
   };
+  // Handle recovery via mnemonic seed phrase
+  const handleMnemonicRecover = async () => {
+    setError('');
+    try {
+      setGlitchEffect(true);
+      const trimmed = mnemonic.trim();
+      if (!trimmed) {
+        setError('Please enter your seed phrase');
+        setGlitchEffect(false);
+        return;
+      }
+      const bip39 = await import('bip39');
+      if (!bip39.validateMnemonic(trimmed)) {
+        setError('Invalid seed phrase');
+        setGlitchEffect(false);
+        return;
+      }
+      const seedArray = await deriveSeedFromMnemonic(trimmed);
+      const seed = seedArray.slice(0, 32);
+      const recovered = Keypair.fromSeed(seed);
+      const stored = await storage.get('wallets');
+      const walletsList = stored.wallets || [];
+      const match = walletsList.find((w: any) => w.publicKey === recovered.publicKey.toString());
+      if (!match) {
+        setError('Seed phrase does not match any wallet');
+        setGlitchEffect(false);
+        return;
+      }
+      await storage.set({ activeWalletId: match.id, walletLastUnlocked: Date.now() });
+      setTimeout(() => {
+        setGlitchEffect(false);
+        onUnlock();
+      }, 800);
+    } catch (e: any) {
+      console.error('Recovery failed:', e);
+      setError(e.message || 'Recovery failed');
+      setGlitchEffect(false);
+    }
+  };
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[536px] space-y-8 py-4 relative">
@@ -136,54 +202,97 @@ export const PasswordUnlock: React.FC<PasswordUnlockProps> = ({ onUnlock }) => {
           <div className="absolute inset-0 bg-scanline opacity-10 pointer-events-none"></div>
           
           <div className="space-y-4 animate-slide-up">
-            <h3 className="text-cyber-green font-terminal text-sm mb-3 flex items-center border-b border-cyber-green/20 pb-2">
-              <Lock className="w-4 h-4 mr-1 text-cyber-pink" />
-              <span className="tracking-wider">DECRYPT ACCESS KEY</span>
-            </h3>
-            <div className="relative">
-              <div className="absolute -left-2 -top-2 text-[8px] font-terminal text-cyber-green/60">SYS:// root/access</div>
-              <input
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder="Enter cryptographic key"
-                className="w-full bg-cyber-black/70 border border-cyber-green/50 rounded-sm p-2 text-cyber-green font-terminal text-sm focus:border-cyber-pink focus:outline-none shadow-[0_0_8px_rgba(37,255,151,0.3)]"
-              />
-              <div className="absolute right-2 top-2 text-[8px] font-terminal text-cyber-green/40">
-                {password && Array(password.length).fill('*').join('')}
-              </div>
-              <div className="absolute -right-2 -bottom-2 text-[8px] font-terminal text-cyber-green/60">SEC://LVL.9</div>
-            </div>
-            {error && (
-              <p className="text-cyber-pink text-xs font-terminal border border-cyber-pink/30 bg-cyber-pink/10 p-2 animate-pulse">
-                [ERROR] {error}
-              </p>
-            )}
-            <button
-              onClick={handlePasswordUnlock}
-              disabled={!password}
-              className="btn-primary w-full flex items-center justify-center space-x-2 font-terminal text-xs disabled:opacity-50 disabled:cursor-not-allowed border-cyber-pink hover:bg-cyber-pink/20 transition-all duration-300"
-            >
-              <span className="text-cyber-pink mr-1">&gt;</span> AUTHENTICATE
-            </button>
-            {passkeyAvailable && (
-              <button
-                onClick={handlePasskeyUnlock}
-                className="w-full p-2 bg-cyber-green/5 text-cyber-green border border-cyber-green/50 rounded-sm hover:bg-cyber-green/10 transition-all duration-300 font-terminal text-xs flex items-center justify-center space-x-1 shadow-[0_0_12px_rgba(37,255,151,0.2)]"
-              >
-                <Shield className="w-3 h-3 text-cyber-pink" />
-                <span className="ml-1">BIOMETRIC AUTH</span>
-              </button>
-            )}
-            
-            {/* Matrix-like raining code effect */}
-            <div className="absolute right-3 bottom-20 text-[6px] font-terminal text-cyber-green/60 opacity-70" style={{writingMode: 'vertical-rl'}}>
-              {Array(6).fill(0).map((_, i) => (
-                <div key={i} className="animate-rain" style={{animationDelay: `${i * 0.2}s`}}>
-                  {Math.random() > 0.5 ? '01' : '10'}
+            {forgot ? (
+              <>
+                <h3 className="text-cyber-green font-terminal text-sm mb-3 flex items-center border-b border-cyber-green/20 pb-2">
+                  <KeySquare className="w-4 h-4 mr-1 text-cyber-pink" />
+                  <span className="tracking-wider">RECOVER WALLET</span>
+                </h3>
+                <div>
+                  <textarea
+                    rows={3}
+                    value={mnemonic}
+                    onChange={e => setMnemonic(e.target.value)}
+                    placeholder="Enter your seed phrase"
+                    className="w-full bg-cyber-black/70 border border-cyber-green/50 rounded-sm p-2 text-cyber-green font-terminal text-sm focus:border-cyber-pink focus:outline-none shadow-[0_0_8px_rgba(37,255,151,0.3)]"
+                  />
                 </div>
-              ))}
-            </div>
+                {error && (
+                  <p className="text-cyber-pink text-xs font-terminal border border-cyber-pink/30 bg-cyber-pink/10 p-2 animate-pulse">
+                    [ERROR] {error}
+                  </p>
+                )}
+                <button
+                  onClick={handleMnemonicRecover}
+                  disabled={!mnemonic.trim()}
+                  className="btn-primary w-full flex items-center justify-center space-x-2 font-terminal text-xs disabled:opacity-50 disabled:cursor-not-allowed border-cyber-pink hover:bg-cyber-pink/20 transition-all duration-300"
+                >
+                  <span className="text-cyber-pink mr-1">&gt;</span> RECOVER
+                </button>
+                <button
+                  onClick={() => { setForgot(false); setError(''); }}
+                  className="w-full text-cyber-green font-terminal text-xs underline mt-2"
+                >
+                  BACK TO PASSWORD
+                </button>
+              </>
+            ) : (
+              <>
+                <h3 className="text-cyber-green font-terminal text-sm mb-3 flex items-center border-b border-cyber-green/20 pb-2">
+                  <Lock className="w-4 h-4 mr-1 text-cyber-pink" />
+                  <span className="tracking-wider">DECRYPT ACCESS KEY</span>
+                </h3>
+                <div className="relative">
+                  <div className="absolute -left-2 -top-2 text-[8px] font-terminal text-cyber-green/60">SYS:// root/access</div>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    placeholder="Enter cryptographic key"
+                    className="w-full bg-cyber-black/70 border border-cyber-green/50 rounded-sm p-2 text-cyber-green font-terminal text-sm focus:border-cyber-pink focus:outline-none shadow-[0_0_8px_rgba(37,255,151,0.3)]"
+                  />
+                  <div className="absolute right-2 top-2 text-[8px] font-terminal text-cyber-green/40">
+                    {password && Array(password.length).fill('*').join('')}
+                  </div>
+                  <div className="absolute -right-2 -bottom-2 text-[8px] font-terminal text-cyber-green/60">SEC://LVL.9</div>
+                </div>
+                {error && (
+                  <p className="text-cyber-pink text-xs font-terminal border border-cyber-pink/30 bg-cyber-pink/10 p-2 animate-pulse">
+                    [ERROR] {error}
+                  </p>
+                )}
+                <button
+                  onClick={handlePasswordUnlock}
+                  disabled={!password}
+                  className="btn-primary w-full flex items-center justify-center space-x-2 font-terminal text-xs disabled:opacity-50 disabled:cursor-not-allowed border-cyber-pink hover:bg-cyber-pink/20 transition-all duration-300"
+                >
+                  <span className="text-cyber-pink mr-1">&gt;</span> AUTHENTICATE
+                </button>
+                {passkeyAvailable && (
+                  <button
+                    onClick={handlePasskeyUnlock}
+                    className="w-full p-2 bg-cyber-green/5 text-cyber-green border border-cyber-green/50 rounded-sm hover:bg-cyber-green/10 transition-all duration-300 font-terminal text-xs flex items-center justify-center space-x-1 shadow-[0_0_12px_rgba(37,255,151,0.2)]"
+                  >
+                    <Shield className="w-3 h-3 text-cyber-pink" />
+                    <span className="ml-1">BIOMETRIC AUTH</span>
+                  </button>
+                )}
+                {/* Matrix-like raining code effect */}
+                <div className="absolute right-3 bottom-20 text-[6px] font-terminal text-cyber-green/60 opacity-70" style={{writingMode: 'vertical-rl'}}>
+                  {Array(6).fill(0).map((_, i) => (
+                    <div key={i} className="animate-rain" style={{animationDelay: `${i * 0.2}s`}}>
+                      {Math.random() > 0.5 ? '01' : '10'}
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={() => { setForgot(true); setError(''); }}
+                  className="w-full text-cyber-pink font-terminal text-xs underline mt-2"
+                >
+                  FORGOT PASSWORD?
+                </button>
+              </>
+            )}
           </div>
         </div>
         
