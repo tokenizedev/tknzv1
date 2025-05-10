@@ -119,11 +119,11 @@ export const PasswordSetup: React.FC<PasswordSetupProps> = ({ onComplete }) => {
             <div className="space-y-4 animate-slide-up">
               <h3 className="text-cyber-green font-terminal text-sm mb-3 flex items-center border-b border-cyber-green/20 pb-2">
                 <Lock className="w-4 h-4 mr-1 text-cyber-pink" />
-                <span className="tracking-wider">ENCRYPTION KEY SETUP</span>
+                <span className="tracking-wider">PASSWORD SETUP</span>
               </h3>
               <div>
                 <label className="text-xs text-cyber-green/70 font-terminal mb-1 block flex items-center">
-                  <span className="text-cyber-pink mr-1">&gt;</span> CRYPTOGRAPHIC KEY
+                  <span className="text-cyber-pink mr-1">&gt;</span> PASSWORD
                 </label>
                 <div className="relative">
                   <input
@@ -140,7 +140,7 @@ export const PasswordSetup: React.FC<PasswordSetupProps> = ({ onComplete }) => {
               </div>
               <div>
                 <label className="text-xs text-cyber-green/70 font-terminal mb-1 block flex items-center">
-                  <span className="text-cyber-pink mr-1">&gt;</span> VERIFY KEY
+                  <span className="text-cyber-pink mr-1">&gt;</span> VERIFY PASSWORD
                 </label>
                 <div className="relative">
                   <input
@@ -165,7 +165,7 @@ export const PasswordSetup: React.FC<PasswordSetupProps> = ({ onComplete }) => {
                 disabled={!password || password !== confirmPassword}
                 className="btn-primary w-full flex items-center justify-center space-x-2 font-terminal text-xs disabled:opacity-50 disabled:cursor-not-allowed border-cyber-pink hover:bg-cyber-pink/20 transition-all duration-300"
               >
-                <span className="text-cyber-pink mr-1">&gt;</span> ENCRYPT AND SECURE
+                <span className="text-cyber-pink mr-1">&gt;</span> SET PASSWORD
               </button>
             </div>
           )}

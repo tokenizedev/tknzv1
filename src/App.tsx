@@ -15,6 +15,7 @@ import { WalletManagerPage } from './components/WalletManagerPage';
 import { Navigation } from './components/Navigation';
 import { SwapPage } from './components/SwapPage';
 import { VersionBadge } from './components/VersionBadge';
+import { WalletOverview } from './components/WalletOverview';
 
 interface AppProps { isSidebar?: boolean; }
 function App({ isSidebar = false }: AppProps = {}) {
@@ -53,7 +54,8 @@ function App({ isSidebar = false }: AppProps = {}) {
   // Wallet drawer visibility
   const [showWalletDrawer, setShowWalletDrawer] = useState(false);
   // Exclusive UI panels: 'wallet', 'swap', 'manager'
-  const [activeView, setActiveView] = useState<'wallet' | 'swap' | 'manager' | 'createdCoins' | 'myCoins' | null>(null);
+  // Views: null shows default creation page, others show specific screens
+  const [activeView, setActiveView] = useState<'wallet' | 'swap' | 'manager' | 'createdCoins' | 'myCoins' | 'overview' | null>(null);
 
   // Derived view flags
   const showWallet = activeView === 'wallet';
@@ -61,6 +63,7 @@ function App({ isSidebar = false }: AppProps = {}) {
   const showWalletManager = activeView === 'manager';
   const showCreatedCoins = activeView === 'createdCoins';
   const showMyCoins = activeView === 'myCoins';
+  const showOverview = activeView === 'overview';
   // Timeout for wallet unlock in milliseconds (1 hour)
   const UNLOCK_TIMEOUT = 60 * 60 * 1000;
   
@@ -220,6 +223,13 @@ function App({ isSidebar = false }: AppProps = {}) {
   const toggleWallet = () => {
     // Toggle wallet view, ensuring exclusivity
     setActiveView(prev => (prev === 'wallet' ? null : 'wallet'));
+  };
+  // Toggle wallet overview view
+  const toggleOverview = () => {
+    setActiveView(prev => (prev === 'overview' ? null : 'overview'));
+    setShowWalletDrawer(false);
+    setGlitching(true);
+    setTimeout(() => setGlitching(false), 200);
   };
   // Toggle swap page
   const toggleSwapPage = () => {
@@ -392,6 +402,7 @@ function App({ isSidebar = false }: AppProps = {}) {
             onToggleWallet={toggleWallet}
             onViewWallet={openWalletView}
             onCopyAddress={copyAddress}
+            onViewOverview={toggleOverview}
             onToggleWalletDrawer={toggleWalletDrawer}
             onManageWallets={openWalletManager}
             onOpenSidebar={openSidebar}
@@ -433,6 +444,8 @@ function App({ isSidebar = false }: AppProps = {}) {
               <TokenCreationProgress progress={creationProgress} />
             ) : showWallet ? (
               <WalletPageCyber highlightCoinAddress={newCoinAddress} />
+            ) : showOverview ? (
+              <WalletOverview />
             ) : showMyCoins ? (
               <MyCreatedCoinsPage highlightCoinAddress={newCoinAddress} />
             ) : showCreatedCoins ? (
