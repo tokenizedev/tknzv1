@@ -4,6 +4,7 @@ import { WalletSetup } from './components/WalletSetup';
 import { CoinCreator } from './components/CoinCreator';
 import { WalletPageCyber } from './components/WalletPageCyber';
 import { CreatedCoinsPage } from './components/CreatedCoinsPage';
+import { MyCreatedCoinsPage } from './components/MyCreatedCoinsPage';
 import { VersionCheck } from './components/VersionCheck';
 import { Loader } from './components/Loader';
 import { PasswordSetup } from './components/PasswordSetup';
@@ -52,13 +53,14 @@ function App({ isSidebar = false }: AppProps = {}) {
   // Wallet drawer visibility
   const [showWalletDrawer, setShowWalletDrawer] = useState(false);
   // Exclusive UI panels: 'wallet', 'swap', 'manager'
-  const [activeView, setActiveView] = useState<'wallet' | 'swap' | 'manager' | 'createdCoins' | null>(null);
+  const [activeView, setActiveView] = useState<'wallet' | 'swap' | 'manager' | 'createdCoins' | 'myCoins' | null>(null);
 
   // Derived view flags
   const showWallet = activeView === 'wallet';
   const showSwapPage = activeView === 'swap';
   const showWalletManager = activeView === 'manager';
   const showCreatedCoins = activeView === 'createdCoins';
+  const showMyCoins = activeView === 'myCoins';
   // Timeout for wallet unlock in milliseconds (1 hour)
   const UNLOCK_TIMEOUT = 60 * 60 * 1000;
   
@@ -190,11 +192,16 @@ function App({ isSidebar = false }: AppProps = {}) {
     setTimeout(() => setGlitching(false), 200);
   };
 
-  // Open created coins view for a wallet
-  const openCreatedCoins = async (walletId: string) => {
-    // Switch to the selected wallet and load its created coins
-    await useStore.getState().switchWallet(walletId);
+  // Open Created Coins page for all wallets (community)
+  const openCreatedCoins = () => {
     setActiveView('createdCoins');
+    setShowWalletDrawer(false);
+    setGlitching(true);
+    setTimeout(() => setGlitching(false), 200);
+  };
+  // Open My Created Coins page (user-specific)
+  const openMyCoins = () => {
+    setActiveView('myCoins');
     setShowWalletDrawer(false);
     setGlitching(true);
     setTimeout(() => setGlitching(false), 200);
@@ -278,8 +285,8 @@ function App({ isSidebar = false }: AppProps = {}) {
     setGlitching(true);
     setTimeout(() => {
       setGlitching(false);
-      // Transition to wallet view
-      setActiveView('wallet');
+      // Transition to Created Coins view
+      setActiveView('createdCoins');
       // Reset creation state after transition
       setTimeout(() => {
         setIsCreatingCoin(false);
@@ -391,6 +398,8 @@ function App({ isSidebar = false }: AppProps = {}) {
             onCloseSidebar={closeSidebar}
             onSwap={toggleSwapPage}
             onTokenCreate={navigateToTokenCreate}
+            onViewCreatedCoins={openCreatedCoins}
+            onViewMyCoins={openMyCoins}
             showSwap={showSwapPage}
             copyConfirm={copyConfirm}
           />
@@ -424,6 +433,8 @@ function App({ isSidebar = false }: AppProps = {}) {
               <TokenCreationProgress progress={creationProgress} />
             ) : showWallet ? (
               <WalletPageCyber highlightCoinAddress={newCoinAddress} />
+            ) : showMyCoins ? (
+              <MyCreatedCoinsPage />
             ) : showCreatedCoins ? (
               <CreatedCoinsPage />
             ) : !isLatestVersion ? (
