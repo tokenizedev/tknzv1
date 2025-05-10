@@ -64,6 +64,8 @@ function App({ isSidebar = false }: AppProps = {}) {
   const showCreatedCoins = activeView === 'createdCoins';
   const showMyCoins = activeView === 'myCoins';
   const showOverview = activeView === 'overview';
+  // Track a specific token mint to swap
+  const [selectedSwapMint, setSelectedSwapMint] = useState<string | null>(null);
   // Timeout for wallet unlock in milliseconds (1 hour)
   const UNLOCK_TIMEOUT = 60 * 60 * 1000;
   
@@ -235,6 +237,22 @@ function App({ isSidebar = false }: AppProps = {}) {
   const toggleSwapPage = () => {
     // Toggle swap view, ensuring exclusivity
     setActiveView(prev => (prev === 'swap' ? null : 'swap'));
+  };
+  // Swap a specific token
+  const handleSwapToken = (mint: string) => {
+    setSelectedSwapMint(mint);
+    setActiveView('swap');
+    setShowWalletDrawer(false);
+    setGlitching(true);
+    setTimeout(() => setGlitching(false), 200);
+  };
+  // Send a specific token (stub)
+  const handleSendToken = async (mint: string) => {
+    const dest = window.prompt(`Send ${mint} to:`);
+    const amount = window.prompt('Amount to send:');
+    if (dest && amount) {
+      alert(`Send functionality not implemented yet: ${amount} of ${mint} to ${dest}`);
+    }
   };
   // Open wallet details view
   const openWalletView = () => {
@@ -445,7 +463,10 @@ function App({ isSidebar = false }: AppProps = {}) {
             ) : showWallet ? (
               <WalletPageCyber highlightCoinAddress={newCoinAddress} />
             ) : showOverview ? (
-              <WalletOverview />
+              <WalletOverview
+                onSwapToken={handleSwapToken}
+                onSendToken={handleSendToken}
+              />
             ) : showMyCoins ? (
               <MyCreatedCoinsPage highlightCoinAddress={newCoinAddress} />
             ) : showCreatedCoins ? (
