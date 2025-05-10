@@ -61,7 +61,7 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({
         
         {/* Drawer header */}
         <div 
-          className="p-4 border-b border-cyber-green/30 flex justify-between items-center bg-cyber-black/90 backdrop-blur-md"
+          className="p-3 border-b border-cyber-green/30 flex items-center bg-cyber-black/90 backdrop-blur-md"
           style={{
             boxShadow: '0 2px 8px 0 rgba(0, 0, 0, 0.4)',
             background: 'linear-gradient(180deg, rgba(15, 15, 15, 0.95) 0%, rgba(10, 10, 10, 0.9) 100%)'
@@ -69,35 +69,34 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({
         >
           <button
             onClick={onManageWallets}
-            className="text-left flex items-center px-3 py-2 rounded bg-gradient-to-r from-cyber-green/20 to-cyber-purple/20 border border-cyber-green/40 hover:border-cyber-green/70 text-cyber-green transition-all group hover:shadow-[0_0_8px_rgba(0,255,160,0.4)] active:translate-y-[1px]"
+            className="text-left flex items-center px-2 py-1.5 rounded bg-gradient-to-r from-cyber-green/20 to-cyber-purple/20 border border-cyber-green/40 hover:border-cyber-green/70 text-cyber-green transition-all group hover:shadow-[0_0_8px_rgba(0,255,160,0.4)] active:translate-y-[1px]"
           >
-            <Users className="w-4 h-4 mr-2 group-hover:text-cyber-purple transition-colors" />
-            <span className="font-terminal text-sm font-bold tracking-wider group-hover:translate-x-0.5 transition-transform duration-150">MANAGE WALLETS</span>
+            <Users className="w-4 h-4 mr-1.5 group-hover:text-cyber-purple transition-colors" />
+            <span className="font-terminal text-xs font-bold tracking-wider group-hover:translate-x-0.5 transition-transform duration-150">MANAGE</span>
           </button>
+          
+          <div className="flex items-center ml-auto mr-2 space-x-2">
+            <button
+              onClick={onViewMyCoins}
+              className="p-1.5 text-cyber-green/80 hover:text-cyber-green rounded border border-cyber-green/20 hover:border-cyber-green/50 hover:bg-cyber-green/10 transition-all duration-150"
+              title="My Created Coins"
+            >
+              <Coins className="w-4 h-4" />
+            </button>
+            <button
+              onClick={onViewCreatedCoins}
+              className="p-1.5 text-cyber-green/80 hover:text-cyber-green rounded border border-cyber-green/20 hover:border-cyber-green/50 hover:bg-cyber-green/10 transition-all duration-150"
+              title="Community Coins"
+            >
+              <Users className="w-4 h-4" />
+            </button>
+          </div>
+          
           <button 
             onClick={onClose}
             className="text-cyber-green/80 hover:text-cyber-green p-1.5 rounded-full hover:bg-cyber-green/10 transition-colors"
           >
             <X className="w-5 h-5" />
-          </button>
-        </div>
-        {/* Created Coins Buttons */}
-        <div className="p-4 border-b border-cyber-green/30 bg-cyber-black/95 space-y-2">
-          <button
-            onClick={onViewMyCoins}
-            className="w-full text-cyber-green/80 hover:text-cyber-green flex items-center justify-center px-3 py-2 rounded bg-cyber-green/10 hover:bg-cyber-green/20 transition-colors"
-            title="View My Created Coins"
-          >
-            <Coins className="w-4 h-4 mr-2" />
-            My Created Coins
-          </button>
-          <button
-            onClick={onViewCreatedCoins}
-            className="w-full text-cyber-green/80 hover:text-cyber-green flex items-center justify-center px-3 py-2 rounded bg-cyber-green/10 hover:bg-cyber-green/20 transition-colors"
-            title="View Community Created Coins"
-          >
-            <Coins className="w-4 h-4 mr-2" />
-            Community Coins
           </button>
         </div>
         
