@@ -56,7 +56,7 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
     logoURI: t.logoURI,
     decimals: t.decimals,
   }));
-  console.log('uiTokens', uiTokens)
+  
   
   // Fetch user balances via Jupiter Ultra API
   const [balances, setBalances] = useState<Record<string, BalanceInfo>>({});
@@ -173,10 +173,8 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
 
         const allTokens = [...finalList, ...leaderboardTokens]
         allTokens.push(...remaining);
-        console.log('allTokensMints', JSON.stringify(allTokens.map(t => t.address)) )
         setTokenList(allTokens);
       } catch (err) {
-        console.log('error', err)
         setTokenError(err instanceof Error ? err.message : String(err));
       } finally {
         setLoadingTokens(false);
@@ -207,13 +205,14 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
     show: false,
     status: 'pending',
   });
-  // Jupiter order preview state
+  // Jupiter order preview state, includes overall fee and platform (referral) fee in bps
   const [previewData, setPreviewData] = useState<{
     inputAmount: number;
     outputAmount: number;
     priceImpactPct: number;
     minimumOutAmount: number;
     feeBps: number;
+    platformFeeBps: number;
   } | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
@@ -241,7 +240,16 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
         const minOut = parseInt(order.otherAmountThreshold || order.outAmount);
         const priceImpact = order.priceImpactPct != null ? parseFloat(order.priceImpactPct) : 0;
         const feeBps = order.feeBps != null ? order.feeBps : 0;
-        setPreviewData({ inputAmount: inAmt, outputAmount: outAmt, priceImpactPct: priceImpact, minimumOutAmount: minOut, feeBps });
+        // platform (referral) fee breakdown, in basis points
+        const platformFeeBps = order.platformFee?.feeBps != null ? order.platformFee.feeBps : 0;
+        setPreviewData({
+          inputAmount: inAmt,
+          outputAmount: outAmt,
+          priceImpactPct: priceImpact,
+          minimumOutAmount: minOut,
+          feeBps,
+          platformFeeBps,
+        });
         // update UI amounts and USD values
         const inTokens = inAmt / 10 ** fromToken.decimals;
         const outTokens = outAmt / 10 ** toToken.decimals;
@@ -532,6 +540,11 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
               ? `${(previewData.feeBps / 100).toFixed(2)}%`
               : undefined
           }
+          platformFee={
+            previewData
+              ? `${(previewData.platformFeeBps / 100).toFixed(2)}%`
+              : undefined
+          }
           slippage={slippage}
           estimatedGas="~0.0005 SOL"
           minimumReceived={
@@ -617,6 +630,11 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false }) => {
           fee={
             previewData
               ? `${(previewData.feeBps / 100).toFixed(2)}%`
+              : undefined
+          }
+          platformFee={
+            previewData
+              ? `${(previewData.platformFeeBps / 100).toFixed(2)}%`
               : undefined
           }
           estimatedGas="~0.0005 SOL"
