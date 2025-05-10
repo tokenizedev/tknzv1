@@ -4,6 +4,8 @@ import { FaChevronDown, FaChevronUp } from 'react-icons/fa';
 interface SwapDetailsProps {
   rate?: string;
   fee?: string;
+  // platform (referral) fee, displayed separately
+  platformFee?: string;
   slippage: string;
   estimatedGas?: string;
   minimumReceived?: string;
@@ -13,6 +15,7 @@ interface SwapDetailsProps {
 export const SwapDetails: React.FC<SwapDetailsProps> = ({
   rate,
   fee,
+  platformFee,
   slippage,
   estimatedGas,
   minimumReceived,
@@ -56,6 +59,12 @@ export const SwapDetails: React.FC<SwapDetailsProps> = ({
               <div className="flex justify-between items-center">
                 <span className="text-cyber-green/70 font-terminal text-sm">Swap Fee</span>
                 <span className="text-white font-mono text-sm">{fee}</span>
+              </div>
+            )}
+            {platformFee && (
+              <div className="flex justify-between items-center">
+                <span className="text-cyber-green/70 font-terminal text-sm">Platform Fee</span>
+                <span className="text-white font-mono text-sm">{platformFee}</span>
               </div>
             )}
             
