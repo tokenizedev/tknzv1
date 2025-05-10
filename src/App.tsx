@@ -207,6 +207,10 @@ function App({ isSidebar = false }: AppProps = {}) {
     // Toggle swap view, ensuring exclusivity
     setActiveView(prev => (prev === 'swap' ? null : 'swap'));
   };
+  // Open wallet details view
+  const openWalletView = () => {
+    setActiveView('wallet');
+  };
 
   // After setting up password or unlocking, initialize and record unlock time
   const handlePostUnlock = async () => {
@@ -357,6 +361,7 @@ function App({ isSidebar = false }: AppProps = {}) {
             glitching={glitching}
             onRefresh={triggerBalanceEffect}
             onToggleWallet={toggleWallet}
+            onViewWallet={openWalletView}
             onCopyAddress={copyAddress}
             onToggleWalletDrawer={toggleWalletDrawer}
             onManageWallets={openWalletManager}
