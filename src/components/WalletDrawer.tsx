@@ -1,6 +1,6 @@
 import React from 'react';
 import Jdenticon from 'react-jdenticon';
-import { Users, Copy, CheckCircle, X, Settings } from 'lucide-react';
+import { Users, Copy, CheckCircle, X, Settings, Coins } from 'lucide-react';
 import { WalletInfo } from '../types';
 
 // Add declaration for react-jdenticon to fix type error
@@ -15,6 +15,7 @@ interface WalletDrawerProps {
   onCopyAddress: (address: string) => void;
   copiedWallet: string | null;
   onViewWallet: (walletId: string) => void;
+  onViewCreatedCoins: (walletId: string) => void;
 }
 
 export const WalletDrawer: React.FC<WalletDrawerProps> = ({
@@ -23,9 +24,10 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({
   onClose,
   onSelectWallet,
   onManageWallets,
+  onViewWallet,
+  onViewCreatedCoins,
   onCopyAddress,
   copiedWallet
-  , onViewWallet
 }) => {
   return (
     <div 
@@ -154,6 +156,18 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({
                 >
                   <Settings className="w-3.5 h-3.5 mr-1.5" />
                   CONFIG
+                </button>
+                <button
+                  onClick={() => {
+                    onSelectWallet(wallet.id);
+                    onViewCreatedCoins(wallet.id);
+                    onClose();
+                  }}
+                  className="p-1.5 px-3 text-cyber-green/70 hover:text-cyber-green hover:bg-cyber-green/10 rounded border border-cyber-green/20 hover:border-cyber-green/40 transition-all duration-150 flex items-center text-xs font-terminal"
+                  title="View Created Coins"
+                >
+                  <Coins className="w-3.5 h-3.5 mr-1.5" />
+                  COINS
                 </button>
                 <button
                   onClick={() => onCopyAddress(wallet.publicKey)}

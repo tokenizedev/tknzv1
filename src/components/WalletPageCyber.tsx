@@ -201,8 +201,8 @@ export const WalletPageCyber: React.FC<WalletPageCyberProps> = ({ highlightCoinA
             </p>
         </div>
 
-        {/* Created Coins Section - now with pagination and max height */}
-        {createdCoins && createdCoins.length > 0 && (
+        {/* Created Coins Section moved to its own page via drawer */}
+        {false && createdCoins && createdCoins.length > 0 && (
             <div className="crypto-card">
                 <div className="crypto-card-header">
                     <h2 className="crypto-card-title flex items-center">

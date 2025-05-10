@@ -26,6 +26,9 @@ interface NavigationProps {
   onCloseSidebar: () => void;
   // Swap page handler
   onSwap: () => void;
+  onViewCreatedCoins: (walletId: string) => void;
+  // Token create handler
+  onTokenCreate: () => void;
   showSwap: boolean;
   copyConfirm: boolean;
 }
@@ -47,6 +50,8 @@ export const Navigation: React.FC<NavigationProps> = ({
   onOpenSidebar,
   onCloseSidebar,
   onSwap,
+  onTokenCreate,
+  onViewCreatedCoins,
   showSwap,
   copyConfirm
 }) => {
@@ -78,6 +83,14 @@ export const Navigation: React.FC<NavigationProps> = ({
       <header className="fixed top-0 left-0 right-0 z-20 nav-placeholder nav-animated nav-glow">
         <div className={`border-b border-cyber-green/20 bg-cyber-black/90 backdrop-blur-sm ${navAnimated ? 'nav-border-animated border-highlight' : ''}`}>
           <div className="flex items-center h-14">
+            
+            {/* TKNS Logo */}
+            <div
+              className="h-full flex items-center px-4 cursor-pointer"
+              onClick={() => { maybeCloseDrawer(); onTokenCreate(); }}
+            >
+              <img src="/assets/logo.png" alt="TKNS" className="h-10" />
+            </div>
             
             {activeWallet && (
               <>
@@ -152,6 +165,7 @@ export const Navigation: React.FC<NavigationProps> = ({
         onSelectWallet={handleSelectWallet}
         onManageWallets={onManageWallets}
         onViewWallet={onViewWallet}
+        onViewCreatedCoins={onViewCreatedCoins}
         onCopyAddress={handleCopyWalletAddress}
         copiedWallet={copiedWallet}
       />

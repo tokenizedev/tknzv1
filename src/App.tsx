@@ -3,6 +3,7 @@ import { useStore } from './store';
 import { WalletSetup } from './components/WalletSetup';
 import { CoinCreator } from './components/CoinCreator';
 import { WalletPageCyber } from './components/WalletPageCyber';
+import { CreatedCoinsPage } from './components/CreatedCoinsPage';
 import { VersionCheck } from './components/VersionCheck';
 import { Loader } from './components/Loader';
 import { PasswordSetup } from './components/PasswordSetup';
@@ -51,12 +52,13 @@ function App({ isSidebar = false }: AppProps = {}) {
   // Wallet drawer visibility
   const [showWalletDrawer, setShowWalletDrawer] = useState(false);
   // Exclusive UI panels: 'wallet', 'swap', 'manager'
-  const [activeView, setActiveView] = useState<'wallet' | 'swap' | 'manager' | null>(null);
+  const [activeView, setActiveView] = useState<'wallet' | 'swap' | 'manager' | 'createdCoins' | null>(null);
 
   // Derived view flags
   const showWallet = activeView === 'wallet';
   const showSwapPage = activeView === 'swap';
   const showWalletManager = activeView === 'manager';
+  const showCreatedCoins = activeView === 'createdCoins';
   // Timeout for wallet unlock in milliseconds (1 hour)
   const UNLOCK_TIMEOUT = 60 * 60 * 1000;
   
@@ -188,6 +190,16 @@ function App({ isSidebar = false }: AppProps = {}) {
     setTimeout(() => setGlitching(false), 200);
   };
 
+  // Open created coins view for a wallet
+  const openCreatedCoins = async (walletId: string) => {
+    // Switch to the selected wallet and load its created coins
+    await useStore.getState().switchWallet(walletId);
+    setActiveView('createdCoins');
+    setShowWalletDrawer(false);
+    setGlitching(true);
+    setTimeout(() => setGlitching(false), 200);
+  };
+
   const closeWalletManager = () => {
     // Close wallet-manager view if active
     if (activeView === 'manager') {
@@ -210,6 +222,16 @@ function App({ isSidebar = false }: AppProps = {}) {
   // Open wallet details view
   const openWalletView = () => {
     setActiveView('wallet');
+  };
+
+  // Navigate to token create panel
+  const navigateToTokenCreate = () => {
+    setActiveView(null);
+    // Close any open drawers
+    setShowWalletDrawer(false);
+    // Add a glitch effect for transition
+    setGlitching(true);
+    setTimeout(() => setGlitching(false), 200);
   };
 
   // After setting up password or unlocking, initialize and record unlock time
@@ -368,6 +390,7 @@ function App({ isSidebar = false }: AppProps = {}) {
             onOpenSidebar={openSidebar}
             onCloseSidebar={closeSidebar}
             onSwap={toggleSwapPage}
+            onTokenCreate={navigateToTokenCreate}
             showSwap={showSwapPage}
             copyConfirm={copyConfirm}
           />
@@ -401,6 +424,8 @@ function App({ isSidebar = false }: AppProps = {}) {
               <TokenCreationProgress progress={creationProgress} />
             ) : showWallet ? (
               <WalletPageCyber highlightCoinAddress={newCoinAddress} />
+            ) : showCreatedCoins ? (
+              <CreatedCoinsPage />
             ) : !isLatestVersion ? (
               <VersionCheck updateAvailable={updateAvailable || ''} />
             ) : (
