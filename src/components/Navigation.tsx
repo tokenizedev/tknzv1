@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Terminal, RefreshCw, PanelRight, PanelLeft, Repeat } from 'lucide-react';
+import { RefreshCw, PanelRight, PanelLeft, Repeat } from 'lucide-react';
 import { WalletIndicator } from './WalletIndicator';
 import { WalletDrawer } from './WalletDrawer';
 import { useStore } from '../store';
@@ -18,6 +18,7 @@ interface NavigationProps {
   glitching: boolean;
   onRefresh: () => void;
   onToggleWallet: () => void;
+  onViewWallet: () => void;
   onCopyAddress: () => void;
   onToggleWalletDrawer: () => void;
   onManageWallets: () => void;
@@ -40,6 +41,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   showWalletDrawer,
   onRefresh,
   onToggleWallet,
+  onViewWallet,
   onToggleWalletDrawer,
   onManageWallets,
   onOpenSidebar,
@@ -85,17 +87,6 @@ export const Navigation: React.FC<NavigationProps> = ({
                   isDrawerOpen={showWalletDrawer}
                 />
                   
-                <button
-                  className={`h-full w-14 transition-colors flex items-center justify-center ${
-                    showWallet
-                      ? 'bg-cyber-green/20 text-cyber-green'
-                      : 'hover:bg-cyber-green/10 text-cyber-green/80 hover:text-cyber-green'
-                  }`}
-                  onClick={() => { maybeCloseDrawer(); onToggleWallet(); }}
-                  title="View Wallet"
-                >
-                  <Terminal className="w-4 h-4" />
-                </button>
                 {/* Swap page button */}
                 <button
                   className={`h-full w-14 transition-colors flex items-center justify-center ${
@@ -160,6 +151,7 @@ export const Navigation: React.FC<NavigationProps> = ({
         onClose={onToggleWalletDrawer}
         onSelectWallet={handleSelectWallet}
         onManageWallets={onManageWallets}
+        onViewWallet={onViewWallet}
         onCopyAddress={handleCopyWalletAddress}
         copiedWallet={copiedWallet}
       />
