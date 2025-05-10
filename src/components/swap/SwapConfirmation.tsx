@@ -17,6 +17,8 @@ interface SwapConfirmationProps {
   rate: string;
   priceImpact: string;
   fee?: string;
+  // platform (referral) fee, displayed separately
+  platformFee?: string;
   estimatedGas?: string;
   minimumReceived?: string;
   onConfirm: () => void;
@@ -30,6 +32,7 @@ export const SwapConfirmation: React.FC<SwapConfirmationProps> = ({
   rate,
   priceImpact,
   fee,
+  platformFee,
   estimatedGas,
   minimumReceived,
   onConfirm,
@@ -126,6 +129,12 @@ export const SwapConfirmation: React.FC<SwapConfirmationProps> = ({
               <div className="flex justify-between items-center">
                 <span className="text-cyber-green/70 text-sm font-terminal">Swap Fee</span>
                 <span className="text-white text-sm font-mono">{fee}</span>
+              </div>
+            )}
+            {platformFee && (
+              <div className="flex justify-between items-center">
+                <span className="text-cyber-green/70 text-sm font-terminal">Platform Fee</span>
+                <span className="text-white text-sm font-mono">{platformFee}</span>
               </div>
             )}
             
