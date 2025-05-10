@@ -19,6 +19,8 @@ interface NavigationProps {
   onRefresh: () => void;
   onToggleWallet: () => void;
   onViewWallet: () => void;
+  // Navigate to wallet overview screen
+  onViewOverview: () => void;
   onCopyAddress: () => void;
   onToggleWalletDrawer: () => void;
   onManageWallets: () => void;
@@ -46,6 +48,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   onRefresh,
   onToggleWallet,
   onViewWallet,
+  onViewOverview,
   onToggleWalletDrawer,
   onManageWallets,
   onOpenSidebar,
@@ -119,9 +122,13 @@ export const Navigation: React.FC<NavigationProps> = ({
                 <div className={`flex h-full mr-5 transition-all duration-500 ${controlsAnimated ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-10'}`}>
                   <div className="border-l border-r border-cyber-green/20 px-4 flex items-center">
                     <div className="flex flex-col items-end mr-2">
-                      <div className="font-terminal text-sm text-cyber-green tabular-nums">
+                      <button
+                        onClick={() => { maybeCloseDrawer(); onViewOverview(); }}
+                        className="font-terminal text-sm text-cyber-green tabular-nums text-right focus:outline-none hover:underline"
+                        title="View Wallet Overview"
+                      >
                         {balance.toFixed(2)} <span className="text-cyber-green/70">SOL</span>
-                      </div>
+                      </button>
                     </div>
                     <button
                       onClick={() => { maybeCloseDrawer(); onRefresh(); }}
