@@ -63,6 +63,13 @@ export const Navigation: React.FC<NavigationProps> = ({
     setCopiedWallet(address);
     setTimeout(() => setCopiedWallet(null), 2000);
   };
+  
+  // Close wallet drawer if open when other navigation items are clicked
+  const maybeCloseDrawer = () => {
+    if (showWalletDrawer) {
+      onToggleWalletDrawer();
+    }
+  };
 
   return (
     <>
@@ -78,13 +85,13 @@ export const Navigation: React.FC<NavigationProps> = ({
                   isDrawerOpen={showWalletDrawer}
                 />
                   
-                <button 
+                <button
                   className={`h-full w-14 transition-colors flex items-center justify-center ${
-                    showWallet 
-                      ? 'bg-cyber-green/20 text-cyber-green' 
+                    showWallet
+                      ? 'bg-cyber-green/20 text-cyber-green'
                       : 'hover:bg-cyber-green/10 text-cyber-green/80 hover:text-cyber-green'
                   }`}
-                  onClick={onToggleWallet}
+                  onClick={() => { maybeCloseDrawer(); onToggleWallet(); }}
                   title="View Wallet"
                 >
                   <Terminal className="w-4 h-4" />
@@ -96,7 +103,7 @@ export const Navigation: React.FC<NavigationProps> = ({
                       ? 'bg-cyber-green/20 text-cyber-green'
                       : 'hover:bg-cyber-green/10 text-cyber-green/80 hover:text-cyber-green'
                   }`}
-                  onClick={onSwap}
+                  onClick={() => { maybeCloseDrawer(); onSwap(); }}
                   title="Swap Tokens"
                 >
                   <Repeat className="w-4 h-4" />
@@ -111,7 +118,7 @@ export const Navigation: React.FC<NavigationProps> = ({
                       </div>
                     </div>
                     <button
-                      onClick={onRefresh}
+                      onClick={() => { maybeCloseDrawer(); onRefresh(); }}
                       disabled={isRefreshing}
                       className="p-1.5 hover:bg-cyber-green/10 rounded-full"
                     >
@@ -123,7 +130,7 @@ export const Navigation: React.FC<NavigationProps> = ({
                   <div className="flex h-full">
                     {!isSidebar ? (
                       <button
-                        onClick={onOpenSidebar}
+                        onClick={() => { maybeCloseDrawer(); onOpenSidebar(); }}
                         className="border-r border-cyber-green/20 h-full w-14 flex items-center justify-center hover:bg-cyber-green/10 transition-colors"
                         title="Open Sidebar Drawer"
                       >
@@ -131,7 +138,7 @@ export const Navigation: React.FC<NavigationProps> = ({
                       </button>
                     ) : (
                       <button
-                        onClick={onCloseSidebar}
+                        onClick={() => { maybeCloseDrawer(); onCloseSidebar(); }}
                         className="border-r border-cyber-green/20 h-full w-14 flex items-center justify-center hover:bg-cyber-green/10 transition-colors"
                         title="Close Sidebar Drawer"
                       >
