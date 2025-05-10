@@ -15,7 +15,8 @@ interface WalletDrawerProps {
   onCopyAddress: (address: string) => void;
   copiedWallet: string | null;
   onViewWallet: (walletId: string) => void;
-  onViewCreatedCoins: (walletId: string) => void;
+  onViewCreatedCoins: () => void;
+  onViewMyCoins: () => void;
 }
 
 export const WalletDrawer: React.FC<WalletDrawerProps> = ({
@@ -26,6 +27,7 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({
   onManageWallets,
   onViewWallet,
   onViewCreatedCoins,
+  onViewMyCoins,
   onCopyAddress,
   copiedWallet
 }) => {
@@ -77,6 +79,25 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({
             className="text-cyber-green/80 hover:text-cyber-green p-1.5 rounded-full hover:bg-cyber-green/10 transition-colors"
           >
             <X className="w-5 h-5" />
+          </button>
+        </div>
+        {/* Created Coins Buttons */}
+        <div className="p-4 border-b border-cyber-green/30 bg-cyber-black/95 space-y-2">
+          <button
+            onClick={onViewMyCoins}
+            className="w-full text-cyber-green/80 hover:text-cyber-green flex items-center justify-center px-3 py-2 rounded bg-cyber-green/10 hover:bg-cyber-green/20 transition-colors"
+            title="View My Created Coins"
+          >
+            <Coins className="w-4 h-4 mr-2" />
+            My Created Coins
+          </button>
+          <button
+            onClick={onViewCreatedCoins}
+            className="w-full text-cyber-green/80 hover:text-cyber-green flex items-center justify-center px-3 py-2 rounded bg-cyber-green/10 hover:bg-cyber-green/20 transition-colors"
+            title="View Community Created Coins"
+          >
+            <Coins className="w-4 h-4 mr-2" />
+            Community Coins
           </button>
         </div>
         
@@ -156,18 +177,6 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({
                 >
                   <Settings className="w-3.5 h-3.5 mr-1.5" />
                   CONFIG
-                </button>
-                <button
-                  onClick={() => {
-                    onSelectWallet(wallet.id);
-                    onViewCreatedCoins(wallet.id);
-                    onClose();
-                  }}
-                  className="p-1.5 px-3 text-cyber-green/70 hover:text-cyber-green hover:bg-cyber-green/10 rounded border border-cyber-green/20 hover:border-cyber-green/40 transition-all duration-150 flex items-center text-xs font-terminal"
-                  title="View Created Coins"
-                >
-                  <Coins className="w-3.5 h-3.5 mr-1.5" />
-                  COINS
                 </button>
                 <button
                   onClick={() => onCopyAddress(wallet.publicKey)}
