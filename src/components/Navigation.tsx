@@ -26,7 +26,8 @@ interface NavigationProps {
   onCloseSidebar: () => void;
   // Swap page handler
   onSwap: () => void;
-  onViewCreatedCoins: (walletId: string) => void;
+  onViewCreatedCoins: () => void;
+  onViewMyCoins: () => void;
   // Token create handler
   onTokenCreate: () => void;
   showSwap: boolean;
@@ -52,6 +53,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   onSwap,
   onTokenCreate,
   onViewCreatedCoins,
+  onViewMyCoins,
   showSwap,
   copyConfirm
 }) => {
@@ -165,6 +167,7 @@ export const Navigation: React.FC<NavigationProps> = ({
         onSelectWallet={handleSelectWallet}
         onManageWallets={onManageWallets}
         onViewWallet={onViewWallet}
+        onViewMyCoins={onViewMyCoins}
         onViewCreatedCoins={onViewCreatedCoins}
         onCopyAddress={handleCopyWalletAddress}
         copiedWallet={copiedWallet}
