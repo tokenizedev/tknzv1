@@ -17,6 +17,10 @@ export interface CreatedCoin {
     pumpUrl: string;
     balance: number;
     createdAt?: Timestamp | Date;
+    /**
+     * The wallet address under which this coin was created
+     */
+    walletAddress?: string;
 }
   
 export interface CoinCreationParams {
