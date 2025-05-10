@@ -454,7 +454,10 @@ function App({ isSidebar = false }: AppProps = {}) {
             {!activeWallet ? (
               <WalletSetup />
             ) : showSwapPage ? (
-              <SwapPage isSidebar={isSidebar} />
+              <SwapPage
+                isSidebar={isSidebar}
+                initialFromMint={selectedSwapMint || undefined}
+              />
             ) : showWalletManager ? (
               <WalletManagerPage onBack={closeWalletManager} />
             ) : isCreatingCoin ? (
