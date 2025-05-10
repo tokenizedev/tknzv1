@@ -1,11 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../store';
 import { getUltraBalances, getTokenInfo, getPrices, BalanceInfo } from '../services/jupiterService';
+import { Send, Repeat } from 'lucide-react';
+
+// Native SOL mint address for token metadata and pricing
+const NATIVE_MINT = 'So11111111111111111111111111111111111111112';
 
 /**
  * WalletOverview component shows total balance, change, chart, and list of tokens.
  */
-export const WalletOverview: React.FC = () => {
+export const WalletOverview: React.FC<{
+  onSwapToken: (mint: string) => void;
+  onSendToken: (mint: string) => void;
+}> = ({ onSwapToken, onSendToken }) => {
   const { activeWallet, balance } = useStore();
   const [tokens, setTokens] = useState<{
     mint: string;
@@ -23,36 +30,54 @@ export const WalletOverview: React.FC = () => {
   useEffect(() => {
     const loadTokens = async () => {
       try {
-        const balances: Record<string, BalanceInfo> = await getUltraBalances(publicKey);
-        const entries = Object.entries(balances).filter(([, info]) => info.uiAmount > 0);
-        if (entries.length === 0) {
-          setTokens([]);
-          return;
-        }
-        const mints = entries.map(([mint]) => mint);
-        // Fetch metadata for all mints
-        const metas = await Promise.all(mints.map(mint => getTokenInfo(mint)));
-        // Fetch prices for all mints
+      // Fetch raw balances (may include key 'SOL' for native)
+      const rawBalances: Record<string, BalanceInfo> = await getUltraBalances(publicKey);
+      // Normalize keys: map 'SOL' to NATIVE_MINT
+      const balances: Record<string, BalanceInfo> = {};
+      for (const [mint, info] of Object.entries(rawBalances)) {
+        const key = mint === 'SOL' ? NATIVE_MINT : mint;
+        balances[key] = info;
+      }
+      // Filter out zero balances
+      const entries = Object.entries(balances).filter(([, info]) => info.uiAmount > 0);
+      if (entries.length === 0) {
+        setTokens([]);
+        return;
+      }
+      // Get list of mints for pricing
+      const mints = entries.map(([mint]) => mint);
+      // Fetch prices (best-effort)
+      let priceMap: Record<string, { price: string }> = {};
+      try {
         const priceResp = await getPrices(mints);
-        const priceMap = priceResp.data;
-        // Combine
-        const list = mints.map((mint, i) => {
-          const info = entries[i][1];
-          const meta = metas[i];
-          const priceDetail = priceMap[mint];
-          const price = priceDetail ? parseFloat(priceDetail.price) : undefined;
-          const usdValue = price !== undefined ? price * info.uiAmount : undefined;
-          return {
-            mint,
-            amount: info.uiAmount,
-            symbol: meta.symbol,
-            name: meta.name,
-            decimals: meta.decimals,
-            priceUsd: price,
-            usdValue,
-          };
-        });
-        setTokens(list);
+        priceMap = priceResp.data;
+      } catch (err) {
+        console.error('Failed to fetch prices:', err);
+      }
+      // Build token list, skipping metadata fetch failures
+      const tokenList = (
+        await Promise.all(entries.map(async ([mint, info]) => {
+          try {
+            const meta = await getTokenInfo(mint);
+            const detail = priceMap[mint];
+            const price = detail ? parseFloat(detail.price) : undefined;
+            const usdValue = price !== undefined ? price * info.uiAmount : undefined;
+            return {
+              mint,
+              amount: info.uiAmount,
+              symbol: meta.symbol,
+              name: meta.name,
+              decimals: meta.decimals,
+              priceUsd: price,
+              usdValue,
+            };
+          } catch (err) {
+            console.error(`Skipping token ${mint}, metadata failed:`, err);
+            return null;
+          }
+        }))
+      ).filter((x): x is NonNullable<typeof x> => x !== null);
+      setTokens(tokenList);
       } catch (error) {
         console.error('Failed to load wallet tokens:', error);
         setTokens([]);
@@ -104,13 +129,27 @@ export const WalletOverview: React.FC = () => {
               </div>
               <div className="flex flex-col items-end">
                 <span className="text-sm font-medium text-cyber-green font-terminal">
-                  {token.amount.toFixed( token.decimals )}
+                  {token.amount.toFixed(token.decimals)}
                 </span>
                 <span className="text-xs text-cyber-green/70 font-mono">
-                  {token.usdValue !== undefined
-                    ? `$${token.usdValue.toFixed(2)}`
-                    : 'N/A USD'}
+                  {token.usdValue !== undefined ? `$${token.usdValue.toFixed(2)}` : 'N/A USD'}
                 </span>
+              </div>
+              <div className="flex items-center space-x-2 ml-4">
+                <button
+                  onClick={() => onSendToken(token.mint)}
+                  className="p-1 hover:bg-cyber-green/10 rounded-full"
+                  title="Send Token"
+                >
+                  <Send className="w-4 h-4 text-cyber-green/80 hover:text-cyber-green" />
+                </button>
+                <button
+                  onClick={() => onSwapToken(token.mint)}
+                  className="p-1 hover:bg-cyber-green/10 rounded-full"
+                  title="Swap Token"
+                >
+                  <Repeat className="w-4 h-4 text-cyber-green/80 hover:text-cyber-green" />
+                </button>
               </div>
             </div>
           ))
