@@ -44,7 +44,7 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({
       
       {/* Drawer panel */}
       <div 
-        className="relative w-80 max-w-[80vw] bg-cyber-black border-r border-cyber-green/70 h-full flex flex-col z-10 overflow-hidden"
+        className="relative w-72 max-w-[80vw] bg-cyber-black border-r border-cyber-green/70 h-full flex flex-col z-10 overflow-hidden"
         style={{
           boxShadow: isOpen ? '0 0 20px 0 rgba(0, 255, 160, 0.4), 0 0 2px 1px rgba(0, 255, 160, 0.3) inset' : 'none',
           transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease',
@@ -83,7 +83,7 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({
           {wallets.map((wallet, index) => (
             <div
               key={wallet.id}
-              className={`p-3 flex items-center hover:bg-cyber-green/10 cursor-pointer border-b border-cyber-green/10 transition-all duration-200 ${
+              className={`p-3 border-b border-cyber-green/10 transition-all duration-200 ${
                 wallet.isActive ? 'bg-gradient-to-r from-cyber-green/10 to-transparent text-cyber-green' : 'text-cyber-green/80'
               }`}
               style={{
@@ -91,9 +91,9 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({
                 opacity: isOpen ? 1 : 0,
               }}
             >
-              {/* Avatar and select area */}
+              {/* Main wallet info */}
               <div 
-                className="flex items-center flex-1 transition-transform hover:translate-x-1 duration-150"
+                className="flex items-center cursor-pointer transition-transform hover:translate-x-1 duration-150 mb-2"
                 onClick={() => onSelectWallet(wallet.id)}
               >
                 <div className="mr-3 relative">
@@ -133,26 +133,38 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({
                 </div>
               </div>
               
-              {/* Copy button */}
-              {/* Settings button: view wallet details */}
-              <button
-                onClick={() => onViewWallet(wallet.id)}
-                className="p-2 text-cyber-green/70 hover:text-cyber-green hover:bg-cyber-green/10 rounded-full transition-colors duration-150 ml-2"
-                title="Wallet Settings"
-              >
-                <Settings className="w-5 h-5" />
-              </button>
-              {/* Copy button: copy wallet address */}
-              <button
-                onClick={() => onCopyAddress(wallet.publicKey)}
-                className="p-2 text-cyber-green/70 hover:text-cyber-green hover:bg-cyber-green/10 rounded-full relative transition-colors duration-150 ml-2"
-              >
-                {copiedWallet === wallet.publicKey ? (
-                  <CheckCircle className="w-5 h-5 text-cyber-purple animate-pulse-fast" />
-                ) : (
-                  <Copy className="w-5 h-5" />
-                )}
-              </button>
+              {/* Action buttons in a row below wallet info */}
+              <div className="flex items-center justify-end space-x-2 pt-1">
+                <button
+                  onClick={() => {
+                    onSelectWallet(wallet.id);
+                    onViewWallet(wallet.id);
+                    onClose();
+                  }}
+                  className="p-1.5 px-3 text-cyber-green/70 hover:text-cyber-green hover:bg-cyber-green/10 rounded border border-cyber-green/20 hover:border-cyber-green/40 transition-all duration-150 flex items-center text-xs font-terminal"
+                  title="Wallet Settings"
+                >
+                  <Settings className="w-3.5 h-3.5 mr-1.5" />
+                  CONFIG
+                </button>
+                <button
+                  onClick={() => onCopyAddress(wallet.publicKey)}
+                  className="p-1.5 px-3 text-cyber-green/70 hover:text-cyber-green hover:bg-cyber-green/10 rounded border border-cyber-green/20 hover:border-cyber-green/40 transition-all duration-150 flex items-center text-xs font-terminal"
+                  title="Copy Address"
+                >
+                  {copiedWallet === wallet.publicKey ? (
+                    <>
+                      <CheckCircle className="w-3.5 h-3.5 mr-1.5 text-cyber-purple animate-pulse-fast" />
+                      COPIED
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5 mr-1.5" />
+                      COPY
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           ))}
         </div>
