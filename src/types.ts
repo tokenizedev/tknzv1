@@ -1,6 +1,15 @@
 import { Keypair } from '@solana/web3.js';
 import { Timestamp } from 'firebase/firestore';
 
+export interface WalletInfo {
+    id: string; // Unique identifier for the wallet
+    name: string; // User-friendly name for the wallet
+    publicKey: string; // Public key in string format for easy use
+    keypair: Keypair; // The actual wallet keypair
+    isActive: boolean; // Whether this is the currently active wallet
+    avatar?: string; // Optional avatar image (data URI or URL)
+}
+
 export interface CreatedCoin {
     address: string;
     name: string;
@@ -8,6 +17,10 @@ export interface CreatedCoin {
     pumpUrl: string;
     balance: number;
     createdAt?: Timestamp | Date;
+    /**
+     * The wallet address under which this coin was created
+     */
+    walletAddress?: string;
 }
   
 export interface CoinCreationParams {
@@ -40,7 +53,9 @@ export interface TokenCreationData {
 }
   
 export interface WalletState {
-    wallet: Keypair | null;
+    wallets: WalletInfo[]; // List of all wallets
+    activeWallet: WalletInfo | null; // Currently active wallet
+    wallet: Keypair | null; // Kept for backward compatibility
     balance: number;
     error: string | null;
     createdCoins: CreatedCoin[];
@@ -50,6 +65,15 @@ export interface WalletState {
     updateAvailable: string | null;
     migrationStatus: 'idle' | 'running' | 'complete' | 'error';
     initializeWallet: () => Promise<void>;
+    /**
+     * Create a new wallet using a generated mnemonic seed phrase.
+     * Returns the wallet info along with the mnemonic for user backup.
+     */
+    createNewWallet: (name: string) => Promise<WalletInfo & { mnemonic: string }>;
+    importWallet: (name: string, privateKeyString: string) => Promise<WalletInfo>;
+    switchWallet: (walletId: string) => Promise<void>;
+    removeWallet: (walletId: string) => Promise<void>;
+    renameWallet: (walletId: string, newName: string) => Promise<void>;
     getBalance: () => Promise<void>;
     addCreatedCoin: (coin: CreatedCoin) => Promise<void>;
     setInvestmentAmount: (amount: number) => Promise<void>;
@@ -60,6 +84,10 @@ export interface WalletState {
     getTokenCreationData: (article: ArticleData, level: number) => Promise<TokenCreationData>;
     checkVersion: () => Promise<void>;
     migrateLocalStorageToFirestore: (wallet: Keypair) => Promise<void>;
+    /**
+     * Update the avatar for a given wallet
+     */
+    updateWalletAvatar: (walletId: string, avatar: string) => Promise<void>;
 }
   
 export interface ArticleData {
@@ -70,4 +98,20 @@ export interface ArticleData {
     author?: string
     xUrl?: string,
     isXPost: boolean
+}
+
+export interface NavigationProps {
+    wallet: Wallet | null;
+    balance: number;
+    logoAnimated: boolean;
+    navAnimated: boolean;
+    controlsAnimated: boolean;
+}
+
+export interface WalletData {
+  id: string;
+  name: string;
+  publicKey: string;
+  isActive: boolean;
+  avatar?: string;
 }

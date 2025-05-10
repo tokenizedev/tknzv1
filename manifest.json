@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "TKNZ",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "description": "Create meme coins on Pump.fun directly from news articles",
   "permissions": [
     "activeTab",
@@ -15,17 +15,15 @@
   "action": {
     "default_popup": "index.html",
     "default_icon": {
-      "16": "public/assets/favicon-16x16.png",
-      "48": "public/assets/favicon-48x48.png",
-      "128": "public/assets/favicon-128x128.png"
+      "16": "assets/favicon-16x16.png",
+      "32": "assets/favicon-32x32.png"
     }
   },
   "side_panel": {
     "default_path": "sidebar.html",
     "default_icon": {
-      "16": "public/assets/favicon-16x16.png",
-      "48": "public/assets/favicon-48x48.png",
-      "128": "public/assets/favicon-128x128.png"
+      "16": "assets/favicon-16x16.png",
+      "32": "assets/favicon-32x32.png"
     },
     "default_title": "TKNZ"
   },
@@ -45,19 +43,14 @@
     "type": "module"
   },
   "icons": {
-    "16": "public/assets/favicon-16x16.png",
-    "32": "public/assets/favicon-32x32.png",
-    "48": "public/assets/favicon-48x48.png",
-    "96": "public/assets/favicon-96x96.png",
-    "128": "public/assets/favicon-128x128.png",
-    "192": "public/assets/favicon-192x192.png",
-    "256": "public/assets/favicon-256x256.png",
-    "512": "public/assets/favicon-512x512.png"
+    "16": "assets/favicon-16x16.png",
+    "32": "assets/favicon-32x32.png",
+    "192": "assets/android-chrome-192x192.png",
+    "512": "assets/android-chrome-512x512.png"
   },
   "web_accessible_resources": [
     {
       "resources": [
-        "public/assets/*",
         "assets/*",
         "src/contentScript.tsx",
         "*.js",

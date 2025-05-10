@@ -2,7 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
-
+import './polyfills';
 // Detect if we're running in the sidebar
 const isSidebar = window.location.pathname.includes('sidebar.html');
 
