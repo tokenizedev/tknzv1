@@ -127,8 +127,16 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({
                     {wallet.name}
                     {wallet.isActive && <span className="ml-2 text-xs text-cyber-purple px-1.5 py-0.5 bg-cyber-purple/10 rounded-sm border border-cyber-purple/20">ACTIVE</span>}
                   </div>
-                  <div className="text-xs text-cyber-green/60 font-mono truncate">
-                    {wallet.publicKey.substring(0, 6)}...{wallet.publicKey.substring(wallet.publicKey.length - 4)}
+                  <div 
+                    className="text-xs text-cyber-green/60 font-mono truncate group relative"
+                    title={wallet.publicKey}
+                  >
+                    <span className="truncate group-hover:hidden">
+                      {wallet.publicKey.substring(0, 6)}...{wallet.publicKey.substring(wallet.publicKey.length - 4)}
+                    </span>
+                    <span className="hidden group-hover:block absolute left-0 right-0 bg-cyber-black/95 p-1 border border-cyber-green/20 rounded z-10 shadow-neon-green text-cyber-green animate-slide-up">
+                      {wallet.publicKey}
+                    </span>
                   </div>
                 </div>
               </div>
