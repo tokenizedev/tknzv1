@@ -98,6 +98,15 @@
  ```ini
  VITE_APP_VERSION=0.2.3
  ```
+ 
+ # Affiliate (Referral) Fee Configuration
+ The extension can include an affiliate referral fee on Jupiter Ultra swaps. Configure:
+ ```ini
+ # Your affiliate/referral Solana wallet public key
+ VITE_AFFILIATE_WALLET=<Your referral wallet address>
+ # (Optional) Referral fee in basis points (bps), default is 50
+ VITE_AFFILIATE_FEE_BPS=50
+ ```
 
  ## Development
  Start the Vite development server:
