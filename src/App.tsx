@@ -44,7 +44,9 @@ function App({ isSidebar = false }: AppProps = {}) {
     isRefreshing, 
     isLatestVersion,
     updateAvailable,
-    checkVersion
+    checkVersion,
+    sendToken,
+    refreshTokenBalances
   } = useStore();
   
   const [loading, setLoading] = useState(true);
@@ -248,10 +250,25 @@ function App({ isSidebar = false }: AppProps = {}) {
   };
   // Send a specific token (stub)
   const handleSendToken = async (mint: string) => {
-    const dest = window.prompt(`Send ${mint} to:`);
-    const amount = window.prompt('Amount to send:');
-    if (dest && amount) {
-      alert(`Send functionality not implemented yet: ${amount} of ${mint} to ${dest}`);
+    try {
+      const dest = window.prompt(`Send ${mint} to (recipient address):`);
+      if (!dest) return;
+      const amountStr = window.prompt('Amount to send:');
+      if (!amountStr) return;
+      const amt = parseFloat(amountStr);
+      if (isNaN(amt) || amt <= 0) {
+        alert('Invalid amount');
+        return;
+      }
+      // Perform transfer
+      const signature = await sendToken(mint, dest, amt);
+      alert(`Transaction sent: ${signature}`);
+      // Refresh balances
+      await getBalance();
+      await refreshTokenBalances();
+    } catch (error: any) {
+      console.error('Send failed:', error);
+      alert(`Send failed: ${error.message || error}`);
     }
   };
   // Open wallet details view
