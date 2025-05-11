@@ -16,6 +16,7 @@ import { Navigation } from './components/Navigation';
 import { SwapPage } from './components/SwapPage';
 import { VersionBadge } from './components/VersionBadge';
 import { WalletOverview } from './components/WalletOverview';
+import SendTokenModal from './components/SendTokenModal';
 
 interface AppProps { isSidebar?: boolean; }
 function App({ isSidebar = false }: AppProps = {}) {
@@ -80,6 +81,9 @@ function App({ isSidebar = false }: AppProps = {}) {
   const [isCreatingCoin, setIsCreatingCoin] = useState(false);
   const [creationProgress, setCreationProgress] = useState(0);
   const [newCoinAddress, setNewCoinAddress] = useState<string | null>(null);
+  // Send token modal state
+  const [showSendModal, setShowSendModal] = useState(false);
+  const [sendModalMint, setSendModalMint] = useState<string | null>(null);
   
   // Animation state for nav components
   const [navAnimated, setNavAnimated] = useState(false);
@@ -248,27 +252,29 @@ function App({ isSidebar = false }: AppProps = {}) {
     setGlitching(true);
     setTimeout(() => setGlitching(false), 200);
   };
-  // Send a specific token (stub)
-  const handleSendToken = async (mint: string) => {
+  // Open send token modal for a specific mint
+  const openSendModal = (mint: string) => {
+    setSendModalMint(mint);
+    setShowSendModal(true);
+  };
+  // Close send modal
+  const closeSendModal = () => {
+    setShowSendModal(false);
+    setSendModalMint(null);
+  };
+  // Confirm and send token
+  const handleConfirmSend = async (mint: string, recipient: string, amt: number) => {
     try {
-      const dest = window.prompt(`Send ${mint} to (recipient address):`);
-      if (!dest) return;
-      const amountStr = window.prompt('Amount to send:');
-      if (!amountStr) return;
-      const amt = parseFloat(amountStr);
-      if (isNaN(amt) || amt <= 0) {
-        alert('Invalid amount');
-        return;
-      }
-      // Perform transfer
-      const signature = await sendToken(mint, dest, amt);
+      const signature = await sendToken(mint, recipient, amt);
+      closeSendModal();
       alert(`Transaction sent: ${signature}`);
-      // Refresh balances
       await getBalance();
       await refreshTokenBalances();
     } catch (error: any) {
       console.error('Send failed:', error);
       alert(`Send failed: ${error.message || error}`);
+      // Propagate error so modal can reset state
+      throw error;
     }
   };
   // Open wallet details view
@@ -485,7 +491,7 @@ function App({ isSidebar = false }: AppProps = {}) {
             ) : showOverview ? (
               <WalletOverview
                 onSwapToken={handleSwapToken}
-                onSendToken={handleSendToken}
+                onSendToken={openSendModal}
               />
             ) : showMyCoins ? (
               <MyCreatedCoinsPage highlightCoinAddress={newCoinAddress} />
@@ -519,6 +525,13 @@ function App({ isSidebar = false }: AppProps = {}) {
               ))}
             </div>
           </main>
+          {/* Send Token Modal */}
+          <SendTokenModal
+            visible={showSendModal}
+            mint={sendModalMint || ''}
+            onClose={closeSendModal}
+            onSend={handleConfirmSend}
+          />
         </>
       )}
     </div>
