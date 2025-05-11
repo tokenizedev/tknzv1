@@ -485,114 +485,265 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false, initialFr
       })()
     : false;
 
+  // Create random dot positions for the cyber background effect
+  const createRandomDots = (count: number) => {
+    return Array.from({ length: count }, (_, i) => ({
+      id: i,
+      top: `${Math.random() * 100}%`,
+      left: `${Math.random() * 100}%`,
+      size: 1 + Math.random() * 2,
+      animationDelay: `${Math.random() * 5}s`,
+    }));
+  };
 
+  const cyberDots = createRandomDots(50);
+
+  // Custom CSS for animations that aren't in Tailwind config
+  const customStyles = `
+    @keyframes scanLineVertical {
+      0% { transform: translateY(-100%); }
+      100% { transform: translateY(100vh); }
+    }
+    
+    @keyframes scanLine {
+      0% { background-position: 0 0; }
+      100% { background-position: 0 100%; }
+    }
+    
+    @keyframes glowPulse {
+      0%, 100% { text-shadow: 0 0 8px rgba(0, 255, 65, 0.6); }
+      50% { text-shadow: 0 0 15px rgba(0, 255, 65, 0.9), 0 0 25px rgba(0, 255, 65, 0.5); }
+    }
+    
+    .animate-fadeIn {
+      animation: fade-in 0.3s ease-out forwards;
+    }
+  `;
 
   return (
-    <div className="flex flex-col items-center justify-start h-full p-4">
-      <div className="w-full max-w-md">
-        <h2 className="text-cyber-green font-terminal text-2xl mb-4 text-center">Token Swap</h2>
-        
-        {/* From token section */}
-        <div className="bg-cyber-dark/50 rounded-md p-4 border border-cyber-green/30 mb-1">
-          <TokenSelector
-            tokenSymbol={fromToken?.symbol}
-            tokenName={fromToken?.name}
-            tokenLogo={fromToken?.logoURI}
-            balance={
-              fromToken
-                ? `Balance: ${getUiBalance(fromToken).toFixed(fromToken.decimals)}`
-                : undefined
-            }
-            onClick={() => setShowFromTokenList(true)}
-            label="You pay"
+    <div className="flex flex-col items-center justify-start h-full p-4 relative">
+      {/* Custom animations */}
+      <style>{customStyles}</style>
+      
+      {/* Animated background grid */}
+      <div 
+        className="absolute inset-0 z-0 overflow-hidden pointer-events-none opacity-20" 
+        style={{
+          backgroundImage: `
+            linear-gradient(to right, rgba(0, 255, 160, 0.07) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(0, 255, 160, 0.07) 1px, transparent 1px)
+          `,
+          backgroundSize: '40px 40px',
+          maskImage: 'radial-gradient(circle at center, black 40%, transparent 80%)'
+        }}
+      />
+      
+      {/* Random glowing dots */}
+      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+        {cyberDots.map(dot => (
+          <div
+            key={dot.id}
+            className="absolute rounded-full bg-cyber-green animate-pulse-slow"
+            style={{
+              top: dot.top,
+              left: dot.left,
+              width: `${dot.size}px`,
+              height: `${dot.size}px`,
+              opacity: 0.6,
+              boxShadow: '0 0 8px 2px rgba(0, 255, 160, 0.4)',
+              animationDelay: dot.animationDelay,
+            }}
           />
-          <div className="mt-3">
-            <AmountInput 
-              value={fromAmount}
-              onChange={handleFromAmountChange}
-              fiatValue={fromAmountUsd}
-              onMaxClick={handleMaxClick}
+        ))}
+      </div>
+      
+      {/* Top horizontal scanning line */}
+      <div 
+        className="absolute top-0 left-0 right-0 h-[1px] bg-cyber-green/30 z-0"
+        style={{
+          animation: 'scanLineVertical 15s infinite linear',
+          boxShadow: '0 0 10px 1px rgba(0, 255, 160, 0.4)'
+        }}
+      />
+      
+      {/* Main swap container */}
+      <div className="w-full max-w-md z-10 relative">
+        <h2 
+          className="text-cyber-green font-terminal text-3xl mb-6 text-center font-bold tracking-wider"
+          style={{
+            textShadow: '0 0 10px rgba(0, 255, 160, 0.7)',
+            animation: 'glowPulse 3s infinite ease-in-out'
+          }}
+        >
+          Token Swap
+        </h2>
+        
+        {/* Main swap interface container */}
+        <div className="relative rounded-lg border border-cyber-green/40 p-5 backdrop-blur-sm bg-cyber-black/70 shadow-[0_0_15px_rgba(0,255,160,0.2)]">
+          {/* Subtle corner accents */}
+          <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-cyber-green/70"></div>
+          <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-cyber-green/70"></div>
+          <div className="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-cyber-green/70"></div>
+          <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-cyber-green/70"></div>
+          
+          {/* From token section */}
+          <div 
+            className="bg-cyber-dark/70 rounded-md p-4 border border-cyber-green/30 mb-1 relative overflow-hidden transition-all duration-300 hover:border-cyber-green/60 hover:shadow-[0_0_10px_rgba(0,255,160,0.15)]"
+            style={{
+              backgroundImage: 'linear-gradient(135deg, rgba(10, 10, 10, 0.9) 0%, rgba(15, 15, 15, 0.9) 100%)',
+            }}
+          >
+            {/* Bottom highlight line animation */}
+            <div 
+              className="absolute bottom-0 left-0 right-0 h-[1px] bg-cyber-green/40"
+              style={{
+                boxShadow: '0 0 5px rgba(0, 255, 160, 0.5)'
+              }}
             />
-          </div>
-        </div>
-        
-        {/* Switch button */}
-        <SwitchButton onClick={handleSwitchTokens} disabled={!fromToken || !toToken} />
-        
-        {/* To token section */}
-        <div className="bg-cyber-dark/50 rounded-md p-4 border border-cyber-green/30 mt-1">
-          <TokenSelector
-            tokenSymbol={toToken?.symbol}
-            tokenName={toToken?.name}
-            tokenLogo={toToken?.logoURI}
-            balance={
-              toToken
-                ? `Balance: ${getUiBalance(toToken).toFixed(toToken.decimals)}`
-                : undefined
-            }
-            onClick={() => setShowToTokenList(true)}
-            label="You receive"
-          />
-          <div className="mt-3">
-            <AmountInput 
-              value={toAmount}
-              onChange={handleToAmountChange}
-              fiatValue={toAmountUsd}
+            
+            <TokenSelector
+              tokenSymbol={fromToken?.symbol}
+              tokenName={fromToken?.name}
+              tokenLogo={fromToken?.logoURI}
+              balance={
+                fromToken
+                  ? `Balance: ${getUiBalance(fromToken).toFixed(fromToken.decimals)}`
+                  : undefined
+              }
+              onClick={() => setShowFromTokenList(true)}
+              label="You pay"
             />
-          </div>
-        </div>
-        
-        {/* Swap details */}
-        <SwapDetails
-          rate={
-            previewData && fromToken && toToken
-              ? `1 ${fromToken.symbol} = ${(
-                  (previewData.outputAmount / 10 ** toToken.decimals) /
-                  (previewData.inputAmount / 10 ** fromToken.decimals)
-                ).toFixed(6)} ${toToken.symbol}`
-              : undefined
-          }
-          fee={
-            previewData
-              ? `${(previewData.feeBps / 100).toFixed(2)}%`
-              : undefined
-          }
-          platformFee={
-            previewData
-              ? `${(previewData.platformFeeBps / 100).toFixed(2)}%`
-              : undefined
-          }
-          slippage={slippage}
-          estimatedGas="~0.0005 SOL"
-          minimumReceived={
-            previewData && toToken
-              ? `${(previewData.minimumOutAmount / 10 ** toToken.decimals).toFixed(toToken.decimals)} ${toToken.symbol}`
-              : undefined
-          }
-          onSlippageChange={setSlippage}
-        />
-        
-        {/* Insufficient balance warning */}
-        {fromToken && fromAmount && !hasEnoughBalance && (
-          <div className="bg-cyber-orange/10 border border-cyber-orange/30 rounded-md p-3 mt-3 text-sm text-cyber-orange">
-            <div className="flex items-start">
-              <FaInfoCircle className="mt-0.5 mr-2 flex-shrink-0" />
-              <span>
-                Insufficient {fromToken.symbol} balance. You need {(parseFloat(fromAmount) - getUiBalance(fromToken)).toFixed(fromToken.decimals)} more {fromToken.symbol}.
-              </span>
+            <div className="mt-3">
+              <AmountInput 
+                value={fromAmount}
+                onChange={handleFromAmountChange}
+                fiatValue={fromAmountUsd}
+                onMaxClick={handleMaxClick}
+              />
             </div>
           </div>
-        )}
+          
+          {/* Switch button */}
+          <SwitchButton onClick={handleSwitchTokens} disabled={!fromToken || !toToken} />
+          
+          {/* To token section */}
+          <div 
+            className="bg-cyber-dark/70 rounded-md p-4 border border-cyber-green/30 mt-1 relative overflow-hidden transition-all duration-300 hover:border-cyber-green/60 hover:shadow-[0_0_10px_rgba(0,255,160,0.15)]"
+            style={{
+              backgroundImage: 'linear-gradient(135deg, rgba(10, 10, 10, 0.9) 0%, rgba(15, 15, 15, 0.9) 100%)',
+            }}
+          >
+            {/* Bottom highlight line animation */}
+            <div 
+              className="absolute bottom-0 left-0 right-0 h-[1px] bg-cyber-green/40"
+              style={{
+                boxShadow: '0 0 5px rgba(0, 255, 160, 0.5)'
+              }}
+            />
+            
+            <TokenSelector
+              tokenSymbol={toToken?.symbol}
+              tokenName={toToken?.name}
+              tokenLogo={toToken?.logoURI}
+              balance={
+                toToken
+                  ? `Balance: ${getUiBalance(toToken).toFixed(toToken.decimals)}`
+                  : undefined
+              }
+              onClick={() => setShowToTokenList(true)}
+              label="You receive"
+            />
+            <div className="mt-3">
+              <AmountInput 
+                value={toAmount}
+                onChange={handleToAmountChange}
+                fiatValue={toAmountUsd}
+              />
+            </div>
+          </div>
+          
+          {/* Loading indicator when preview is loading */}
+          {isPreviewLoading && (
+            <div className="flex justify-center items-center py-2">
+              <div className="w-5 h-5 rounded-full border-2 border-transparent border-t-cyber-green border-l-cyber-green animate-spin"></div>
+              <span className="ml-2 text-xs text-cyber-green/70 font-terminal">CALCULATING</span>
+            </div>
+          )}
+          
+          {/* Swap details */}
+          <div className="mt-4">
+            <SwapDetails
+              rate={
+                previewData && fromToken && toToken
+                  ? `1 ${fromToken.symbol} = ${(
+                      (previewData.outputAmount / 10 ** toToken.decimals) /
+                      (previewData.inputAmount / 10 ** fromToken.decimals)
+                    ).toFixed(6)} ${toToken.symbol}`
+                  : undefined
+              }
+              fee={
+                previewData
+                  ? `${(previewData.feeBps / 100).toFixed(2)}%`
+                  : undefined
+              }
+              platformFee={
+                previewData
+                  ? `${(previewData.platformFeeBps / 100).toFixed(2)}%`
+                  : undefined
+              }
+              slippage={slippage}
+              estimatedGas="~0.0005 SOL"
+              minimumReceived={
+                previewData && toToken
+                  ? `${(previewData.minimumOutAmount / 10 ** toToken.decimals).toFixed(toToken.decimals)} ${toToken.symbol}`
+                  : undefined
+              }
+              onSlippageChange={setSlippage}
+            />
+          </div>
+          
+          {/* Insufficient balance warning */}
+          {fromToken && fromAmount && !hasEnoughBalance && (
+            <div 
+              className="bg-[#331500] border border-cyber-orange/50 rounded-md p-3 mt-3 text-sm text-cyber-orange/90 transition-all animate-fadeIn"
+              style={{
+                boxShadow: '0 0 10px rgba(255, 140, 0, 0.2) inset'
+              }}
+            >
+              <div className="flex items-start">
+                <FaInfoCircle className="mt-0.5 mr-2 flex-shrink-0 animate-pulse" />
+                <span className="font-terminal">
+                  Insufficient {fromToken.symbol} balance. You need {(parseFloat(fromAmount) - getUiBalance(fromToken)).toFixed(fromToken.decimals)} more {fromToken.symbol}.
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
         
         {/* Swap button */}
         <button
-          className={`w-full mt-4 px-4 py-3 rounded-md font-terminal shadow-neon-green transition-all
+          className={`w-full mt-6 px-4 py-3.5 rounded-md font-terminal text-lg font-bold tracking-wider shadow-lg transition-all duration-300 relative overflow-hidden
                      ${isSwapValid && hasEnoughBalance
-                        ? 'bg-cyber-green text-cyber-black hover:bg-cyber-green-dark' 
-                        : 'bg-cyber-dark text-cyber-green/50 cursor-not-allowed border border-cyber-green/30'}`}
+                        ? 'text-cyber-black bg-cyber-green hover:bg-cyber-green-dark active:translate-y-0.5 shadow-neon-green' 
+                        : 'bg-cyber-dark/80 text-cyber-green/50 cursor-not-allowed border border-cyber-green/10'}`}
           disabled={!isSwapValid || !hasEnoughBalance}
           onClick={() => setShowConfirmation(true)}
+          style={{
+            textShadow: isSwapValid && hasEnoughBalance ? 'none' : '0 0 5px rgba(0, 255, 160, 0.3)',
+          }}
         >
+          {/* Button scan line animation for active button */}
+          {isSwapValid && hasEnoughBalance && (
+            <div 
+              className="absolute inset-0 opacity-10 pointer-events-none" 
+              style={{
+                backgroundImage: 'linear-gradient(transparent 0%, transparent 50%, rgba(0, 255, 160, 0.3) 50%, transparent 51%, transparent 100%)',
+                backgroundSize: '100% 8px',
+                animation: 'scanLine 5s linear infinite',
+              }}
+            />
+          )}
+          
           {!fromToken || !toToken 
             ? 'Select Tokens'
             : !fromAmount || !toAmount
