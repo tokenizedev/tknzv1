@@ -17,6 +17,7 @@ import { SwapPage } from './components/SwapPage';
 import { VersionBadge } from './components/VersionBadge';
 import { WalletOverview } from './components/WalletOverview';
 import SendTokenModal from './components/SendTokenModal';
+import { ExternalLink } from 'lucide-react';
 
 interface AppProps { isSidebar?: boolean; }
 function App({ isSidebar = false }: AppProps = {}) {
@@ -398,13 +399,44 @@ function App({ isSidebar = false }: AppProps = {}) {
       {/* In-app notification */}
       {notification && (
         <div
-          className={`fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50 px-4 py-2 rounded font-terminal shadow-neon-green ${
+          className={`fixed bottom-4 inset-x-4 z-50 px-4 py-3 rounded font-terminal shadow-neon-green backdrop-blur-sm border transition-all ${
             notification.type === 'success'
-              ? 'bg-cyber-green text-black'
-              : 'bg-cyber-orange text-black'
+              ? 'bg-cyber-green/20 text-cyber-green border-cyber-green/40'
+              : 'bg-cyber-orange/20 text-cyber-orange border-cyber-orange/40'
           }`}
         >
-          {notification.message}
+          <div className="flex items-center justify-between">
+            <div className="text-sm break-all">
+              {notification.type === 'success' && notification.message.includes('Transaction sent:') ? (
+                <>
+                  <div className="text-xs opacity-80 mb-1">Transaction sent</div>
+                  <div className="flex items-center space-x-2">
+                    <code className="text-xs break-all mr-2 font-mono tracking-tight">
+                      {notification.message.split('Transaction sent: ')[1]}
+                    </code>
+                    <a 
+                      href={`https://solscan.io/tx/${notification.message.split('Transaction sent: ')[1]}?cluster=mainnet-beta`}
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-xs px-2 py-0.5 bg-cyber-green/30 hover:bg-cyber-green/50 rounded transition-colors flex items-center"
+                      onClick={e => e.stopPropagation()}
+                      title="View on Solscan"
+                    >
+                      <ExternalLink size={14} className="text-cyber-green" />
+                    </a>
+                  </div>
+                </>
+              ) : (
+                notification.message
+              )}
+            </div>
+            <button 
+              className="ml-2 text-xs opacity-70 hover:opacity-100"
+              onClick={() => setNotification(null)}
+            >
+              ✕
+            </button>
+          </div>
         </div>
       )}
       {/* Background crypto pattern */}
