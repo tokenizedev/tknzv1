@@ -84,6 +84,15 @@ function App({ isSidebar = false }: AppProps = {}) {
   // Send token modal state
   const [showSendModal, setShowSendModal] = useState(false);
   const [sendModalMint, setSendModalMint] = useState<string | null>(null);
+  // On-screen notification for actions
+  const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  // Auto-dismiss notifications after 5s
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => setNotification(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
   
   // Animation state for nav components
   const [navAnimated, setNavAnimated] = useState(false);
@@ -262,17 +271,17 @@ function App({ isSidebar = false }: AppProps = {}) {
     setShowSendModal(false);
     setSendModalMint(null);
   };
-  // Confirm and send token
+  // Confirm and send token with on-screen notifications
   const handleConfirmSend = async (mint: string, recipient: string, amt: number) => {
     try {
       const signature = await sendToken(mint, recipient, amt);
       closeSendModal();
-      alert(`Transaction sent: ${signature}`);
+      setNotification({ message: `Transaction sent: ${signature}`, type: 'success' });
       await getBalance();
       await refreshTokenBalances();
     } catch (error: any) {
       console.error('Send failed:', error);
-      alert(`Send failed: ${error.message || error}`);
+      setNotification({ message: `Send failed: ${error.message || error}`, type: 'error' });
       // Propagate error so modal can reset state
       throw error;
     }
@@ -386,6 +395,18 @@ function App({ isSidebar = false }: AppProps = {}) {
 
   return (
     <div className={`${isSidebar ? 'w-full h-full ' : 'w-[400px] h-[600px] '}bg-cyber-black bg-binary-pattern binary-overlay`}>
+      {/* In-app notification */}
+      {notification && (
+        <div
+          className={`fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50 px-4 py-2 rounded font-terminal shadow-neon-green ${
+            notification.type === 'success'
+              ? 'bg-cyber-green text-black'
+              : 'bg-cyber-orange text-black'
+          }`}
+        >
+          {notification.message}
+        </div>
+      )}
       {/* Background crypto pattern */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-0 left-0 w-full h-0.5 bg-cyber-green/10"></div>
