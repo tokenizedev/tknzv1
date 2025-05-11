@@ -62,8 +62,9 @@ const SendTokenModal: React.FC<SendTokenModalProps> = ({ visible, mint, onClose,
     setIsSending(true);
     Promise.resolve(onSend(mint, recipient.trim(), amt))
       .catch(() => {
-        // Reset sending state on error
+        // Reset sending state and close modal on error
         setIsSending(false);
+        onClose();
       });
   };
 
