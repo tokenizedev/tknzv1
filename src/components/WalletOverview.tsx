@@ -105,10 +105,11 @@ export const WalletOverview: React.FC<{
         </div>
       </div>
 
-      {/* Chart Placeholder */}
+      {/* Chart Placeholder 
       <div className="w-full h-32 bg-cyber-dark/50 rounded-md flex items-center justify-center">
         <span className="text-sm text-cyber-green/50">Chart Placeholder</span>
       </div>
+      */}
 
       {/* Tokens List */}
       <div className="space-y-2">
