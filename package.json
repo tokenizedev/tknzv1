@@ -21,6 +21,7 @@
     "watch:build": "nodemon --watch src/**/** --ext ts,tsx,js,jsx --exec \"yarn build\" --delay 500"
   },
   "dependencies": {
+    "@solana/spl-token": "^0.4.13",
     "@solana/web3.js": "^1.91.1",
     "@types/uuid": "^10.0.0",
     "axios": "^1.9.0",
