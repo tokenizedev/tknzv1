@@ -1,6 +1,6 @@
 import React from 'react';
 import Jdenticon from 'react-jdenticon';
-import { Users, Copy, CheckCircle, X, Settings, Coins } from 'lucide-react';
+import { Users, Copy, CheckCircle, X, Settings, Coins, BarChart2 } from 'lucide-react';
 import { WalletInfo } from '../types';
 
 // Add declaration for react-jdenticon to fix type error
@@ -17,6 +17,7 @@ interface WalletDrawerProps {
   onViewWallet: (walletId: string) => void;
   onViewCreatedCoins: () => void;
   onViewMyCoins: () => void;
+  onViewOverview: () => void;
 }
 
 export const WalletDrawer: React.FC<WalletDrawerProps> = ({
@@ -29,8 +30,12 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({
   onViewCreatedCoins,
   onViewMyCoins,
   onCopyAddress,
-  copiedWallet
+  copiedWallet,
+  onViewOverview
 }) => {
+  // Find the active wallet
+  const activeWallet = wallets.find(wallet => wallet.isActive);
+
   return (
     <div 
       className={`fixed top-14 left-0 bottom-0 z-20 transition-transform duration-300 ease-out ${
@@ -168,28 +173,34 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({
                 <button
                   onClick={() => {
                     onSelectWallet(wallet.id);
+                    onViewOverview();
+                    onClose();
+                  }}
+                  className="p-1.5 text-cyber-green/70 hover:text-cyber-green hover:bg-cyber-green/10 rounded border border-cyber-green/20 hover:border-cyber-green/40 transition-all duration-150 flex items-center"
+                  title="Wallet Overview"
+                >
+                  <BarChart2 className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => {
+                    onSelectWallet(wallet.id);
                     onViewWallet(wallet.id);
                     onClose();
                   }}
-                  className="p-1.5 px-3 text-cyber-green/70 hover:text-cyber-green hover:bg-cyber-green/10 rounded border border-cyber-green/20 hover:border-cyber-green/40 transition-all duration-150 flex items-center text-xs font-terminal"
+                  className="p-1.5 text-cyber-green/70 hover:text-cyber-green hover:bg-cyber-green/10 rounded border border-cyber-green/20 hover:border-cyber-green/40 transition-all duration-150 flex items-center"
                   title="Wallet Settings"
                 >
                   <Settings className="w-3.5 h-3.5" />
                 </button>
                 <button
                   onClick={() => onCopyAddress(wallet.publicKey)}
-                  className="p-1.5 px-3 text-cyber-green/70 hover:text-cyber-green hover:bg-cyber-green/10 rounded border border-cyber-green/20 hover:border-cyber-green/40 transition-all duration-150 flex items-center text-xs font-terminal"
+                  className="p-1.5 text-cyber-green/70 hover:text-cyber-green hover:bg-cyber-green/10 rounded border border-cyber-green/20 hover:border-cyber-green/40 transition-all duration-150 flex items-center"
                   title="Copy Address"
                 >
                   {copiedWallet === wallet.publicKey ? (
-                    <>
-                      <CheckCircle className="w-3.5 h-3.5 mr-1.5 text-cyber-purple animate-pulse-fast" />
-                      COPIED
-                    </>
+                    <CheckCircle className="w-3.5 h-3.5 text-cyber-purple animate-pulse-fast" />
                   ) : (
-                    <>
-                      <Copy className="w-3.5 h-3.5" />
-                    </>
+                    <Copy className="w-3.5 h-3.5" />
                   )}
                 </button>
               </div>

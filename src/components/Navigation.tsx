@@ -94,7 +94,7 @@ export const Navigation: React.FC<NavigationProps> = ({
               className="h-full flex items-center px-4 cursor-pointer"
               onClick={() => { maybeCloseDrawer(); onTokenCreate(); }}
             >
-              <img src="/assets/logo.png" alt="TKNS" className="h-10" />
+              <img src="/assets/logo-01.png" alt="TKNS" className="h-10" />
             </div>
             
             {activeWallet && (
@@ -181,6 +181,7 @@ export const Navigation: React.FC<NavigationProps> = ({
         onViewCreatedCoins={onViewCreatedCoins}
         onCopyAddress={handleCopyWalletAddress}
         copiedWallet={copiedWallet}
+        onViewOverview={onViewOverview}
       />
     </>
   );
