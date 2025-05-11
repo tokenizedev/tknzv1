@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Keypair, VersionedTransaction } from '@solana/web3.js';
+import { Keypair, VersionedTransaction, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL, TransactionInstruction } from '@solana/web3.js';
 import { 
   logEventToFirestore, 
   getCreatedCoins, 
@@ -11,12 +11,16 @@ import { storage } from './utils/storage';
 import { createConnection, web3Connection } from './utils/connection';
 const DEV_MODE = process.env.NODE_ENV === 'development' && !chrome?.tabs;
 import { compareVersions } from 'compare-versions'
+import { TOKEN_PROGRAM_ID, createTransferInstruction, getAssociatedTokenAddress, createAssociatedTokenAccountInstruction } from '@solana/spl-token';
+import { getTokenInfo } from './services/jupiterService';
 import { WalletState, CreatedCoin, ArticleData, CoinCreationParams, TokenCreationData, WalletInfo } from './types';
 import { v4 as uuidv4 } from 'uuid';
 
 const TOKEN_CREATION_API_URL = 'https://tknz.fun/.netlify/functions/article-token';
 const APP_VERSION_API_URL = 'https://tknz.fun/.netlify/functions/version';
 
+// Native SOL mint address for transfers
+const NATIVE_MINT = 'So11111111111111111111111111111111111111112';
 const connection = createConnection();
 
 // Refresh interval in milliseconds (1 minute)
@@ -913,6 +917,67 @@ export const useStore = create<WalletState>((set, get) => ({
 
     } catch (error) {
       console.error('Failed to create coin:', error);
+      throw error;
+    }
+  },
+  // Send native SOL or SPL token to a recipient address
+  sendToken: async (mintAddress: string, recipient: string, amount: number): Promise<string> => {
+    const { activeWallet } = get();
+    if (!activeWallet) throw new Error('Wallet not initialized');
+    try {
+      const { keypair } = activeWallet;
+      const destPubkey = new PublicKey(recipient);
+      if (mintAddress === NATIVE_MINT) {
+        // SOL transfer
+        const lamports = Math.floor(amount * LAMPORTS_PER_SOL);
+        const tx = new Transaction().add(
+          SystemProgram.transfer({
+            fromPubkey: keypair.publicKey,
+            toPubkey: destPubkey,
+            lamports,
+          })
+        );
+        const signature = await web3Connection.sendTransaction(tx, [keypair]);
+        await web3Connection.confirmTransaction(signature, 'confirmed');
+        return signature;
+      } else {
+        // SPL token transfer
+        const mintPubkey = new PublicKey(mintAddress);
+        const fromATA = await getAssociatedTokenAddress(mintPubkey, keypair.publicKey);
+        const toATA = await getAssociatedTokenAddress(mintPubkey, destPubkey);
+        const instructions: TransactionInstruction[] = [];
+        // Create recipient ATA if it doesn't exist
+        const ataInfo = await web3Connection.getAccountInfo(toATA);
+        if (!ataInfo) {
+          instructions.push(
+            createAssociatedTokenAccountInstruction(
+              keypair.publicKey,
+              toATA,
+              destPubkey,
+              mintPubkey
+            )
+          );
+        }
+        // Fetch token decimals for accurate amount
+        const meta = await getTokenInfo(mintAddress);
+        const rawAmount = BigInt(Math.floor(amount * 10 ** meta.decimals));
+        instructions.push(
+          createTransferInstruction(
+            fromATA,
+            toATA,
+            keypair.publicKey,
+            Number(rawAmount),
+            [],
+            TOKEN_PROGRAM_ID
+          )
+        );
+        const tx = new Transaction().add(...instructions);
+        const signature = await web3Connection.sendTransaction(tx, [keypair]);
+        await web3Connection.confirmTransaction(signature, 'confirmed');
+        return signature;
+      }
+    } catch (error) {
+      console.error('sendToken error:', error);
       throw error;
     }
   }
