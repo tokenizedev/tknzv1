@@ -15,6 +15,9 @@ import { WalletManagerPage } from './components/WalletManagerPage';
 import { Navigation } from './components/Navigation';
 import { SwapPage } from './components/SwapPage';
 import { VersionBadge } from './components/VersionBadge';
+import { WalletOverview } from './components/WalletOverview';
+import SendTokenModal from './components/SendTokenModal';
+import { ExternalLink } from 'lucide-react';
 
 interface AppProps { isSidebar?: boolean; }
 function App({ isSidebar = false }: AppProps = {}) {
@@ -43,7 +46,9 @@ function App({ isSidebar = false }: AppProps = {}) {
     isRefreshing, 
     isLatestVersion,
     updateAvailable,
-    checkVersion
+    checkVersion,
+    sendToken,
+    refreshTokenBalances
   } = useStore();
   
   const [loading, setLoading] = useState(true);
@@ -53,7 +58,8 @@ function App({ isSidebar = false }: AppProps = {}) {
   // Wallet drawer visibility
   const [showWalletDrawer, setShowWalletDrawer] = useState(false);
   // Exclusive UI panels: 'wallet', 'swap', 'manager'
-  const [activeView, setActiveView] = useState<'wallet' | 'swap' | 'manager' | 'createdCoins' | 'myCoins' | null>(null);
+  // Views: null shows default creation page, others show specific screens
+  const [activeView, setActiveView] = useState<'wallet' | 'swap' | 'manager' | 'createdCoins' | 'myCoins' | 'overview' | null>(null);
 
   // Derived view flags
   const showWallet = activeView === 'wallet';
@@ -61,6 +67,9 @@ function App({ isSidebar = false }: AppProps = {}) {
   const showWalletManager = activeView === 'manager';
   const showCreatedCoins = activeView === 'createdCoins';
   const showMyCoins = activeView === 'myCoins';
+  const showOverview = activeView === 'overview';
+  // Track a specific token mint to swap
+  const [selectedSwapMint, setSelectedSwapMint] = useState<string | null>(null);
   // Timeout for wallet unlock in milliseconds (1 hour)
   const UNLOCK_TIMEOUT = 60 * 60 * 1000;
   
@@ -73,6 +82,18 @@ function App({ isSidebar = false }: AppProps = {}) {
   const [isCreatingCoin, setIsCreatingCoin] = useState(false);
   const [creationProgress, setCreationProgress] = useState(0);
   const [newCoinAddress, setNewCoinAddress] = useState<string | null>(null);
+  // Send token modal state
+  const [showSendModal, setShowSendModal] = useState(false);
+  const [sendModalMint, setSendModalMint] = useState<string | null>(null);
+  // On-screen notification for actions
+  const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  // Auto-dismiss notifications after 5s
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => setNotification(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
   
   // Animation state for nav components
   const [navAnimated, setNavAnimated] = useState(false);
@@ -221,10 +242,50 @@ function App({ isSidebar = false }: AppProps = {}) {
     // Toggle wallet view, ensuring exclusivity
     setActiveView(prev => (prev === 'wallet' ? null : 'wallet'));
   };
+  // Toggle wallet overview view
+  const toggleOverview = () => {
+    setActiveView(prev => (prev === 'overview' ? null : 'overview'));
+    setShowWalletDrawer(false);
+    setGlitching(true);
+    setTimeout(() => setGlitching(false), 200);
+  };
   // Toggle swap page
   const toggleSwapPage = () => {
     // Toggle swap view, ensuring exclusivity
     setActiveView(prev => (prev === 'swap' ? null : 'swap'));
+  };
+  // Swap a specific token
+  const handleSwapToken = (mint: string) => {
+    setSelectedSwapMint(mint);
+    setActiveView('swap');
+    setShowWalletDrawer(false);
+    setGlitching(true);
+    setTimeout(() => setGlitching(false), 200);
+  };
+  // Open send token modal for a specific mint
+  const openSendModal = (mint: string) => {
+    setSendModalMint(mint);
+    setShowSendModal(true);
+  };
+  // Close send modal
+  const closeSendModal = () => {
+    setShowSendModal(false);
+    setSendModalMint(null);
+  };
+  // Confirm and send token with on-screen notifications
+  const handleConfirmSend = async (mint: string, recipient: string, amt: number) => {
+    try {
+      const signature = await sendToken(mint, recipient, amt);
+      closeSendModal();
+      setNotification({ message: `Transaction sent: ${signature}`, type: 'success' });
+      await getBalance();
+      await refreshTokenBalances();
+    } catch (error: any) {
+      console.error('Send failed:', error);
+      setNotification({ message: `Send failed: ${error.message || error}`, type: 'error' });
+      // Propagate error so modal can reset state
+      throw error;
+    }
   };
   // Open wallet details view
   const openWalletView = () => {
@@ -335,6 +396,49 @@ function App({ isSidebar = false }: AppProps = {}) {
 
   return (
     <div className={`${isSidebar ? 'w-full h-full ' : 'w-[400px] h-[600px] '}bg-cyber-black bg-binary-pattern binary-overlay`}>
+      {/* In-app notification */}
+      {notification && (
+        <div
+          className={`fixed bottom-4 inset-x-4 z-50 px-4 py-3 rounded font-terminal shadow-neon-green backdrop-blur-sm border transition-all ${
+            notification.type === 'success'
+              ? 'bg-cyber-green/20 text-cyber-green border-cyber-green/40'
+              : 'bg-cyber-orange/20 text-cyber-orange border-cyber-orange/40'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <div className="text-sm break-all">
+              {notification.type === 'success' && notification.message.includes('Transaction sent:') ? (
+                <>
+                  <div className="text-xs opacity-80 mb-1">Transaction sent</div>
+                  <div className="flex items-center space-x-2">
+                    <code className="text-xs break-all mr-2 font-mono tracking-tight">
+                      {notification.message.split('Transaction sent: ')[1]}
+                    </code>
+                    <a 
+                      href={`https://solscan.io/tx/${notification.message.split('Transaction sent: ')[1]}?cluster=mainnet-beta`}
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-xs px-2 py-0.5 bg-cyber-green/30 hover:bg-cyber-green/50 rounded transition-colors flex items-center"
+                      onClick={e => e.stopPropagation()}
+                      title="View on Solscan"
+                    >
+                      <ExternalLink size={14} className="text-cyber-green" />
+                    </a>
+                  </div>
+                </>
+              ) : (
+                notification.message
+              )}
+            </div>
+            <button 
+              className="ml-2 text-xs opacity-70 hover:opacity-100"
+              onClick={() => setNotification(null)}
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
       {/* Background crypto pattern */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-0 left-0 w-full h-0.5 bg-cyber-green/10"></div>
@@ -392,6 +496,7 @@ function App({ isSidebar = false }: AppProps = {}) {
             onToggleWallet={toggleWallet}
             onViewWallet={openWalletView}
             onCopyAddress={copyAddress}
+            onViewOverview={toggleOverview}
             onToggleWalletDrawer={toggleWalletDrawer}
             onManageWallets={openWalletManager}
             onOpenSidebar={openSidebar}
@@ -425,7 +530,10 @@ function App({ isSidebar = false }: AppProps = {}) {
             {!activeWallet ? (
               <WalletSetup />
             ) : showSwapPage ? (
-              <SwapPage isSidebar={isSidebar} />
+              <SwapPage
+                isSidebar={isSidebar}
+                initialFromMint={selectedSwapMint || undefined}
+              />
             ) : showWalletManager ? (
               <WalletManagerPage onBack={closeWalletManager} />
             ) : isCreatingCoin ? (
@@ -433,6 +541,11 @@ function App({ isSidebar = false }: AppProps = {}) {
               <TokenCreationProgress progress={creationProgress} />
             ) : showWallet ? (
               <WalletPageCyber highlightCoinAddress={newCoinAddress} />
+            ) : showOverview ? (
+              <WalletOverview
+                onSwapToken={handleSwapToken}
+                onSendToken={openSendModal}
+              />
             ) : showMyCoins ? (
               <MyCreatedCoinsPage highlightCoinAddress={newCoinAddress} />
             ) : showCreatedCoins ? (
@@ -465,6 +578,13 @@ function App({ isSidebar = false }: AppProps = {}) {
               ))}
             </div>
           </main>
+          {/* Send Token Modal */}
+          <SendTokenModal
+            visible={showSendModal}
+            mint={sendModalMint || ''}
+            onClose={closeSendModal}
+            onSend={handleConfirmSend}
+          />
         </>
       )}
     </div>

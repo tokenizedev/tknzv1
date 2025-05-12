@@ -19,6 +19,8 @@ interface NavigationProps {
   onRefresh: () => void;
   onToggleWallet: () => void;
   onViewWallet: () => void;
+  // Navigate to wallet overview screen
+  onViewOverview: () => void;
   onCopyAddress: () => void;
   onToggleWalletDrawer: () => void;
   onManageWallets: () => void;
@@ -46,6 +48,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   onRefresh,
   onToggleWallet,
   onViewWallet,
+  onViewOverview,
   onToggleWalletDrawer,
   onManageWallets,
   onOpenSidebar,
@@ -91,7 +94,7 @@ export const Navigation: React.FC<NavigationProps> = ({
               className="h-full flex items-center px-4 cursor-pointer"
               onClick={() => { maybeCloseDrawer(); onTokenCreate(); }}
             >
-              <img src="/assets/logo.png" alt="TKNS" className="h-10" />
+              <img src="/assets/logo-01.png" alt="TKNS" className="h-10" />
             </div>
             
             {activeWallet && (
@@ -119,9 +122,16 @@ export const Navigation: React.FC<NavigationProps> = ({
                 <div className={`flex h-full mr-5 transition-all duration-500 ${controlsAnimated ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-10'}`}>
                   <div className="border-l border-r border-cyber-green/20 px-4 flex items-center">
                     <div className="flex flex-col items-end mr-2">
-                      <div className="font-terminal text-sm text-cyber-green tabular-nums">
-                        {balance.toFixed(2)} <span className="text-cyber-green/70">SOL</span>
-                      </div>
+                      <button
+                        onClick={() => { maybeCloseDrawer(); onViewOverview(); }}
+                        className="font-terminal text-sm text-cyber-green tabular-nums text-right focus:outline-none px-2 py-1 rounded transition-all duration-200 hover:bg-cyber-green/10 hover:shadow-[0_0_5px_rgba(50,255,50,0.3)] group"
+                        title="View Wallet Overview"
+                      >
+                        <span className="flex items-center">
+                          <span>{balance.toFixed(2)} <span className="text-cyber-green/70">SOL</span></span>
+                          <span className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-xs">→</span>
+                        </span>
+                      </button>
                     </div>
                     <button
                       onClick={() => { maybeCloseDrawer(); onRefresh(); }}
@@ -171,6 +181,7 @@ export const Navigation: React.FC<NavigationProps> = ({
         onViewCreatedCoins={onViewCreatedCoins}
         onCopyAddress={handleCopyWalletAddress}
         copiedWallet={copiedWallet}
+        onViewOverview={onViewOverview}
       />
     </>
   );
