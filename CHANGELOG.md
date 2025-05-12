@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.7.1](https://tokenizedev///compare/v0.7.0...v0.7.1) (2025-05-12)
+
+
+### Features
+
+* **assets:** add missing 128 ([104eddc](https://tokenizedev///commit/104eddcbb549219c5c7a376d95d0464f9aad152b))
+* **components:** Improve formatting of token amounts and USD values in WalletOverview component ([0097910](https://tokenizedev///commit/009791055ff5a84991a5bdb2d0d6e45587c66d38))
+* **store:** add optimistic updates and persist to storage ([29bd0e3](https://tokenizedev///commit/29bd0e3c3cc37c470870754ea3b00c2460663794))
+* **tests:** mock firebase module in store.test.ts ([5cc776c](https://tokenizedev///commit/5cc776caf059d5aebecdf2a35b900bc994b81804))
+
+
+### Bug Fixes
+
+* Remove unnecessary .DS_Store file ([632a833](https://tokenizedev///commit/632a833bf1ac84b755cf7765816dedd8facc9b09))
+* Update binary file assets/logo-01.xcf ([b24ee5f](https://tokenizedev///commit/b24ee5ff1249314214c6f598deb5a0af40cb57cd))
+* **vite:** Exclude store tests from coverage report in Vite config ([d3c05f3](https://tokenizedev///commit/d3c05f3b9ea2cd24fdec83ff11cffa0f986c02a5))
+
 ## [0.7.0](https://tokenizedev///compare/v0.6.0...v0.7.0) (2025-05-11)
 
 
