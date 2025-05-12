@@ -160,15 +160,21 @@ export const WalletOverview: React.FC<{
                   {token.name}
                 </span>
               </div>
-              <div className="flex flex-col items-end">
-                <span className="text-sm font-medium text-cyber-green font-terminal">
-                  {token.amount.toFixed(token.decimals)}
+              <div className="flex flex-col items-end w-36 ml-auto mr-4">
+                <span className="text-sm font-medium text-cyber-green font-terminal text-right w-full">
+                  {token.amount >= 1000000 
+                    ? token.amount.toLocaleString('en-US', { maximumFractionDigits: 2 })
+                    : token.amount >= 1000 
+                      ? token.amount.toLocaleString('en-US', { maximumFractionDigits: 4 })
+                      : token.amount.toLocaleString('en-US', { maximumFractionDigits: 8 })}
                 </span>
-                <span className="text-xs text-cyber-green/70 font-mono">
-                  {token.usdValue !== undefined ? `$${token.usdValue.toFixed(2)}` : 'N/A USD'}
+                <span className="text-xs text-cyber-green/70 font-mono text-right w-full">
+                  {token.usdValue !== undefined 
+                    ? `$${token.usdValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` 
+                    : 'N/A USD'}
                 </span>
               </div>
-              <div className="flex items-center space-x-2 ml-4">
+              <div className="flex items-center space-x-2">
                 <button
                   onClick={() => onSendToken(token.mint)}
                   className="p-1 hover:bg-cyber-green/10 rounded-full"
