@@ -20,10 +20,10 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
     <button
         className={`flex flex-col items-center justify-center flex-1 h-full ${active === null ? 'text-cyber-purple' : 'text-cyber-green hover:text-cyber-purple'}`}
       onClick={onHome}
-      title="Home"
+      title="TKNZ"
     >
-      <Home className="w-5 h-5 mb-0.5" />
-      <span className="text-xs font-terminal">Home</span>
+      <img src="/assets/logo-01.png" alt="TKNS" className="w-5 h-5 mb-0.5" />
+      <span className="text-xs font-terminal">TKNZ</span>
     </button>
     <button
       className={`flex flex-col items-center justify-center flex-1 h-full ${active === 'swap' ? 'text-cyber-purple' : 'text-cyber-green hover:text-cyber-purple'}`}
