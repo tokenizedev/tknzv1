@@ -671,10 +671,20 @@ export const useStore = create<WalletState>((set, get) => ({
         return timeB - timeA; // Descending order
       });
       
-      set({ createdCoins: updatedCoins }); // Update state optimistically
-
-      // Save to Firestore (which adds server timestamp)
-      await addCreatedCoinToFirestore(activeWallet.publicKey, coin); 
+      // Update state optimistically
+      set({ createdCoins: updatedCoins });
+      // Persist updated coins to storage
+      try {
+        await storage.set({ createdCoins: updatedCoins });
+      } catch (err) {
+        console.error('Failed to persist created coins to storage:', err);
+      }
+      // Save to Firestore (which adds server timestamp), suppress errors
+      try {
+        await addCreatedCoinToFirestore(activeWallet.publicKey, coin);
+      } catch (err) {
+        console.error('Failed to add created coin to Firestore:', err);
+      }
     } catch (error) {
       console.error('Failed to add created coin:', error);
       throw error;
@@ -699,7 +709,14 @@ export const useStore = create<WalletState>((set, get) => ({
         coin.address === address ? { ...coin, balance } : coin
       );
       // No need to sort here as order doesn't change
+      // Update state optimistically
       set({ createdCoins: updatedCoins });
+      // Persist updated coins to storage
+      try {
+        await storage.set({ createdCoins: updatedCoins });
+      } catch (err) {
+        console.error('Failed to persist updated coin balances to storage:', err);
+      }
     } catch (error) {
       console.error('Failed to update coin balance:', error);
       throw error;
@@ -727,8 +744,14 @@ export const useStore = create<WalletState>((set, get) => ({
         return balanceInfo ? { ...coin, balance: balanceInfo.balance } : coin;
       });
 
-      // No need to sort here as order doesn't change
+      // Update state optimistically
       set({ createdCoins: updatedCoins });
+      // Persist updated token balances to storage
+      try {
+        await storage.set({ createdCoins: updatedCoins });
+      } catch (err) {
+        console.error('Failed to persist refreshed token balances to storage:', err);
+      }
     } catch (error) {
       console.error('Failed to refresh token balances:', error);
     }
@@ -738,10 +761,13 @@ export const useStore = create<WalletState>((set, get) => ({
     try {
       const response = await fetch(APP_VERSION_API_URL);
       if (!response.ok) throw new Error('Failed to fetch version');
-      const { app: { version } } = await response.json();
-      const isLatestVersion = compareVersions(APP_VERSION, version) >= 0
-      set({ 
-        updateAvailable: isLatestVersion ? null : version,
+      // Parse version from response; support both { latest } and { app: { version } }
+      const data = await response.json();
+      const latestVersion = data.latest ?? data.app?.version ?? '';
+      // Treat empty APP_VERSION as 0.0.0 for comparison
+      const isLatestVersion = compareVersions(APP_VERSION || '0.0.0', latestVersion) >= 0;
+      set({
+        updateAvailable: isLatestVersion ? null : latestVersion,
         isLatestVersion
       });
     } catch (error) {
