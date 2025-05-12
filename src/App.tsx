@@ -13,6 +13,7 @@ import { storage } from './utils/storage';
 import { TokenCreationProgress } from './components/TokenCreationProgress';
 import { WalletManagerPage } from './components/WalletManagerPage';
 import { Navigation } from './components/Navigation';
+import { BottomNavigation } from './components/BottomNavigation';
 import { SwapPage } from './components/SwapPage';
 import { VersionBadge } from './components/VersionBadge';
 import { WalletOverview } from './components/WalletOverview';
@@ -37,20 +38,20 @@ function App({ isSidebar = false }: AppProps = {}) {
       })();
     }
   }, [isSidebar]);
-  
-  const { 
-    activeWallet, 
-    balance, 
-    initializeWallet, 
-    getBalance, 
-    isRefreshing, 
+
+  const {
+    activeWallet,
+    balance,
+    initializeWallet,
+    getBalance,
+    isRefreshing,
     isLatestVersion,
     updateAvailable,
     checkVersion,
     sendToken,
     refreshTokenBalances
   } = useStore();
-  
+
   const [loading, setLoading] = useState(true);
   // Show initial password & passkey setup or unlock guard
   const [showPasswordSetup, setShowPasswordSetup] = useState(false);
@@ -72,10 +73,10 @@ function App({ isSidebar = false }: AppProps = {}) {
   const [selectedSwapMint, setSelectedSwapMint] = useState<string | null>(null);
   // Timeout for wallet unlock in milliseconds (1 hour)
   const UNLOCK_TIMEOUT = 60 * 60 * 1000;
-  
+
   // Add this for cypherpunk animation effects
   const [_animateZap, setAnimateZap] = useState(false);
-  
+
   const [glitching, setGlitching] = useState(false);
   const mainAreaRef = useRef<HTMLDivElement>(null);
   const [copyConfirm, setCopyConfirm] = useState(false);
@@ -94,15 +95,15 @@ function App({ isSidebar = false }: AppProps = {}) {
       return () => clearTimeout(timer);
     }
   }, [notification]);
-  
+
   // Animation state for nav components
   const [navAnimated, setNavAnimated] = useState(false);
   const [logoAnimated, setLogoAnimated] = useState(false);
   const [controlsAnimated, setControlsAnimated] = useState(false);
-  
+
   // Wallet address and copy handler
   const address = activeWallet?.publicKey || '';
-  
+
   const copyAddress = async () => {
     try {
       await navigator.clipboard.writeText(address);
@@ -121,7 +122,7 @@ function App({ isSidebar = false }: AppProps = {}) {
         setTimeout(() => setGlitching(false), 100 + Math.random() * 100);
       }
     }, 10000);
-    
+
     return () => clearInterval(glitchInterval);
   }, []);
 
@@ -130,15 +131,15 @@ function App({ isSidebar = false }: AppProps = {}) {
     // Main nav animation
     const navTimer = setTimeout(() => {
       setNavAnimated(true);
-      
+
       // Logo animation with slight delay
       setTimeout(() => {
         setLogoAnimated(true);
-        
+
         // Controls animation follows
         setTimeout(() => {
           setControlsAnimated(true);
-          
+
           // Trigger a subtle glitch when animations complete
           setTimeout(() => {
             setGlitching(true);
@@ -147,7 +148,7 @@ function App({ isSidebar = false }: AppProps = {}) {
         }, 150);
       }, 100);
     }, 300);
-    
+
     return () => clearTimeout(navTimer);
   }, []);
 
@@ -173,7 +174,7 @@ function App({ isSidebar = false }: AppProps = {}) {
     try {
       const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
       const tab = tabs[0];
-      
+
       if (tab?.id != null) {
         if (isSidebar) {
           chrome.tabs.sendMessage(tab.id, { type: 'SIDE_PANEL_CLOSED' });
@@ -195,7 +196,7 @@ function App({ isSidebar = false }: AppProps = {}) {
     getBalance();
     setTimeout(() => setAnimateZap(false), 1500);
   };
-  
+
   // Toggle the wallet drawer
   const toggleWalletDrawer = () => {
     setShowWalletDrawer(!showWalletDrawer);
@@ -317,7 +318,7 @@ function App({ isSidebar = false }: AppProps = {}) {
   const handleCoinCreationStart = async (innerHandleSubmit: () => Promise<void>) => {
     setIsCreatingCoin(true);
     setCreationProgress(0);
-    
+
     // Start the animation
     const interval = setInterval(() => {
       setCreationProgress(prev => {
@@ -335,13 +336,13 @@ function App({ isSidebar = false }: AppProps = {}) {
 
     setTimeout(() => setGlitching(false), 200);
   };
-  
+
   // Function to handle coin creation completion
   const handleCoinCreationComplete = (coinAddress: string) => {
     setCreationProgress(100);
     // Store the new coin address for highlighting
     setNewCoinAddress(coinAddress);
-    
+
     // Flash a glitch effect
     setGlitching(true);
     setTimeout(() => {
@@ -395,7 +396,7 @@ function App({ isSidebar = false }: AppProps = {}) {
   }, [initializeWallet, checkVersion]);
 
   return (
-    <div className={`${isSidebar ? 'w-full h-full ' : 'w-[400px] h-[600px] '}bg-cyber-black bg-binary-pattern binary-overlay`}>
+    <div className={`${isSidebar ? 'w-full h-full ' : 'w-[400px] h-[650px] '}bg-cyber-black bg-binary-pattern binary-overlay`}>
       {/* In-app notification */}
       {notification && (
         <div
@@ -414,9 +415,9 @@ function App({ isSidebar = false }: AppProps = {}) {
                     <code className="text-xs break-all mr-2 font-mono tracking-tight">
                       {notification.message.split('Transaction sent: ')[1]}
                     </code>
-                    <a 
+                    <a
                       href={`https://solscan.io/tx/${notification.message.split('Transaction sent: ')[1]}?cluster=mainnet-beta`}
-                      target="_blank" 
+                      target="_blank"
                       rel="noopener noreferrer"
                       className="text-xs px-2 py-0.5 bg-cyber-green/30 hover:bg-cyber-green/50 rounded transition-colors flex items-center"
                       onClick={e => e.stopPropagation()}
@@ -430,7 +431,7 @@ function App({ isSidebar = false }: AppProps = {}) {
                 notification.message
               )}
             </div>
-            <button 
+            <button
               className="ml-2 text-xs opacity-70 hover:opacity-100"
               onClick={() => setNotification(null)}
             >
@@ -446,11 +447,11 @@ function App({ isSidebar = false }: AppProps = {}) {
         <div className="absolute top-0 left-0 h-full w-0.5 bg-cyber-green/10"></div>
         <div className="absolute top-0 right-0 h-full w-0.5 bg-cyber-green/10"></div>
       </div>
-      
+
       {/* Matrix-style code rain animation in background - very subtle */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-5">
         {[...Array(10)].map((_, i) => (
-          <div 
+          <div
             key={i}
             className="absolute text-cyber-green font-mono text-xs"
             style={{
@@ -468,7 +469,7 @@ function App({ isSidebar = false }: AppProps = {}) {
           </div>
         ))}
       </div>
-      
+
       {loading || showPasswordSetup || showUnlock ? (
         showPasswordSetup ? (
           <PasswordSetup onComplete={handlePostUnlock} />
@@ -508,11 +509,11 @@ function App({ isSidebar = false }: AppProps = {}) {
             showSwap={showSwapPage}
             copyConfirm={copyConfirm}
           />
-          
-          <main 
+
+          <main
             className={`overflow-auto px-4 relative main-content-transition ${glitching ? 'animate-glitch' : ''}`}
-            style={{ 
-              height: '90%', 
+            style={{
+              height: 'calc(100vh - 112px)',
               transition: 'padding-top 0.3s ease-out'
             }}
             ref={mainAreaRef}
@@ -521,7 +522,7 @@ function App({ isSidebar = false }: AppProps = {}) {
             <div className="absolute inset-0 pointer-events-none">
               {/* Scanlines */}
               <div className="absolute inset-0 bg-[linear-gradient(transparent_50%,rgba(0,255,65,0.02)_50%)] bg-[length:100%_4px] opacity-20"></div>
-              
+
               {/* Screen flicker */}
               <div className={`absolute inset-0 bg-cyber-green/5 opacity-0 ${glitching ? 'animate-flicker' : ''}`}></div>
             </div>
@@ -553,18 +554,18 @@ function App({ isSidebar = false }: AppProps = {}) {
             ) : !isLatestVersion ? (
               <VersionCheck updateAvailable={updateAvailable || ''} />
             ) : (
-              <CoinCreator 
-                isSidebar={isSidebar} 
+              <CoinCreator
+                isSidebar={isSidebar}
                 onCreationStart={handleCoinCreationStart}
                 onCreationComplete={handleCoinCreationComplete}
                 onCreationError={handleCoinCreationError}
               />
             )}
-            
+
             {/* Subtle floating particles */}
             <div className="absolute inset-0 pointer-events-none overflow-hidden">
               {[...Array(6)].map((_, i) => (
-                <div 
+                <div
                   key={i}
                   className="absolute w-1 h-1 rounded-full opacity-20"
                   style={{
@@ -578,6 +579,15 @@ function App({ isSidebar = false }: AppProps = {}) {
               ))}
             </div>
           </main>
+
+          <BottomNavigation
+            active={activeView}
+            onHome={navigateToTokenCreate}
+            onSwap={toggleSwapPage}
+            onPortfolio={toggleOverview}
+            onSettings={openWalletManager}
+          />
+
           {/* Send Token Modal */}
           <SendTokenModal
             visible={showSendModal}
