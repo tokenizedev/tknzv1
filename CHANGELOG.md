@@ -2,6 +2,56 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.7.1](https://tokenizedev///compare/v0.7.0...v0.7.1) (2025-05-12)
+
+
+### Features
+
+* **assets:** add missing 128 ([104eddc](https://tokenizedev///commit/104eddcbb549219c5c7a376d95d0464f9aad152b))
+* **components:** Improve formatting of token amounts and USD values in WalletOverview component ([0097910](https://tokenizedev///commit/009791055ff5a84991a5bdb2d0d6e45587c66d38))
+* **store:** add optimistic updates and persist to storage ([29bd0e3](https://tokenizedev///commit/29bd0e3c3cc37c470870754ea3b00c2460663794))
+* **tests:** mock firebase module in store.test.ts ([5cc776c](https://tokenizedev///commit/5cc776caf059d5aebecdf2a35b900bc994b81804))
+
+
+### Bug Fixes
+
+* Remove unnecessary .DS_Store file ([632a833](https://tokenizedev///commit/632a833bf1ac84b755cf7765816dedd8facc9b09))
+* Update binary file assets/logo-01.xcf ([b24ee5f](https://tokenizedev///commit/b24ee5ff1249314214c6f598deb5a0af40cb57cd))
+* **vite:** Exclude store tests from coverage report in Vite config ([d3c05f3](https://tokenizedev///commit/d3c05f3b9ea2cd24fdec83ff11cffa0f986c02a5))
+
+## [0.7.0](https://tokenizedev///compare/v0.6.0...v0.7.0) (2025-05-11)
+
+
+### ⚠ BREAKING CHANGES
+
+* **components:** This commit introduces new visual effects and animations for the SwapPage component, enhancing the user experience.
+* **components:** The layout of the wallet balance display has been updated for improved user experience.
+
+### Features
+
+* Add functionality to automatically close the modal after an error in sending tokens ([96d648c](https://tokenizedev///commit/96d648cfdee6dd4bc8043a0880ea568d6eaf83d6))
+* Add functionality to send native SOL or SPL tokens to a recipient address ([5779c39](https://tokenizedev///commit/5779c39378a56155d14db6879fb98ad2787ecd03))
+* **App:** add ability to send tokens and refresh balances ([43ea354](https://tokenizedev///commit/43ea35406011f4c2d96abc5a360ee6c513684b6d))
+* **App:** Add functionality to toggle wallet overview view ([9f594fb](https://tokenizedev///commit/9f594fb3bf587257e52a470070916d3ea3069aff))
+* **App:** add initialFromMint prop to SwapPage ([9f58a94](https://tokenizedev///commit/9f58a9465c0e3f74b30cb21af319dc551b546ece))
+* **app:** Add lucide-react ExternalLink component for Solscan transaction view ([b455108](https://tokenizedev///commit/b45510883b8429e134602f2c9d1aa3f432714781))
+* **app:** Add swapping and sending token functionality ([7825b5e](https://tokenizedev///commit/7825b5eb548542e4b550ed4dd4df1da8cfc4ec24))
+* **assets:** new logos ([4c4d4db](https://tokenizedev///commit/4c4d4db9e55f2235ebc2807419874ac1a79f6cc7))
+* **components:** Add ability to pre-select token using initialFromMint ([a23a4b9](https://tokenizedev///commit/a23a4b9de85b6ae26348ab4654968191f57bc566))
+* **components:** add chart placeholder in WalletOverview ([cf0682b](https://tokenizedev///commit/cf0682b7109e880b280fab4412ddf538348bb5f6))
+* **components:** add random dot background effect and custom animations ([ee832b1](https://tokenizedev///commit/ee832b1f436db69a75f1a1ca9147409de0cdfdf2))
+* **components:** improve navigation layout and wallet balance display ([68a4148](https://tokenizedev///commit/68a4148633990d697b4c958a3d5b72a626d8481b))
+* **components:** Update labels and button text in PasswordSetup component ([999760b](https://tokenizedev///commit/999760b415f1bfdfc4f97d1f4dd1b560fbc6f516))
+* **deps:** update dependencies for @solana/buffer-layout-utils, @solana/codecs-core, @solana/codecs-data-structures, @solana/codecs-numbers, @solana/codecs-strings, @solana/codecs, @solana/errors, @solana/options, @solana/spl-token-group, @solana/spl-token-metadata, @solana/spl-token, @solana/web3.js, bigint-buffer, bignumber.js, chalk, commander ([0cf14ed](https://tokenizedev///commit/0cf14eda8ea4182298612a91136fa6248eab3feb))
+* logo updates ([d585215](https://tokenizedev///commit/d5852155cf0d5dc7fde62a0d54cbfd17e0fbcada))
+* **Navigation:** Add onViewOverview to navigate to wallet overview screen ([e4c4a6c](https://tokenizedev///commit/e4c4a6cce77ce6d4a03c67bbf99e88cab776c8fe))
+* **package.json:** add @solana/spl-token v0.4.13 dependency ([c4c1518](https://tokenizedev///commit/c4c1518fcb42af9c92be16f8eba5c9d50980ee47))
+* **send:** implement send functionality ([120378b](https://tokenizedev///commit/120378b792e144746e5c974fcd2633124a3a4359))
+* **send:** onscreen send ([464a4e1](https://tokenizedev///commit/464a4e19b2722787cad6f6541420f68e10f7043f))
+* **wallet-overview:** init wallet overview panel ([b6a5e6e](https://tokenizedev///commit/b6a5e6e46c75df790cbeddfb612244c34c80be6f))
+* **wallet:** add functionality for swapping and sending tokens ([f8f861f](https://tokenizedev///commit/f8f861f686b71d9f724e02ab4d0e150619464318))
+* **wallet:** Add useCallback and useMemo hooks for token loading ([6e69035](https://tokenizedev///commit/6e69035e454586bf38e8e5f03012ab426ebf0920))
+
 ## [0.6.0](https://tokenizedev///compare/v0.5.1...v0.6.0) (2025-05-10)
 
 
