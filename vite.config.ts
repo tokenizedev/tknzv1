@@ -65,6 +65,7 @@ export default defineConfig({
       // include any other TS test files in tests folder
       'tests/**/*.ts'
     ],
+    // Exclude store tests for now (legacy tests not included in CI)
     exclude: ['tests/store.test.ts'],
     mockReset: true,
     coverage: {
