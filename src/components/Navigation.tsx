@@ -89,8 +89,30 @@ export const Navigation: React.FC<NavigationProps> = ({
         <div className={`border-b border-cyber-green/20 bg-cyber-black/90 backdrop-blur-sm ${navAnimated ? 'nav-border-animated border-highlight' : ''}`}>
           <div className="flex items-center h-14 justify-between">
             <div className="flex items-center h-full">
-              {/* Panel button on the top left */}
-              {!isSidebar ? (
+              {/* Wallet switcher at the top left */}
+              {activeWallet && (
+                <WalletIndicator
+                  onToggleWalletDrawer={onToggleWalletDrawer}
+                  isDrawerOpen={showWalletDrawer}
+                />
+              )}
+            </div>
+            <div className="flex flex-col items-end mr-2">
+              <button
+                onClick={() => { maybeCloseDrawer(); onViewOverview(); }}
+                className="font-terminal text-sm text-cyber-green tabular-nums text-right focus:outline-none px-2 py-1 rounded transition-all duration-200 hover:bg-cyber-green/10 hover:shadow-[0_0_5px_rgba(50,255,50,0.3)] group"
+                title="View Wallet Overview"
+              >
+                <span className="flex items-center">
+                  <span>{balance.toFixed(2)} <span className="text-cyber-green/70">SOL</span></span>
+                  <span className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-xs">→</span>
+                </span>
+              </button>
+            </div>
+            
+            
+            {/* Panel button on the top left */}
+            {!isSidebar ? (
                 <button
                   onClick={onOpenSidebar}
                   className="h-full w-14 flex items-center justify-center hover:bg-cyber-green/10 transition-colors"
@@ -107,21 +129,7 @@ export const Navigation: React.FC<NavigationProps> = ({
                   <PanelLeft className="w-4 h-4 text-cyber-green/80 hover:text-cyber-green" />
                 </button>
               )}
-              {/* Logo */}
-              <div
-                className="h-full flex items-center px-4 cursor-pointer"
-                onClick={onTokenCreate}
-              >
-                <img src="/assets/logo-01.png" alt="TKNS" className="h-10" />
-              </div>
-            </div>
-            {/* Wallet switcher at the top right */}
-            {activeWallet && (
-              <WalletIndicator
-                onToggleWalletDrawer={onToggleWalletDrawer}
-                isDrawerOpen={showWalletDrawer}
-              />
-            )}
+            
           </div>
         </div>
       </header>
