@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "TKNZ",
-  "version": "0.7.1",
+  "version": "0.8.0",
   "description": "Create meme coins on Pump.fun directly from news articles",
   "permissions": [
     "activeTab",
