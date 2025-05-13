@@ -11,7 +11,8 @@ interface SendTokenModalProps {
 }
 
 const SendTokenModal: React.FC<SendTokenModalProps> = ({ visible, mint, onClose, onSend }) => {
-  const { activeWallet, balance: solBalance } = useStore();
+  const activeWallet = useStore(state => state.activeWallet);
+  const solBalance = useStore(state => state.nativeSolBalance);
   const connection = createConnection();
   // Available balance for this mint (in units)
   const [available, setAvailable] = useState<number>(0);
@@ -21,6 +22,10 @@ const SendTokenModal: React.FC<SendTokenModalProps> = ({ visible, mint, onClose,
   const [isSending, setIsSending] = useState(false);
   // Native SOL mint address
   const NATIVE_MINT = 'So11111111111111111111111111111111111111112';
+  // Token symbol for display (SOL or truncated mint)
+  const mintSymbol = mint === NATIVE_MINT
+    ? 'SOL'
+    : `${mint.slice(0,4)}...${mint.slice(-4)}`;
 
   useEffect(() => {
     if (visible) {
@@ -72,7 +77,7 @@ const SendTokenModal: React.FC<SendTokenModalProps> = ({ visible, mint, onClose,
     <div className="fixed inset-0 bg-cyber-black/90 backdrop-blur-md flex items-center justify-center z-50 p-4">
       <div className="bg-cyber-dark border border-cyber-green/30 rounded-md w-full max-w-md animate-fade-scale-in shadow-terminal p-6 space-y-4">
         <div className="flex justify-between items-center">
-          <h3 className="text-cyber-green font-terminal text-lg">Send Token</h3>
+        <h3 className="text-cyber-green font-terminal text-lg">Send {mintSymbol}</h3>
           <button onClick={onClose} className="text-cyber-green hover:text-cyber-green-dark">
             <X className="w-5 h-5" />
           </button>
@@ -87,21 +92,30 @@ const SendTokenModal: React.FC<SendTokenModalProps> = ({ visible, mint, onClose,
           onChange={(e) => setRecipient(e.target.value)}
           className="w-full bg-cyber-black border border-cyber-green/50 rounded-sm p-2 text-cyber-green font-mono text-sm focus:border-cyber-green focus:outline-none"
         />
-        <input
-          type="number"
-          step="any"
-          placeholder="Amount"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          className="w-full bg-cyber-black border border-cyber-green/50 rounded-sm p-2 text-cyber-green font-mono text-sm focus:border-cyber-green focus:outline-none"
-        />
+        <div className="w-full relative">
+          <input
+            type="number"
+            step="any"
+            placeholder="0.0"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            className="w-full bg-cyber-black border border-cyber-green/50 rounded-sm p-2 pr-12 text-cyber-green font-mono text-sm focus:border-cyber-green focus:outline-none"
+          />
+          <button
+            type="button"
+            onClick={() => setAmount(available.toString())}
+            className="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs font-terminal text-cyber-green hover:text-cyber-green-dark"
+          >
+            MAX
+          </button>
+        </div>
         {error && (
           <div className="text-cyber-orange text-xs font-terminal">
             {error}
           </div>
         )}
-        <div className="flex justify-between items-center text-xs font-mono text-cyber-green">
-          Available: {available}
+        <div className="text-xs font-mono text-cyber-green">
+          Available: {available} {mintSymbol}
         </div>
         <div className="flex justify-end space-x-2 mt-4">
           <button
