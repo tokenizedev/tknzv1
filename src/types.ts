@@ -15,7 +15,9 @@ export interface CreatedCoin {
     name: string;
     ticker: string;
     pumpUrl: string;
-    balance: number;
+    balance: number; // Quantity of the token
+    usdPrice?: number; // USD price per token
+    usdValue?: number; // Total USD value of this coin holding (balance * usdPrice)
     createdAt?: Timestamp | Date;
     /**
      * The wallet address under which this coin was created
@@ -56,8 +58,8 @@ export interface WalletState {
     wallets: WalletInfo[]; // List of all wallets
     activeWallet: WalletInfo | null; // Currently active wallet
     wallet: Keypair | null; // Kept for backward compatibility
-    balance: number;
-    usdBalance: number; // USD value of the balance
+    nativeSolBalance: number; // Balance of native SOL
+    totalPortfolioUsdValue: number; // Total USD value of all assets (SOL + SPL tokens)
     error: string | null;
     createdCoins: CreatedCoin[];
     isRefreshing: boolean;
@@ -75,11 +77,12 @@ export interface WalletState {
     switchWallet: (walletId: string) => Promise<void>;
     removeWallet: (walletId: string) => Promise<void>;
     renameWallet: (walletId: string, newName: string) => Promise<void>;
-    getBalance: () => Promise<void>;
+    // getBalance: () => Promise<void>; // Will be replaced by refreshPortfolioData
     addCreatedCoin: (coin: CreatedCoin) => Promise<void>;
     setInvestmentAmount: (amount: number) => Promise<void>;
-    updateCoinBalance: (address: string, balance: number) => Promise<void>;
-    refreshTokenBalances: () => Promise<void>;
+    updateCoinBalance: (address: string, balance: number) => Promise<void>; // This might need re-evaluation if balance includes USD value
+    // refreshTokenBalances: () => Promise<void>; // Will be replaced by refreshPortfolioData
+    refreshPortfolioData: () => Promise<void>; // New consolidated refresh function
     createCoin: (params: CoinCreationParams) => Promise<{ address: string; pumpUrl: string; }>;
     getArticleData: () => Promise<ArticleData>;
     getTokenCreationData: (article: ArticleData, level: number) => Promise<TokenCreationData>;
@@ -102,11 +105,32 @@ export interface ArticleData {
 }
 
 export interface NavigationProps {
-    wallet: Wallet | null;
-    balance: number;
+    // wallet: Wallet | null; // This type seems problematic, WalletInfo might be intended.
+    activeWallet: WalletInfo | null; // Assuming activeWallet info is needed
+    // balance: number; // Removed, will be sourced from store
+    isRefreshing: boolean;
+    address: string;
     logoAnimated: boolean;
     navAnimated: boolean;
     controlsAnimated: boolean;
+    showWallet: boolean;
+    showWalletDrawer: boolean;
+    glitching: boolean;
+    onRefresh: () => void;
+    onToggleWallet: () => void;
+    onViewWallet: () => void;
+    onViewOverview: () => void;
+    onCopyAddress: () => void;
+    onToggleWalletDrawer: () => void;
+    onManageWallets: () => void;
+    onOpenSidebar: () => void;
+    onCloseSidebar: () => void;
+    onSwap: () => void;
+    onViewCreatedCoins: () => void;
+    onViewMyCoins: () => void;
+    onTokenCreate: () => void;
+    showSwap: boolean;
+    copyConfirm: boolean;
 }
 
 export interface WalletData {
