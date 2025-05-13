@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.11.2](https://tokenizedev///compare/v0.11.1...v0.11.2) (2025-05-13)
+
+
+### Features
+
+* **App:** add 'onSwapToken' prop to 'CreatedCoinsPage' and 'MyCreatedCoinsPage' components ([a06a200](https://tokenizedev///commit/a06a200ec222fcf22c4e35402ebd3f9a05fdda9e))
+* **CreatedCoinsPage:** Add ability to swap tokens ([975d5ec](https://tokenizedev///commit/975d5ec5a756e3d611ea614205789a2608d5509f))
+* **MyCreatedCoinsPage:** Add onSwapToken prop for swapping token functionality ([81f062a](https://tokenizedev///commit/81f062a3aed803ce714282862cc7f493d10e4ebf))
+
 ## [0.11.1](https://tokenizedev///compare/v0.11.0...v0.11.1) (2025-05-13)
 
 
