@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.11.1](https://tokenizedev///compare/v0.11.0...v0.11.1) (2025-05-13)
+
+
+### Features
+
+* **App:** enhance notification handling for transaction statuses ([1f817bb](https://tokenizedev///commit/1f817bb70675e7da1c76d7fc248f10ab40b73b3b))
+
 ## [0.11.0](https://tokenizedev///compare/v0.10.1...v0.11.0) (2025-05-13)
 
 
