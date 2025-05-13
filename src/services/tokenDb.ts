@@ -71,13 +71,22 @@ export function getTokenDb(): Promise<RxDatabase<Collections>> {
   if (!dbPromise) {
     // Wrap storage with Z-Schema validation (avoids runtime codegen / eval)
     const storage = wrappedValidateZSchemaStorage({ storage: getRxStorageDexie() });
+    // Create database and add collections, then return the DB instance
     dbPromise = createRxDatabase<Collections>({
       name: 'tokenize_db',
       storage,
-    }).then(db => db.addCollections({
-      verifiedTokens: { schema: tokenSchema },
-      meta: { schema: metaSchema },
-    }));
+      instanceCreationOptions: {}
+    })
+      .then(db => {
+        console.log('[tokenDb] Database created:', db.name);
+        return db.addCollections({
+          verifiedTokens: { schema: tokenSchema },
+          meta: { schema: metaSchema }
+        }).then(() => {
+          console.log('[tokenDb] Collections added');
+          return db;
+        });
+      });
   }
   return dbPromise;
 }
