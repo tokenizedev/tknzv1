@@ -43,8 +43,16 @@ export const TokenList: React.FC<TokenListProps> = ({
   
   // Search tokens by address (exact), symbol (exact or prefix), or substring (symbol/name)
   let filteredTokens: TokenInfo[] = [];
+  const DEFAULT_IDS = [
+    'AfyDiEptGHEDgD69y56XjNSbTs23LaF1YHANVKnWpump', // TKNZ
+    'So11111111111111111111111111111111111111112',   // SOL
+    'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', // USDC
+  ];
   if (trimmedSearch.length === 0) {
-    filteredTokens = [];
+    // Default view: show TKNZ, SOL, USDC
+    filteredTokens = DEFAULT_IDS
+      .map(id => addressMap.get(id.toLowerCase()))
+      .filter((t): t is TokenInfo => !!t);
   } else if (addressMap.has(trimmedSearch)) {
     filteredTokens = [addressMap.get(trimmedSearch)!];
   } else if (tickerMap.has(trimmedSearch)) {
@@ -114,16 +122,7 @@ export const TokenList: React.FC<TokenListProps> = ({
           </div>
           
           <div className="max-h-80 overflow-y-auto">
-            {trimmedSearch.length === 0 ? (
-              <div className="text-center py-8">
-                <div className="text-cyber-green/50 font-terminal mb-2">
-                  Start typing to search for tokens
-                </div>
-                <div className="text-cyber-green/30 text-sm">
-                  Search by symbol or paste an address
-                </div>
-              </div>
-            ) : filteredTokens.length > 0 ? (
+            {filteredTokens.length > 0 ? (
               filteredTokens.map(token => (
                 <div
                   key={token.id}
