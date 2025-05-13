@@ -2,6 +2,36 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.11.0](https://tokenizedev///compare/v0.10.1...v0.11.0) (2025-05-13)
+
+
+### ⚠ BREAKING CHANGES
+
+* **store:** The method for fetching token prices has been updated and enhanced, including the introduction of new parameters and API requests.
+
+### Features
+
+* Add functionality to seed token database on startup using loadVerifiedTokens from tokenService ([8197a06](https://tokenizedev///commit/8197a06a3ba99e1dbd60321b524e7e6da1bf87ee))
+* Add support for handling pending transactions and notifications in App component ([be6e28f](https://tokenizedev///commit/be6e28f0ca3d58cd4931412244cbb5cf6e17d038))
+* **components/swap:** Add default tokens to TokenList ([c365518](https://tokenizedev///commit/c3655185a78de2966e1376d5077e9242f36aa821))
+* **components:** add fallback token lookup for initialMint ([a81fc95](https://tokenizedev///commit/a81fc954e8265faec723227a779f431c5cf3e8dd))
+* **package.json:** add rxdb and rxjs dependencies ([8343818](https://tokenizedev///commit/83438185f1e0d0cef98b516176c4ac94083a4188))
+* **services:** implement simple in-memory caching for price data ([7cf1617](https://tokenizedev///commit/7cf1617db2742b1e40ba05667152022255af5f66))
+* **services:** normalize token data before bulk insertion ([31db9b7](https://tokenizedev///commit/31db9b71a08cb03bb0371afd9127de555d817f41))
+* **store:** Add function to fetch USD price for SPL tokens or SOL ([dde1b3a](https://tokenizedev///commit/dde1b3a55c90394529c129ba1249f95b0cd65225))
+* **store:** modify sendToken function to return signature immediately ([69b4975](https://tokenizedev///commit/69b4975141f65e5f4e2ee1831f489554090e5137))
+* **swap:** Add memoization to improve TokenList performance ([b042cc7](https://tokenizedev///commit/b042cc7c466af2da0b9d922ef72f6cb4986d354d))
+* **swap:** Add token info fallback for missing local matches ([3123c0e](https://tokenizedev///commit/3123c0e6b370d2637ac63687d87117ef33277394))
+* **SwapPage:** Refactor token loading to use cached tokens and merge with platform coins ([4bd34b5](https://tokenizedev///commit/4bd34b5fa7763c39ee9f0f172d07c378221c01fb))
+* **tokenDb:** introduce logging for database creation and collection addition ([f16c36a](https://tokenizedev///commit/f16c36a1f39351f6c8e487e120d23ed401eacef1))
+* **tokenService:** add logging statements and metadata patching ([a382a34](https://tokenizedev///commit/a382a3413ee3063a9454721d820874b4de4d7d19))
+* **tokens:** implement token datasources services ([16f076e](https://tokenizedev///commit/16f076e0f3b859e7c1a2b87ebec40e64c26ff137))
+
+
+### Bug Fixes
+
+* **database:** Update Z-Schema validation comment in tokenDb service ([957e553](https://tokenizedev///commit/957e55305836efa7b1b55081c437eb46e39fa204))
+
 ## [0.10.1](https://tokenizedev///compare/v0.10.0...v0.10.1) (2025-05-13)
 
 
