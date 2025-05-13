@@ -100,6 +100,8 @@ export const useStore = create<WalletState>((set, get) => ({
   isLatestVersion: true,
   updateAvailable: null,
   migrationStatus: 'idle',
+  // Address book entries (address -> label)
+  addressBook: {},
 
   initializeWallet: async () => {
     try {
@@ -158,12 +160,16 @@ export const useStore = create<WalletState>((set, get) => ({
       
       const fetchedCoins = activeWallet ? await getCreatedCoins(activeWallet.publicKey) : [];
       
+      // Load persisted address book
+      const storedAB = await storage.get('addressBook');
+      const addressBook = storedAB.addressBook ?? {};
       set({ 
         wallets,
         activeWallet,
         wallet: activeWallet?.keypair || null,
         createdCoins: fetchedCoins || [],
-        investmentAmount: storedInvestment.investmentAmount || 0
+        investmentAmount: storedInvestment.investmentAmount || 0,
+        addressBook
       });
 
       await get().refreshPortfolioData();
@@ -596,6 +602,25 @@ export const useStore = create<WalletState>((set, get) => ({
       console.error('Failed to update wallet avatar:', error);
       throw error;
     }
+  },
+  /**
+   * Add or update an entry in the address book
+   */
+  addAddressBookEntry: async (address: string, label: string) => {
+    const { addressBook } = get();
+    const newBook = { ...addressBook, [address]: label };
+    await storage.set({ addressBook: newBook });
+    set({ addressBook: newBook });
+  },
+  /**
+   * Remove an entry from the address book
+   */
+  removeAddressBookEntry: async (address: string) => {
+    const { addressBook } = get();
+    const newBook = { ...addressBook };
+    delete newBook[address];
+    await storage.set({ addressBook: newBook });
+    set({ addressBook: newBook });
   },
 
   migrateLocalStorageToFirestore: async (wallet: Keypair) => {
