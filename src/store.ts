@@ -52,9 +52,10 @@ async function deriveSeedFromMnemonic(mnemonic: string, password: string = ''): 
   return new Uint8Array(derivedBits);
 }
 
-// Placeholder: Implement actual price fetching for SPL tokens
+// Fetch the USD price for an SPL token or SOL using Jupiter lite-api
 async function fetchPriceForToken(mintAddress: string): Promise<number> {
-  if (mintAddress === NATIVE_MINT) { // Should be handled separately for SOL
+  // Native SOL price via Coingecko
+  if (mintAddress === NATIVE_MINT) {
     try {
       const priceResponse = await fetch(SOL_PRICE_API_URL);
       if (priceResponse.ok) {
@@ -66,25 +67,19 @@ async function fetchPriceForToken(mintAddress: string): Promise<number> {
     }
     return 0;
   }
-  // Example for USDC (replace with actual USDC mint address)
+  // Example flat price for USDC (replace with actual mint if needed)
   if (mintAddress.toLowerCase() === 'epjfixtd3cvsmr9ftjmy5x5rpc17hm1ccly48jmyrhbf') {
     return 1.0;
   }
-  // For other tokens, you might use Jupiter API or another oracle
+  // Other tokens: use Jupiter lite-api with caching
   try {
-    // console.log(`Fetching price for SPL token: ${mintAddress}`);
-    const response = await fetch(`https://price.jup.ag/v4/price?ids=${mintAddress}`);
-    if (response.ok) {
-      const data = await response.json();
-      if (data.data && data.data[mintAddress]) {
-        return data.data[mintAddress].price || 0;
-      }
-    }
+    const priceResp = await getPrices([mintAddress], 'usd');
+    const detail = priceResp.data[mintAddress];
+    return detail ? parseFloat(detail.price) : 0;
   } catch (error) {
     console.warn(`Could not fetch price for token ${mintAddress}:`, error);
+    return 0;
   }
-  // console.warn(`Price not found for token: ${mintAddress}, returning 0`);
-  return 0; // Default to 0 if price not found
 }
 
 export const useStore = create<WalletState>((set, get) => ({
