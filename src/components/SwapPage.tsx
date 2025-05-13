@@ -32,13 +32,12 @@ interface TokenOption {
 
 // Token list state (fetched via Jupiter Token API)
 interface SwapPageProps {
-  isSidebar?: boolean;
-  // Optional initial mint address to pre-select as 'from' token
-  initialFromMint?: string;
+  initialMint?: string | null;
+  onBack: () => void;
 }
 
 
-export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false, initialFromMint }) => {
+export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, onBack }) => {
   // Wallet state
   const activeWallet = useStore(state => state.activeWallet);
   // Platform-wide created tokens
@@ -204,10 +203,10 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false, initialFr
     show: false,
     status: 'pending',
   });
-  // If an initialFromMint was provided, auto-select it as input token
+  // If an initialMint was provided, auto-select it as input token
   useEffect(() => {
-    if (initialFromMint && tokenList.length > 0) {
-      const t = tokenList.find(tok => tok.address === initialFromMint);
+    if (initialMint && tokenList.length > 0) {
+      const t = tokenList.find(tok => tok.address === initialMint);
       if (t) {
         setFromToken({
           id: t.address,
@@ -218,7 +217,7 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false, initialFr
         });
       }
     }
-  }, [initialFromMint, tokenList]);
+  }, [initialMint, tokenList]);
   // Jupiter order preview state, includes overall fee and platform (referral) fee in bps
   const [previewData, setPreviewData] = useState<{
     inputAmount: number;
