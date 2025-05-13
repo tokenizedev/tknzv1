@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useStore } from '../store';
 import { getUltraBalances, getTokenInfo, getPrices, BalanceInfo } from '../services/jupiterService';
 import { Send, Repeat, ArrowLeft } from 'lucide-react';
@@ -14,7 +14,7 @@ export const WalletOverview: React.FC<{
   onSwapToken?: (mint: string) => void;
   onSendToken?: (mint: string) => void;
 }> = ({ onBack, onSwapToken, onSendToken }) => {
-  const { activeWallet, balance, getBalance } = useStore();
+  const { activeWallet, totalPortfolioUsdValue, refreshPortfolioData } = useStore();
   const [tokens, setTokens] = useState<{
     mint: string;
     amount: number;
@@ -31,12 +31,6 @@ export const WalletOverview: React.FC<{
   const [isLoading, setIsLoading] = useState(false);
   const loadTokens = useCallback(async () => {
     setIsLoading(true);
-    // Refresh SOL balance
-    try {
-      await getBalance();
-    } catch (err) {
-      console.error('Failed to refresh SOL balance:', err);
-    }
     try {
       // Fetch raw balances (may include key 'SOL' for native)
       const rawBalances: Record<string, BalanceInfo> = await getUltraBalances(publicKey);
@@ -98,12 +92,8 @@ export const WalletOverview: React.FC<{
     loadTokens();
   }, [loadTokens]);
 
-  // Compute total wallet value in USD by summing each token's USD value
-  const totalUsd = useMemo(
-    () => tokens.reduce((sum, t) => sum + (t.usdValue ?? 0), 0),
-    [tokens]
-  );
-  const formattedTotal = totalUsd.toLocaleString('en-US', {
+  // Use total USD value from the global store
+  const formattedTotal = totalPortfolioUsdValue.toLocaleString('en-US', {
     style: 'currency',
     currency: 'USD',
     minimumFractionDigits: 2,
@@ -125,7 +115,7 @@ export const WalletOverview: React.FC<{
           <h2 className="text-lg font-medium text-cyber-green font-terminal">Portfolio</h2>
         </div>
         <button
-          onClick={loadTokens}
+          onClick={() => { loadTokens(); refreshPortfolioData(); }}
           className="p-1 hover:bg-cyber-green/10 rounded-full"
           title="Refresh"
         >
