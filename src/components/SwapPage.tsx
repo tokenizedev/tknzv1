@@ -2,15 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { VersionedTransaction } from '@solana/web3.js';
 import { useStore } from '../store';
 import {
-  getTaggedTokens,
-  getTokenInfo,
-  TokenInfoAPI,
   getUltraBalances,
-  BalanceInfo,
   getOrder,
   executeOrder,
   getPrices,
 } from '../services/jupiterService';
+import type { TokenInfoAPI, BalanceInfo } from '../services/jupiterService';
+import { loadAllTokens } from '../services/tokenService';
 import type { CreatedCoin } from '../types';
 import { TokenSelector } from './swap/TokenSelector';
 import { AmountInput } from './swap/AmountInput';
@@ -67,117 +65,13 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, onBack }) => {
   }, [activeWallet]);
   // Load all platform-created tokens from the api
   
-  // Fetch verified Jupiter tokens, merge with custom TKNZ, SOL, platform-created, and leaderboard tokens
+  // Load tokens (cached via RxDB) and merge with platform coins
   useEffect(() => {
     setLoadingTokens(true);
-    (async () => {
-      try {
-        // Fetch verified tokens from Jupiter
-        const tokens = await getTaggedTokens('verified');
-        // Define custom TKNZ stub
-        const customStub: TokenInfoAPI = {
-          address: 'AfyDiEptGHEDgD69y56XjNSbTs23LaF1YHANVKnWpump',
-          name: 'TKNZ.fun',
-          symbol: 'TKNZ',
-          decimals: 0, // placeholder
-          logoURI: 'https://ipfs.io/ipfs/QmPjLEGEcvEDgGrxNPZdFy1RzfiWRyJYu6YaicM6oZGddQ',
-          tags: [],
-          daily_volume: 0,
-          created_at: new Date('2025-04-30 17:07:42').toISOString(),
-          freeze_authority: null,
-          mint_authority: null,
-          permanent_delegate: null,
-          minted_at: null,
-          extensions: {},
-        };
-        // Fetch real metadata for custom token
-        const customMeta = await getTokenInfo(customStub.address);
-        const customToken: TokenInfoAPI = {
-          ...customStub,
-          decimals: customMeta.decimals,
-          logoURI: customStub.logoURI || customMeta.logoURI,
-        };
-        // Identify SOL token
-        const solMint = 'So11111111111111111111111111111111111111112';
-        const solToken = tokens.find(t => t.address === solMint);
-        // Filter out duplicates
-        const remaining = tokens.filter(
-          t => t.address !== solMint && t.address !== customToken.address
-        );
-        // Map platform-created coins into token info objects with on-chain decimals
-        const createdTokens: TokenInfoAPI[] = await Promise.all(
-          platformCoins.map(async c => {
-            const info = await getTokenInfo(c.address);
-            return {
-              address: c.address,
-              name: c.name,
-              symbol: c.ticker,
-              decimals: info.decimals,
-              logoURI: info.logoURI || '',
-              tags: [],
-              daily_volume: 0,
-              created_at: c.createdAt
-                ? new Date(c.createdAt).toISOString()
-                : new Date().toISOString(),
-              freeze_authority: info.freeze_authority,
-              mint_authority: info.mint_authority,
-              permanent_delegate: info.permanent_delegate,
-              minted_at: info.minted_at,
-              extensions: info.extensions,
-            };
-          })
-        );
-        // Build the final token list: custom, SOL, created, verified remaining
-        const finalList: TokenInfoAPI[] = [customToken];
-        if (solToken) finalList.push(solToken);
-        finalList.push(...createdTokens);
-        
-        // Fetch leaderboard tokens
-        const lbResponse = await fetch('https://tknz.fun/.netlify/functions/leaderboard');
-        if (!lbResponse.ok) {
-          throw new Error(`Leaderboard fetch error: ${lbResponse.status} ${lbResponse.statusText}`);
-        }
-
-        const lbData = await lbResponse.json()
-        const { entries: lbTokens } = lbData
-        
-        // Map leaderboard tokens with on-chain decimals
-        const leaderboardTokens: TokenInfoAPI[] = await Promise.all(
-          lbTokens.map(async r => {
-            const info = await getTokenInfo(r.address);
-            return {
-              address: r.address,
-              name: r.name,
-              symbol: (r.symbol || '').toString(),
-              decimals: info.decimals,
-              logoURI: r.logoURI || info.logoURI,
-              tags: [],
-              daily_volume: 0,
-              created_at: r.launchTime
-                ? new Date(r.launchTime).toISOString()
-                : new Date().toISOString(),
-              freeze_authority: info.freeze_authority,
-              mint_authority: info.mint_authority,
-              permanent_delegate: info.permanent_delegate,
-              minted_at: info.minted_at,
-              extensions: info.extensions,
-            };
-          })
-        );
-
-        if (leaderboardTokens.find(t => t.address === SYSTEM_TOKEN)) {
-          leaderboardTokens.splice(leaderboardTokens.findIndex(t => t.address === SYSTEM_TOKEN), 1)
-        }
-
-        const allTokens = [...finalList, ...leaderboardTokens]
-        allTokens.push(...remaining);
-        setTokenList(allTokens);
-      } catch (err) {
-        setTokenError(err instanceof Error ? err.message : String(err));
-      } finally {
-        setLoadingTokens(false);
-      }
-    })();
+    loadAllTokens(platformCoins)
+      .then(tokens => setTokenList(tokens))
+      .catch(err => setTokenError(err instanceof Error ? err.message : String(err)))
+      .finally(() => setLoadingTokens(false));
   }, [platformCoins]);
   // Token states
   const [fromToken, setFromToken] = useState<TokenOption | null>(null);
