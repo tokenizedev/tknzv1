@@ -17,7 +17,7 @@ export const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
     <div className="flex items-center h-full mx-2">
       <button
         onClick={() => { maybeCloseDrawer(); onViewOverview(); }}
-        className="font-terminal text-right focus:outline-none px-3 py-1 rounded-md transition-all duration-200 hover:bg-cyber-green/10 hover:shadow-[0_0_8px_rgba(50,255,50,0.4)] active:scale-95 relative overflow-hidden"
+        className="font-terminal text-center focus:outline-none px-3 py-1 rounded-md transition-all duration-200 hover:bg-cyber-green/10 hover:shadow-[0_0_8px_rgba(50,255,50,0.4)] active:scale-95 relative overflow-hidden"
         title="View Wallet Overview"
       >
         <div className="flex flex-col items-end">
