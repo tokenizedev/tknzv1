@@ -204,7 +204,7 @@ export const WalletOverview: React.FC<{
                   onClick={() => onSwapToken?.(token.mint)}
                   disabled={token.pendingOnJupiter}
                   className={`p-1 hover:bg-cyber-green/10 rounded-full ${token.pendingOnJupiter ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  title={token.pendingOnJupiter ? 'Pending to be listed on Jupiter' : 'Swap Token'}
+                  title={token.pendingOnJupiter ? 'pending Jupiter trading support' : 'Swap Token'}
                 >
                   <Repeat className="w-4 h-4 text-cyber-green/80 hover:text-cyber-green" />
                 </button>
