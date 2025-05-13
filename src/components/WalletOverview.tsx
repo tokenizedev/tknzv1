@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useStore } from '../store';
 import { getUltraBalances, getTokenInfo, getPrices, BalanceInfo } from '../services/jupiterService';
-import { Send, Repeat } from 'lucide-react';
+import { Send, Repeat, ArrowLeft } from 'lucide-react';
 
 // Native SOL mint address for token metadata and pricing
 const NATIVE_MINT = 'So11111111111111111111111111111111111111112';
@@ -10,9 +10,10 @@ const NATIVE_MINT = 'So11111111111111111111111111111111111111112';
  * WalletOverview component shows total balance, change, chart, and list of tokens.
  */
 export const WalletOverview: React.FC<{
-  onSwapToken: (mint: string) => void;
-  onSendToken: (mint: string) => void;
-}> = ({ onSwapToken, onSendToken }) => {
+  onBack: () => void;
+  onSwapToken?: (mint: string) => void;
+  onSendToken?: (mint: string) => void;
+}> = ({ onBack, onSwapToken, onSendToken }) => {
   const { activeWallet, balance, getBalance } = useStore();
   const [tokens, setTokens] = useState<{
     mint: string;
@@ -113,9 +114,15 @@ export const WalletOverview: React.FC<{
     <div className="space-y-6 p-4">
       {/* Header: Wallet Address and Refresh */}
       <div className="flex items-center justify-between">
+        <button
+          onClick={onBack}
+          className="p-1 hover:bg-cyber-green/10 rounded-full"
+          title="Back"
+        >
+          <ArrowLeft className="w-5 h-5 text-cyber-green/80 hover:text-cyber-green" />
+        </button>
         <div className="text-center flex-grow">
-          <h2 className="text-lg font-medium text-cyber-green font-terminal">Wallet Overview</h2>
-          <p className="text-xs text-cyber-green/70 font-mono truncate">{publicKey}</p>
+          <h2 className="text-lg font-medium text-cyber-green font-terminal">Portfolio</h2>
         </div>
         <button
           onClick={loadTokens}
@@ -125,6 +132,7 @@ export const WalletOverview: React.FC<{
           <Repeat className={`w-5 h-5 text-cyber-green/80 hover:text-cyber-green ${isLoading ? 'animate-spin' : ''}`} />
         </button>
       </div>
+      <p className="text-xs text-cyber-green/70 font-mono truncate">{publicKey}</p>
 
       {/* Total Wallet Value (USD) */}
       <div className="text-center space-y-1">
@@ -176,14 +184,14 @@ export const WalletOverview: React.FC<{
               </div>
               <div className="flex items-center space-x-2">
                 <button
-                  onClick={() => onSendToken(token.mint)}
+                  onClick={() => onSendToken?.(token.mint)}
                   className="p-1 hover:bg-cyber-green/10 rounded-full"
                   title="Send Token"
                 >
                   <Send className="w-4 h-4 text-cyber-green/80 hover:text-cyber-green" />
                 </button>
                 <button
-                  onClick={() => onSwapToken(token.mint)}
+                  onClick={() => onSwapToken?.(token.mint)}
                   className="p-1 hover:bg-cyber-green/10 rounded-full"
                   title="Swap Token"
                 >
