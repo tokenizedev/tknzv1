@@ -57,6 +57,7 @@ export interface WalletState {
     activeWallet: WalletInfo | null; // Currently active wallet
     wallet: Keypair | null; // Kept for backward compatibility
     balance: number;
+    usdBalance: number; // USD value of the balance
     error: string | null;
     createdCoins: CreatedCoin[];
     isRefreshing: boolean;
