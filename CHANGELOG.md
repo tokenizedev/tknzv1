@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.10.0](https://tokenizedev///compare/v0.9.0...v0.10.0) (2025-05-13)
+
+
+### ⚠ BREAKING CHANGES
+
+* **components:** The addCreatedCoin function has been removed from CoinCreator component. Users relying on this function need to update their usage to accommodate the changes.
+* **store:** This introduces a new field 'balance' to the WalletState interface. Users relying on the previous structure will need to update their code accordingly.
+
+### Features
+
+* Add polyfills for improved browser compatibility ([cb45667](https://tokenizedev///commit/cb456677b3018265421038256321f41b756d689c))
+* **App:** add more descriptive event listeners for CoinCreator component ([612c4df](https://tokenizedev///commit/612c4df9a6f6642654ae8657e3558a20a5025a51))
+* **components:** update CoinCreator component to remove addCreatedCoin function ([176face](https://tokenizedev///commit/176face72028ae6b27c337cfd891f00c989dd830))
+* **components:** Update CoinCreator to use nativeSolBalance instead of balance in useStore ([1c16ad1](https://tokenizedev///commit/1c16ad1f5df251efce03480ae84336b096b16a59))
+* **store:** Add balance field to WalletState ([081c06b](https://tokenizedev///commit/081c06bd818bd471103db44e53c26a7b6ceeeeb0))
+
 ## [0.9.0](https://tokenizedev///compare/v0.8.0...v0.9.0) (2025-05-13)
 
 
