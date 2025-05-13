@@ -21,6 +21,7 @@ import { WalletOverview } from './components/WalletOverview';
 import SendTokenModal from './components/SendTokenModal';
 import { SettingsPage } from './components/SettingsPage';
 import { ExternalLink } from 'lucide-react';
+import { web3Connection } from './utils/connection';
 
 interface AppProps { isSidebar?: boolean; }
 function App({ isSidebar = false }: AppProps = {}) {
@@ -95,6 +96,8 @@ function App({ isSidebar = false }: AppProps = {}) {
   const [sendModalMint, setSendModalMint] = useState<string | null>(null);
   // On-screen notification for actions
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  // Pending transactions signatures
+  const [pendingTxs, setPendingTxs] = useState<string[]>([]);
   // Auto-dismiss notifications after 5s
   useEffect(() => {
     if (notification) {
@@ -288,14 +291,37 @@ function App({ isSidebar = false }: AppProps = {}) {
     setShowSendModal(false);
     setSendModalMint(null);
   };
-  // Confirm and send token with on-screen notifications
+  // Send token and handle pending/confirmation notifications
   const handleConfirmSend = async (mint: string, recipient: string, amt: number) => {
     try {
+      // Send transaction and get signature quickly (no confirmation wait)
       const signature = await sendToken(mint, recipient, amt);
+      // Close modal immediately
       closeSendModal();
-      setNotification({ message: `Transaction sent: ${signature}`, type: 'success' });
-      await getBalance();
-      await refreshTokenBalances();
+      // Add to pending transactions
+      setPendingTxs(prev => [...prev, signature]);
+      // Optionally refresh balances immediately
+      getBalance();
+      refreshTokenBalances();
+      // Confirm transaction in background
+      web3Connection.confirmTransaction(signature, 'confirmed')
+        .then((confirmation) => {
+          // Remove from pending
+          setPendingTxs(prev => prev.filter(sig => sig !== signature));
+          // Notify user of result
+          if (confirmation.value.err) {
+            setNotification({ message: `Transaction failed to confirm: ${signature}`, type: 'error' });
+          } else {
+            setNotification({ message: `Transaction confirmed: ${signature}`, type: 'success' });
+          }
+          // Refresh balances after confirmation
+          getBalance();
+          refreshTokenBalances();
+        })
+        .catch((err) => {
+          setPendingTxs(prev => prev.filter(sig => sig !== signature));
+          setNotification({ message: `Transaction confirmation error: ${err}`, type: 'error' });
+        });
     } catch (error: any) {
       console.error('Send failed:', error);
       setNotification({ message: `Send failed: ${error.message || error}`, type: 'error' });
@@ -465,6 +491,38 @@ function App({ isSidebar = false }: AppProps = {}) {
           </div>
         </div>
       )}
+      {/* Pending transaction notifications */}
+      {pendingTxs.map((sig) => (
+        <div
+          key={sig}
+          className="fixed bottom-4 inset-x-4 z-50 px-4 py-3 rounded font-terminal shadow-neon-green backdrop-blur-sm border transition-all bg-cyber-green/20 text-cyber-green border-cyber-green/40"
+        >
+          <div className="flex items-center justify-between">
+            <div className="text-sm break-all">
+              <div className="text-xs opacity-80 mb-1">Transaction pending</div>
+              <div className="flex items-center space-x-2">
+                <code className="text-xs break-all mr-2 font-mono tracking-tight">{sig}</code>
+                <a
+                  href={`https://solscan.io/tx/${sig}?cluster=mainnet-beta`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs px-2 py-0.5 bg-cyber-green/30 hover:bg-cyber-green/50 rounded transition-colors flex items-center"
+                  onClick={(e) => e.stopPropagation()}
+                  title="View on Solscan"
+                >
+                  <ExternalLink size={14} className="text-cyber-green" />
+                </a>
+              </div>
+            </div>
+            <button
+              className="ml-2 text-xs opacity-70 hover:opacity-100"
+              onClick={() => setPendingTxs(prev => prev.filter(s => s !== sig))}
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      ))}
       {/* Background crypto pattern */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-0 left-0 w-full h-0.5 bg-cyber-green/10"></div>
