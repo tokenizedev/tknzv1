@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.10.1](https://tokenizedev///compare/v0.10.0...v0.10.1) (2025-05-13)
+
+
+### Features
+
+* **components:** add 'isSuccess' state to track success in SendTokenModal ([5a13dc8](https://tokenizedev///commit/5a13dc852533310483d95b72ca22ea64d9d0e9f0))
+* **components:** add support for displaying token symbol in SendTokenModal ([4f357ad](https://tokenizedev///commit/4f357ad439b227bdfe139ffe6fb5af91c10cbd36))
+* **components:** add useMemo hook and address book functionality in SendTokenModal ([0226479](https://tokenizedev///commit/02264797eec19f1bf1976dc8c8a07b8d71eacd7d))
+* **components:** update button alignment in BalanceDisplay ([1cc68ff](https://tokenizedev///commit/1cc68ffbdb51c486543677f20acce5b0db52a012))
+* **store:** add address book functionality ([afd5dd8](https://tokenizedev///commit/afd5dd8a786fe7fb734d98bb291b161517ec01d7))
+* **types:** Add address book functionality with addAddressBookEntry and removeAddressBookEntry methods ([cfb1cd5](https://tokenizedev///commit/cfb1cd588c39f9375b0aea3f5075d2cd251b70f9))
+
 ## [0.10.0](https://tokenizedev///compare/v0.9.0...v0.10.0) (2025-05-13)
 
 
