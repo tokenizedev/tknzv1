@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Keypair } from '@solana/web3.js';
-import { Lock, Shield, Code, Terminal, KeySquare, Fingerprint } from 'lucide-react';
+import { Lock, Shield, Code, Terminal, KeySquare, Fingerprint, AlertTriangle } from 'lucide-react';
 import { storage } from '../utils/storage';
 // Derive seed from mnemonic using PBKDF2-HMAC-SHA512 via Web Crypto API.
 async function deriveSeedFromMnemonic(mnemonic: string, password: string = ''): Promise<Uint8Array> {
@@ -45,12 +45,14 @@ export const PasswordUnlock: React.FC<PasswordUnlockProps> = ({ onUnlock }) => {
   const [passkeys, setPasskeys] = useState<PasskeyCredential[]>([]);
   const [hasMultiPasskeys, setHasMultiPasskeys] = useState(false);
   const [hasLegacyPasskey, setHasLegacyPasskey] = useState(false);
+  const [hasPasswordAuth, setHasPasswordAuth] = useState(false);
   const [legacyPasskeyId, setLegacyPasskeyId] = useState<string>('');
   const [legacyPasskeyUserId, setLegacyPasskeyUserId] = useState<string>('');
   const [isWebAuthnSupported, setIsWebAuthnSupported] = useState(false);
   const [glitchEffect, setGlitchEffect] = useState(false);
   const [securityText, setSecurityText] = useState<string[]>([]);
   const [passkeyLoading, setPasskeyLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
 
   useEffect(() => {
     // Check WebAuthn support
@@ -59,9 +61,13 @@ export const PasswordUnlock: React.FC<PasswordUnlockProps> = ({ onUnlock }) => {
       typeof window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === 'function'
     );
     
-    // Check for both legacy and new passkey credentials
+    // Check for available authentication methods
     (async () => {
       try {
+        // Check if password is set
+        const { walletPasswordHash } = await storage.get('walletPasswordHash');
+        setHasPasswordAuth(!!walletPasswordHash);
+        
         // Check for legacy passkey
         const resId = await storage.get('walletPasskeyId');
         const id = resId.walletPasskeyId;
@@ -80,8 +86,11 @@ export const PasswordUnlock: React.FC<PasswordUnlockProps> = ({ onUnlock }) => {
           setPasskeys(passkeyCredentials);
           setHasMultiPasskeys(true);
         }
+        
+        setInitialLoading(false);
       } catch (e) {
-        console.error('Failed to load passkey credentials:', e);
+        console.error('Failed to load authentication methods:', e);
+        setInitialLoading(false);
       }
     })();
   }, []);
@@ -297,6 +306,19 @@ export const PasswordUnlock: React.FC<PasswordUnlockProps> = ({ onUnlock }) => {
     }
   };
 
+  // Check if we have any authentication methods available
+  const hasAnyAuthMethod = hasPasswordAuth || hasMultiPasskeys || hasLegacyPasskey;
+
+  if (initialLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[536px]">
+        <div className="text-cyber-green font-terminal animate-pulse">
+          INITIALIZING SECURITY SYSTEMS...
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col items-center justify-center min-h-[536px] space-y-8 py-4 relative">
       <div className={`leaderboard-frame w-full max-w-[320px] mx-auto relative ${glitchEffect ? 'animate-glitch' : ''}`}>
@@ -346,11 +368,23 @@ export const PasswordUnlock: React.FC<PasswordUnlockProps> = ({ onUnlock }) => {
                   onClick={() => { setForgot(false); setError(''); }}
                   className="w-full text-cyber-green font-terminal text-xs underline mt-2"
                 >
-                  BACK TO PASSWORD
+                  BACK TO LOGIN
                 </button>
               </>
             ) : (
               <>
+                {!hasAnyAuthMethod && (
+                  <div className="bg-cyber-orange/10 border border-cyber-orange/30 p-4 rounded-sm mb-4 animate-pulse">
+                    <div className="flex items-center text-cyber-orange">
+                      <AlertTriangle className="w-5 h-5 mr-2 text-cyber-orange" />
+                      <h3 className="text-sm font-terminal">NO AUTHENTICATION METHODS</h3>
+                    </div>
+                    <p className="text-cyber-orange/80 text-xs font-terminal mt-2">
+                      No password or passkeys are set up for this wallet. Use the recovery option below.
+                    </p>
+                  </div>
+                )}
+
                 <h3 className="text-cyber-green font-terminal text-sm mb-3 flex items-center border-b border-cyber-green/20 pb-2">
                   <Lock className="w-4 h-4 mr-1 text-cyber-pink" />
                   <span className="tracking-wider">DECRYPT ACCESS KEY</span>
@@ -376,32 +410,38 @@ export const PasswordUnlock: React.FC<PasswordUnlockProps> = ({ onUnlock }) => {
                   </button>
                 )}
                 
-                <div className="relative">
-                  <div className="absolute -left-2 -top-2 text-[8px] font-terminal text-cyber-green/60">SYS:// root/access</div>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    placeholder="Enter cryptographic key"
-                    className="w-full bg-cyber-black/70 border border-cyber-green/50 rounded-sm p-2 text-cyber-green font-terminal text-sm focus:border-cyber-pink focus:outline-none shadow-[0_0_8px_rgba(37,255,151,0.3)]"
-                  />
-                  <div className="absolute right-2 top-2 text-[8px] font-terminal text-cyber-green/40">
-                    {password && Array(password.length).fill('*').join('')}
-                  </div>
-                  <div className="absolute -right-2 -bottom-2 text-[8px] font-terminal text-cyber-green/60">SEC://LVL.9</div>
-                </div>
+                {hasPasswordAuth && (
+                  <>
+                    <div className="relative">
+                      <div className="absolute -left-2 -top-2 text-[8px] font-terminal text-cyber-green/60">SYS:// root/access</div>
+                      <input
+                        type="password"
+                        value={password}
+                        onChange={e => setPassword(e.target.value)}
+                        placeholder="Enter cryptographic key"
+                        className="w-full bg-cyber-black/70 border border-cyber-green/50 rounded-sm p-2 text-cyber-green font-terminal text-sm focus:border-cyber-pink focus:outline-none shadow-[0_0_8px_rgba(37,255,151,0.3)]"
+                      />
+                      <div className="absolute right-2 top-2 text-[8px] font-terminal text-cyber-green/40">
+                        {password && Array(password.length).fill('*').join('')}
+                      </div>
+                      <div className="absolute -right-2 -bottom-2 text-[8px] font-terminal text-cyber-green/60">SEC://LVL.9</div>
+                    </div>
+                    
+                    <button
+                      onClick={handlePasswordUnlock}
+                      disabled={!password}
+                      className="btn-primary w-full flex items-center justify-center space-x-2 font-terminal text-xs disabled:opacity-50 disabled:cursor-not-allowed border-cyber-pink hover:bg-cyber-pink/20 transition-all duration-300"
+                    >
+                      <span className="text-cyber-pink mr-1">&gt;</span> AUTHENTICATE
+                    </button>
+                  </>
+                )}
+                
                 {error && (
                   <p className="text-cyber-pink text-xs font-terminal border border-cyber-pink/30 bg-cyber-pink/10 p-2 animate-pulse">
                     [ERROR] {error}
                   </p>
                 )}
-                <button
-                  onClick={handlePasswordUnlock}
-                  disabled={!password}
-                  className="btn-primary w-full flex items-center justify-center space-x-2 font-terminal text-xs disabled:opacity-50 disabled:cursor-not-allowed border-cyber-pink hover:bg-cyber-pink/20 transition-all duration-300"
-                >
-                  <span className="text-cyber-pink mr-1">&gt;</span> AUTHENTICATE
-                </button>
                 
                 {/* Matrix-like raining code effect */}
                 <div className="absolute right-3 bottom-20 text-[6px] font-terminal text-cyber-green/60 opacity-70" style={{writingMode: 'vertical-rl'}}>
