@@ -19,11 +19,14 @@ interface LeaderboardEntry {
  * Fetches from network if cache is stale (>30min) or missing.
  */
 export async function loadVerifiedTokens(): Promise<TokenInfoAPI[]> {
+  console.log('[tokenService] loadVerifiedTokens starting');
   const db = await getTokenDb();
+  console.log('[tokenService] got DB', db.name);
   const metaColl = db.meta;
   const tokenColl = db.verifiedTokens;
   // Determine whether to fetch fresh data
   const metaDoc = await metaColl.findOne(VERIFIED_META_KEY).exec();
+  console.log('[tokenService] metaDoc:', metaDoc ? metaDoc.toJSON() : null);
   let fetchFromNetwork = true;
   if (metaDoc) {
     const last = new Date(metaDoc.value).getTime();
@@ -36,27 +39,45 @@ export async function loadVerifiedTokens(): Promise<TokenInfoAPI[]> {
     }
   }
   if (!fetchFromNetwork) {
-    // Load from cache
+    console.log('[tokenService] loading tokens from cache');
     const docs = await tokenColl.find().exec();
+    console.log('[tokenService] cached docs count:', docs.length);
     return docs.map(doc => doc.toJSON() as unknown as TokenInfoAPI);
   }
   // Fetch from network
+  console.log('[tokenService] fetching tokens from network');
   const tokens = await getTaggedTokens('verified');
+  console.log('[tokenService] fetched tokens count:', tokens.length);
   // Clear old docs
   const oldDocs = await tokenColl.find().exec();
   await Promise.all(oldDocs.map(d => d.remove()));
   // Bulk insert new docs into collection
   // Use bulkInsert on the RxCollection (not storageInstance.bulkWrite)
   if (tokens.length > 0) {
-    await tokenColl.bulkInsert(tokens);
+    console.log('[tokenService] inserting tokens into DB');
+    try {
+      const result = await tokenColl.bulkInsert(tokens);
+      console.log('[tokenService] bulkInsert result:', {
+        success: result.success.length,
+        error: result.error.length
+      });
+    } catch (err) {
+      console.error('[tokenService] bulkInsert exception:', err);
+    }
+    // verify insertion via query
+    const after = await tokenColl.find().exec();
+    console.log('[tokenService] after insert docs count:', after.length);
   }
   // Update metadata
   const timestamp = new Date().toISOString();
   if (metaDoc) {
-    await metaDoc.atomicPatch({ value: timestamp });
+    // Update existing metadata document
+    await metaDoc.incrementalPatch({ value: timestamp });
   } else {
+    // Insert new metadata document
     await metaColl.insert({ key: VERIFIED_META_KEY, value: timestamp });
   }
+  console.log(`[tokenService] Cached ${tokens.length} verified tokens`);
   return tokens;
 }
 
