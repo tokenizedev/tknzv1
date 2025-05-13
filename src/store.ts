@@ -203,7 +203,7 @@ export const useStore = create<WalletState>((set, get) => ({
 
     try {
       // 1. Fetch Native SOL Data
-      const lamports = await connection.getBalance(new PublicKey(activeWallet.publicKey));
+      const lamports = await connection.getBalance(activeWallet.publicKey);
       currentNativeSolBalance = lamports / LAMPORTS_PER_SOL;
       
       const solPriceUsd = await fetchPriceForToken(NATIVE_MINT); // Using NATIVE_MINT for SOL price
@@ -216,7 +216,7 @@ export const useStore = create<WalletState>((set, get) => ({
         let tokenPrice = 0;
         let tokenTotalUsdValue = 0;
         try {
-          const tokenBalanceInfo = await connection.getTokenAccountBalance(new PublicKey(coin.address));
+          const tokenBalanceInfo = await web3Connection.getTokenAccountBalance(new PublicKey(coin.address));
           // Check if tokenBalanceInfo.value exists and has uiAmount
           if (tokenBalanceInfo && tokenBalanceInfo.value) {
              tokenUiAmount = tokenBalanceInfo.value.uiAmount || 0;
@@ -224,7 +224,7 @@ export const useStore = create<WalletState>((set, get) => ({
             // If coin.address is not a token account but a mint, try to get ATA balance
              try {
                 const ata = await getAssociatedTokenAddress(new PublicKey(coin.address), new PublicKey(activeWallet.publicKey));
-                const ataBalanceInfo = await connection.getTokenAccountBalance(ata);
+                const ataBalanceInfo = await web3Connection.getTokenAccountBalance(ata);
                 if (ataBalanceInfo && ataBalanceInfo.value) {
                     tokenUiAmount = ataBalanceInfo.value.uiAmount || 0;
                 }
@@ -283,6 +283,7 @@ export const useStore = create<WalletState>((set, get) => ({
       // 4. Set State
       set({
         nativeSolBalance: currentNativeSolBalance,
+        balance: currentNativeSolBalance,
         totalPortfolioUsdValue: newTotalPortfolioUsdValue,
         createdCoins: updatedCreatedCoins,
         isRefreshing: false,
