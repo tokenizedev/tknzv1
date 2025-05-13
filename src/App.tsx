@@ -18,6 +18,7 @@ import { SwapPage } from './components/SwapPage';
 import { VersionBadge } from './components/VersionBadge';
 import { WalletOverview } from './components/WalletOverview';
 import SendTokenModal from './components/SendTokenModal';
+import { SettingsPage } from './components/SettingsPage';
 import { ExternalLink } from 'lucide-react';
 
 interface AppProps { isSidebar?: boolean; }
@@ -58,9 +59,9 @@ function App({ isSidebar = false }: AppProps = {}) {
   const [showUnlock, setShowUnlock] = useState(false);
   // Wallet drawer visibility
   const [showWalletDrawer, setShowWalletDrawer] = useState(false);
-  // Exclusive UI panels: 'wallet', 'swap', 'manager'
+  // Exclusive UI panels: 'wallet', 'swap', 'manager', 'settings', etc.
   // Views: null shows default creation page, others show specific screens
-  const [activeView, setActiveView] = useState<'wallet' | 'swap' | 'manager' | 'createdCoins' | 'myCoins' | 'overview' | null>(null);
+  const [activeView, setActiveView] = useState<'wallet' | 'swap' | 'manager' | 'createdCoins' | 'myCoins' | 'overview' | 'settings' | null>(null);
 
   // Derived view flags
   const showWallet = activeView === 'wallet';
@@ -69,6 +70,7 @@ function App({ isSidebar = false }: AppProps = {}) {
   const showCreatedCoins = activeView === 'createdCoins';
   const showMyCoins = activeView === 'myCoins';
   const showOverview = activeView === 'overview';
+  const showSettings = activeView === 'settings';
   // Track a specific token mint to swap
   const [selectedSwapMint, setSelectedSwapMint] = useState<string | null>(null);
   // Timeout for wallet unlock in milliseconds (1 hour)
@@ -205,10 +207,18 @@ function App({ isSidebar = false }: AppProps = {}) {
     setTimeout(() => setGlitching(false), 200);
   };
 
-  // Function to handle wallet manager navigation
+  // Open wallet manager page
   const openWalletManager = () => {
     // Switch to wallet-manager view
     setActiveView('manager');
+    setShowWalletDrawer(false);
+    setGlitching(true);
+    setTimeout(() => setGlitching(false), 200);
+  };
+
+  // Open settings page
+  const openSettings = () => {
+    setActiveView('settings');
     setShowWalletDrawer(false);
     setGlitching(true);
     setTimeout(() => setGlitching(false), 200);
@@ -308,6 +318,8 @@ function App({ isSidebar = false }: AppProps = {}) {
     setShowPasswordSetup(false);
     setShowUnlock(false);
     setLoading(true);
+    // Store last unlocked timestamp for session management
+    // This works for both password and passkey authentication
     await storage.set({ walletLastUnlocked: Date.now() });
     await initializeWallet();
     await checkVersion();
@@ -394,6 +406,14 @@ function App({ isSidebar = false }: AppProps = {}) {
     };
     init();
   }, [initializeWallet, checkVersion]);
+
+  // Navigation to home/TKNZ button
+  const navigateToHome = () => {
+    setActiveView(null);
+    setShowWalletDrawer(false);
+    setGlitching(true);
+    setTimeout(() => setGlitching(false), 200);
+  };
 
   return (
     <div className={`${isSidebar ? 'w-full h-full ' : 'w-[400px] h-[650px] '}bg-cyber-black bg-binary-pattern binary-overlay`}>
@@ -528,39 +548,57 @@ function App({ isSidebar = false }: AppProps = {}) {
             </div>
 
             {/* Conditional rendering of main content */}
-            {!activeWallet ? (
-              <WalletSetup />
-            ) : showSwapPage ? (
-              <SwapPage
-                isSidebar={isSidebar}
-                initialFromMint={selectedSwapMint || undefined}
-              />
-            ) : showWalletManager ? (
-              <WalletManagerPage onBack={closeWalletManager} />
-            ) : isCreatingCoin ? (
-              /* Using our new TokenCreationProgress component */
-              <TokenCreationProgress progress={creationProgress} />
-            ) : showWallet ? (
-              <WalletPageCyber highlightCoinAddress={newCoinAddress} />
-            ) : showOverview ? (
-              <WalletOverview
-                onSwapToken={handleSwapToken}
-                onSendToken={openSendModal}
-              />
-            ) : showMyCoins ? (
-              <MyCreatedCoinsPage highlightCoinAddress={newCoinAddress} />
-            ) : showCreatedCoins ? (
-              <CreatedCoinsPage />
-            ) : !isLatestVersion ? (
-              <VersionCheck updateAvailable={updateAvailable || ''} />
-            ) : (
-              <CoinCreator
-                isSidebar={isSidebar}
-                onCreationStart={handleCoinCreationStart}
-                onCreationComplete={handleCoinCreationComplete}
-                onCreationError={handleCoinCreationError}
-              />
-            )}
+            <div 
+              ref={mainAreaRef}
+              className={`bg-cyber-black h-full ${glitching ? 'glitch-text' : ''} pt-3 ${isCreatingCoin ? 'flex items-center justify-center' : ''}`}
+            >
+              {isCreatingCoin ? (
+                /* Token creation progress display */
+                <TokenCreationProgress progress={creationProgress} />
+              ) : showSettings ? (
+                /* Settings page */
+                <SettingsPage onBack={() => setActiveView(null)} />
+              ) : showWalletManager ? (
+                /* Wallet manager interface */
+                <WalletManagerPage onBack={closeWalletManager} />
+              ) : showWallet ? (
+                /* Wallet details view */
+                <WalletPageCyber onBack={closeWalletManager} />
+              ) : showSwapPage ? (
+                /* Swap interface */
+                <SwapPage
+                  initialMint={selectedSwapMint}
+                  onBack={() => {
+                    setActiveView(null);
+                    setSelectedSwapMint(null);
+                  }}
+                />
+              ) : showOverview ? (
+                /* Portfolio overview */
+                <WalletOverview 
+                  onBack={() => setActiveView(null)}
+                  onSwapToken={handleSwapToken}
+                  onSendToken={openSendModal}
+                />
+              ) : showCreatedCoins ? (
+                /* Created coins community page */
+                <CreatedCoinsPage onBack={() => setActiveView(null)} />
+              ) : showMyCoins ? (
+                /* My created coins page */
+                <MyCreatedCoinsPage
+                  onBack={() => setActiveView(null)}
+                  highlightCoin={newCoinAddress}
+                />
+              ) : (
+                /* Default token creator view */
+                <CoinCreator
+                  onBack={() => {}}
+                  onSubmit={handleCoinCreationStart}
+                  onComplete={handleCoinCreationComplete}
+                  onError={handleCoinCreationError}
+                />
+              )}
+            </div>
 
             {/* Subtle floating particles */}
             <div className="absolute inset-0 pointer-events-none overflow-hidden">
@@ -582,10 +620,11 @@ function App({ isSidebar = false }: AppProps = {}) {
 
           <BottomNavigation
             active={activeView}
-            onHome={navigateToTokenCreate}
+            onHome={navigateToHome}
             onSwap={toggleSwapPage}
             onPortfolio={toggleOverview}
-            onSettings={openWalletManager}
+            onSettings={openSettings}
+            onWalletManager={openWalletManager}
           />
 
           {/* Send Token Modal */}
