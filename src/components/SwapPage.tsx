@@ -6,6 +6,7 @@ import {
   getOrder,
   executeOrder,
   getPrices,
+  getTokenInfo,
 } from '../services/jupiterService';
 import type { TokenInfoAPI, BalanceInfo } from '../services/jupiterService';
 import { loadAllTokens } from '../services/tokenService';
@@ -97,19 +98,19 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, onBack }) => {
     show: false,
     status: 'pending',
   });
-  // If an initialMint was provided, auto-select it as input token
+  // If an initialMint was provided, auto-select it as input token (fallback to Jupiter lookup)
   useEffect(() => {
-    if (initialMint && tokenList.length > 0) {
-      const t = tokenList.find(tok => tok.address === initialMint);
-      if (t) {
-        setFromToken({
-          id: t.address,
-          symbol: t.symbol,
-          name: t.name,
-          logoURI: t.logoURI,
-          decimals: t.decimals,
-        });
-      }
+    if (!initialMint || tokenList.length === 0) return;
+    const t = tokenList.find(tok => tok.address === initialMint);
+    if (t) {
+      setFromToken({ id: t.address, symbol: t.symbol, name: t.name, logoURI: t.logoURI, decimals: t.decimals });
+    } else {
+      // fallback: fetch token info from Jupiter Token API
+      getTokenInfo(initialMint)
+        .then(data => {
+          setFromToken({ id: data.address, symbol: data.symbol, name: data.name, logoURI: data.logoURI, decimals: data.decimals });
+        })
+        .catch(err => console.error('Initial token lookup failed:', err));
     }
   }, [initialMint, tokenList]);
   // Jupiter order preview state, includes overall fee and platform (referral) fee in bps
