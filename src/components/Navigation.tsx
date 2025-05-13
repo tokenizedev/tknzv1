@@ -4,49 +4,18 @@ import { WalletIndicator } from './WalletIndicator';
 import { WalletDrawer } from './WalletDrawer';
 import { BalanceDisplay } from './BalanceDisplay';
 import { useStore } from '../store';
-
-interface NavigationProps {
-  isSidebar?: boolean;
-  activeWallet: any;
-  balance: number;
-  isRefreshing: boolean;
-  address: string;
-  logoAnimated: boolean;
-  navAnimated: boolean;
-  controlsAnimated: boolean;
-  showWallet: boolean;
-  showWalletDrawer: boolean;
-  glitching: boolean;
-  onRefresh: () => void;
-  onToggleWallet: () => void;
-  onViewWallet: () => void;
-  // Navigate to wallet overview screen
-  onViewOverview: () => void;
-  onCopyAddress: () => void;
-  onToggleWalletDrawer: () => void;
-  onManageWallets: () => void;
-  onOpenSidebar: () => void;
-  onCloseSidebar: () => void;
-  // Swap page handler
-  onSwap: () => void;
-  onViewCreatedCoins: () => void;
-  onViewMyCoins: () => void;
-  // Token create handler
-  onTokenCreate: () => void;
-  showSwap: boolean;
-  copyConfirm: boolean;
-}
+import { NavigationProps } from '../types'; // Assuming NavigationProps is here
 
 export const Navigation: React.FC<NavigationProps> = ({
   isSidebar = false,
-  activeWallet,
-  balance,
-  isRefreshing,
+  activeWallet, // This prop might be from useStore directly if App.tsx doesn't pass it
+  // balance, // Removed, will use nativeSolBalance from store
+  isRefreshing: propIsRefreshing, // Renamed to avoid conflict with store's isRefreshing
   navAnimated,
   controlsAnimated,
   showWallet,
   showWalletDrawer,
-  onRefresh,
+  onRefresh, // This onRefresh might now call store.refreshPortfolioData or be store.isRefreshing
   onToggleWallet,
   onViewWallet,
   onViewOverview,
@@ -61,27 +30,38 @@ export const Navigation: React.FC<NavigationProps> = ({
   showSwap,
   copyConfirm
 }) => {
-  const { wallets, usdBalance } = useStore();
+  const { 
+    wallets, 
+    nativeSolBalance, 
+    totalPortfolioUsdValue, 
+    isRefreshing, // Use isRefreshing from the store
+    // activeWallet: storeActiveWallet // Use activeWallet from store if prop is not reliable
+  } = useStore();
+  
+  // Use activeWallet from props, or fallback to store if necessary
+  const currentActiveWallet = activeWallet || useStore(state => state.activeWallet);
+
   const [copiedWallet, setCopiedWallet] = useState<string | null>(null);
 
-  // Handle wallet selection
   const handleSelectWallet = (walletId: string) => {
     useStore.getState().switchWallet(walletId);
-    onToggleWalletDrawer(); // Close drawer after selection
+    onToggleWalletDrawer();
   };
 
-  // Handle copying wallet address
   const handleCopyWalletAddress = (address: string) => {
     navigator.clipboard.writeText(address);
     setCopiedWallet(address);
     setTimeout(() => setCopiedWallet(null), 2000);
   };
 
-  // Close wallet drawer if open when other navigation items are clicked
   const maybeCloseDrawer = () => {
     if (showWalletDrawer) {
       onToggleWalletDrawer();
     }
+  };
+  
+  const handleRefreshClick = () => {
+    useStore.getState().refreshPortfolioData();
   };
 
   return (
@@ -90,8 +70,7 @@ export const Navigation: React.FC<NavigationProps> = ({
         <div className={`border-b border-cyber-green/20 bg-cyber-black/90 backdrop-blur-sm ${navAnimated ? 'nav-border-animated border-highlight' : ''}`}>
           <div className="flex items-center h-14 justify-between">
             <div className="flex items-center h-full">
-              {/* Wallet switcher at the top left */}
-              {activeWallet && (
+              {currentActiveWallet && (
                 <WalletIndicator
                   onToggleWalletDrawer={onToggleWalletDrawer}
                   isDrawerOpen={showWalletDrawer}
@@ -99,14 +78,11 @@ export const Navigation: React.FC<NavigationProps> = ({
               )}
             </div>
             <BalanceDisplay
-              balance={balance}
-              usdValue={usdBalance}
+              balance={nativeSolBalance} // Use nativeSolBalance from store
+              usdValue={totalPortfolioUsdValue} // Use totalPortfolioUsdValue from store
               maybeCloseDrawer={maybeCloseDrawer}
               onViewOverview={onViewOverview}
             />
-            
-            
-            {/* Panel button on the top left */}
             {!isSidebar ? (
                 <button
                   onClick={onOpenSidebar}
@@ -124,17 +100,17 @@ export const Navigation: React.FC<NavigationProps> = ({
                   <PanelLeft className="w-4 h-4 text-cyber-green/80 hover:text-cyber-green" />
                 </button>
               )}
-            
           </div>
         </div>
       </header>
       <WalletDrawer
         isOpen={showWalletDrawer}
         wallets={wallets}
+        activeWallet={currentActiveWallet} // Pass currentActiveWallet
         onClose={onToggleWalletDrawer}
         onSelectWallet={handleSelectWallet}
         onManageWallets={onManageWallets}
-        onViewWallet={onViewWallet}
+        onViewWallet={onViewWallet} // This likely navigates to a screen showing currentActiveWallet details
         onViewMyCoins={onViewMyCoins}
         onViewCreatedCoins={onViewCreatedCoins}
         onCopyAddress={handleCopyWalletAddress}
