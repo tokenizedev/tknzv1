@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.12.0](https://tokenizedev///compare/v0.11.3...v0.12.0) (2025-05-13)
+
+
+### ⚠ BREAKING CHANGES
+
+* **components:** Updated state type for `tokens` in `useStore` hook to include a `pendingOnJupiter` flag for pending tokens. This may affect components relying on the
+
+### Features
+
+* **App:** Add the ability to swap to a specific token ([a3b4967](https://tokenizedev///commit/a3b49673a08d09942a29b3c35c42f7f29eb65cb3))
+* **components:** Add support for initialToMint selection ([25901f4](https://tokenizedev///commit/25901f4b18d09be0c0c32bc3fe48d15dca4b9a63))
+* **components:** add support for locally created tokens ([43ff7b6](https://tokenizedev///commit/43ff7b67a34ac38bbacceb768409fb5a8bb9c53a))
+
+
+### Bug Fixes
+
+* **components:** update tooltip text for Jupiter trading support ([484628f](https://tokenizedev///commit/484628f6fc1df6490207f156bfe09209fc92dbf1))
+
 ## [0.11.3](https://tokenizedev///compare/v0.11.2...v0.11.3) (2025-05-13)
 
 
