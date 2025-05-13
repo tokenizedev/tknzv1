@@ -3,16 +3,18 @@ import { useStore } from '../store';
 import { getCreatedCoins } from '../firebase';
 import { CreatedCoin, WalletInfo } from '../types';
 import { Loader } from './Loader';
-import { Coins, ExternalLink, ArrowLeft } from 'lucide-react';
+import { Coins, ExternalLink, ArrowLeft, Repeat } from 'lucide-react';
 
 interface MyCreatedCoinsPageProps {
   onBack: () => void;
   highlightCoin?: string | null;
+  onSwapToken?: (mint: string) => void;
 }
 
 export const MyCreatedCoinsPage: React.FC<MyCreatedCoinsPageProps> = ({ 
   onBack, 
-  highlightCoin: highlightCoinAddress 
+  highlightCoin: highlightCoinAddress,
+  onSwapToken
 }) => {
   const { wallets } = useStore();
   const [coins, setCoins] = useState<CreatedCoin[]>([]);
@@ -117,6 +119,13 @@ export const MyCreatedCoinsPage: React.FC<MyCreatedCoinsPageProps> = ({
                     >
                       <ExternalLink className="w-4 h-4 text-cyber-green" />
                     </a>
+                    <button
+                      onClick={() => onSwapToken?.(coin.address)}
+                      className="p-2 border border-cyber-green/30 hover:bg-cyber-green/10 rounded-sm transition-colors"
+                      title="Swap Token"
+                    >
+                      <Repeat className="w-4 h-4 text-cyber-green" />
+                    </button>
                   </div>
                 </div>
               );
