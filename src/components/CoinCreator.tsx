@@ -94,7 +94,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   }, []);
   
   
-  const { nativeSolBalance: balance, error: walletError, investmentAmount: defaultInvestment, addCreatedCoin, createCoin } = useStore();
+  const { nativeSolBalance: balance, error: walletError, investmentAmount: defaultInvestment, createCoin } = useStore();
   const [articleData, setArticleData] = useState<ArticleData>({
     title: '',
     primaryImage: '',
@@ -441,15 +441,8 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
         params.imageUrl = imageUrl;
       }
 
+      // Create the coin and add it to the store (createCoin already persists it)
       const response = await createCoin(params);
-
-      await addCreatedCoin({
-        address: response.address,
-        name: coinName,
-        ticker: ticker,
-        pumpUrl: response.pumpUrl,
-        balance: investmentAmount
-      });
 
       setCreatedCoin(response);
 
