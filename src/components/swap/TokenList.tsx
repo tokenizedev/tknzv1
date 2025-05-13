@@ -1,5 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { FaSearch, FaTimesCircle } from 'react-icons/fa';
+import { getTokenInfo } from '../../services/jupiterService';
 
 interface TokenInfo {
   id: string;
@@ -24,7 +25,9 @@ export const TokenList: React.FC<TokenListProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   // Trimmed lowercase search term
-  const trimmedSearch = searchTerm.trim().toLowerCase();
+  // Raw trimmed input (case preserved) vs lowercase for map lookups
+  const rawSearch = searchTerm.trim();
+  const trimmedSearch = rawSearch.toLowerCase();
   // Build in-memory index of tokens by symbol and address
   const { tickerMap, addressMap, symbolKeys } = useMemo(() => {
     const tickerMap = new Map<string, TokenInfo[]>();
@@ -40,6 +43,40 @@ export const TokenList: React.FC<TokenListProps> = ({
     });
     return { tickerMap, addressMap, symbolKeys: Array.from(tickerMap.keys()) };
   }, [tokens]);
+  // Fallback: fetch token info by address if no local match
+  const [fallbackToken, setFallbackToken] = useState<TokenInfo | null>(null);
+  const [fallbackLoading, setFallbackLoading] = useState(false);
+  useEffect(() => {
+    // reset any prior fallback selection
+    setFallbackToken(null);
+    // require non-empty input
+    if (!rawSearch) return;
+    // skip if we already match a known token
+    if (addressMap.has(trimmedSearch) || tickerMap.has(trimmedSearch)) return;
+    // only attempt fallback for plausible mint lengths
+    if (rawSearch.length < 32) return;
+    let canceled = false;
+    setFallbackLoading(true);
+    // use rawSearch to preserve proper casing
+    getTokenInfo(rawSearch)
+      .then(data => {
+        if (canceled) return;
+        setFallbackToken({
+          id: data.address,
+          symbol: data.symbol,
+          name: data.name,
+          logoURI: data.logoURI,
+          decimals: data.decimals,
+        });
+      })
+      .catch(() => {
+        // ignore lookup failures
+      })
+      .finally(() => {
+        if (!canceled) setFallbackLoading(false);
+      });
+    return () => { canceled = true; setFallbackLoading(false); };
+  }, [rawSearch, trimmedSearch, addressMap, tickerMap]);
   
   // Search tokens by address (exact), symbol (exact or prefix), or substring (symbol/name)
   let filteredTokens: TokenInfo[] = [];
@@ -160,6 +197,35 @@ export const TokenList: React.FC<TokenListProps> = ({
                   )}
                 </div>
               ))
+            ) : fallbackLoading ? (
+              <div className="text-center py-8">
+                <div className="animate-spin border-t-2 border-cyber-green/50 rounded-full w-6 h-6 mx-auto mb-2"></div>
+                <div className="text-cyber-green/50 font-terminal">Loading token info...</div>
+              </div>
+            ) : fallbackToken ? (
+              <div
+                key={fallbackToken.id}
+                className="flex items-center justify-between p-3 hover:bg-cyber-green/5 cursor-pointer border-b border-cyber-green/10 transition-colors"
+                onClick={() => onSelect(fallbackToken)}
+              >
+                <div className="flex items-center">
+                  {fallbackToken.logoURI ? (
+                    <div className="w-8 h-8 rounded-full bg-cyber-gray flex items-center justify-center mr-3 border border-cyber-green/20">
+                      <img src={fallbackToken.logoURI} alt={fallbackToken.symbol} className="w-6 h-6" />
+                    </div>
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-cyber-gray flex items-center justify-center mr-3 border border-cyber-green/20">
+                      <span className="text-cyber-green font-bold">
+                        {fallbackToken.symbol.charAt(0)}
+                      </span>
+                    </div>
+                  )}
+                  <div>
+                    <div className="text-white font-terminal">{fallbackToken.symbol}</div>
+                    <div className="text-cyber-green/70 text-xs">{fallbackToken.name}</div>
+                  </div>
+                </div>
+              </div>
             ) : (
               <div className="text-center py-8">
                 <div className="text-cyber-green/50 font-terminal mb-2">
