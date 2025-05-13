@@ -1024,8 +1024,7 @@ export const useStore = create<WalletState>((set, get) => ({
         const tx = new Transaction().add(...instructions);
         signature = await web3Connection.sendTransaction(tx, [keypair]);
       }
-      await web3Connection.confirmTransaction(signature, 'confirmed');
-      await get().refreshPortfolioData(); // Refresh data after sending token
+      // Return signature immediately; confirmation and portfolio refresh handled by UI
       return signature;
     } catch (error) {
       console.error('sendToken error:', error);
