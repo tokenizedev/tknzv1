@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import { loadVerifiedTokens } from './services/tokenService';
 import { useStore } from './store';
 import { WalletSetup } from './components/WalletSetup';
 import { CoinCreator } from './components/CoinCreator';
@@ -23,6 +24,10 @@ import { ExternalLink } from 'lucide-react';
 
 interface AppProps { isSidebar?: boolean; }
 function App({ isSidebar = false }: AppProps = {}) {
+  // Seed token database: fetch verified tokens into IndexedDB on startup
+  useEffect(() => {
+    loadVerifiedTokens().catch(err => console.error('Token DB init error:', err));
+  }, []);
   // Notify background that side panel is open for this tab
   useEffect(() => {
     if (isSidebar && chrome?.tabs) {
