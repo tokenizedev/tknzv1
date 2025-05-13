@@ -3,9 +3,13 @@ import { useStore } from '../store';
 import { getAllCreatedCoins } from '../firebase';
 import { CreatedCoin } from '../types';
 import { Loader } from './Loader';
-import { Coins, ExternalLink } from 'lucide-react';
+import { Coins, ExternalLink, ArrowLeft } from 'lucide-react';
 
-export const CreatedCoinsPage: React.FC = () => {
+interface CreatedCoinsPageProps {
+  onBack: () => void;
+}
+
+export const CreatedCoinsPage: React.FC<CreatedCoinsPageProps> = ({ onBack }) => {
   const { wallets } = useStore();
   const [coins, setCoins] = useState<CreatedCoin[]>([]);
   const [loading, setLoading] = useState(true);
@@ -23,7 +27,18 @@ export const CreatedCoinsPage: React.FC = () => {
   }
 
   return (
-    <div className="py-6 space-y-4">
+    <div className="py-2 space-y-2">
+      <div className="flex items-center px-2 mb-2">
+        <button
+          onClick={onBack}
+          className="p-1 hover:bg-cyber-green/10 rounded-full mr-3"
+          title="Back"
+        >
+          <ArrowLeft className="w-5 h-5 text-cyber-green/80 hover:text-cyber-green" />
+        </button>
+        <h1 className="text-xl font-terminal text-cyber-green">Community Coins</h1>
+      </div>
+      
       <div className="crypto-card">
         <div className="crypto-card-header flex items-center justify-between">
           <h2 className="crypto-card-title">All Created Coins</h2>
