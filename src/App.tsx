@@ -77,8 +77,9 @@ function App({ isSidebar = false }: AppProps = {}) {
   const showMyCoins = activeView === 'myCoins';
   const showOverview = activeView === 'overview';
   const showSettings = activeView === 'settings';
-  // Track a specific token mint to swap
+  // Track specific token mints for swap: from and to
   const [selectedSwapMint, setSelectedSwapMint] = useState<string | null>(null);
+  const [selectedSwapToMint, setSelectedSwapToMint] = useState<string | null>(null);
   // Timeout for wallet unlock in milliseconds (1 hour)
   const UNLOCK_TIMEOUT = 60 * 60 * 1000;
 
@@ -273,9 +274,19 @@ function App({ isSidebar = false }: AppProps = {}) {
     // Toggle swap view, ensuring exclusivity
     setActiveView(prev => (prev === 'swap' ? null : 'swap'));
   };
-  // Swap a specific token
+  // Swap a specific token (as input)
   const handleSwapToken = (mint: string) => {
     setSelectedSwapMint(mint);
+    setSelectedSwapToMint(null);
+    setActiveView('swap');
+    setShowWalletDrawer(false);
+    setGlitching(true);
+    setTimeout(() => setGlitching(false), 200);
+  };
+  // Swap to a specific token (as output), e.g., from community coins
+  const handleSwapToToken = (mint: string) => {
+    setSelectedSwapMint(null);
+    setSelectedSwapToMint(mint);
     setActiveView('swap');
     setShowWalletDrawer(false);
     setGlitching(true);
@@ -636,9 +647,11 @@ function App({ isSidebar = false }: AppProps = {}) {
                 /* Swap interface */
                 <SwapPage
                   initialMint={selectedSwapMint}
+                  initialToMint={selectedSwapToMint}
                   onBack={() => {
                     setActiveView(null);
                     setSelectedSwapMint(null);
+                    setSelectedSwapToMint(null);
                   }}
                 />
               ) : showOverview ? (
@@ -652,7 +665,7 @@ function App({ isSidebar = false }: AppProps = {}) {
                 /* Created coins community page */
                 <CreatedCoinsPage
                   onBack={() => setActiveView(null)}
-                  onSwapToken={handleSwapToken}
+                  onSwapToken={handleSwapToToken}
                 />
               ) : showMyCoins ? (
                 /* My created coins page */
