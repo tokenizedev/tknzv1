@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.9.0](https://tokenizedev///compare/v0.8.0...v0.9.0) (2025-05-13)
+
+
+### ⚠ BREAKING CHANGES
+
+* **components:** This update adds a new prop 'usdValue' to the BalanceDisplay component, which may affect existing implementations that rely solely on the balance prop.
+
+### Features
+
+* Add usdBalance field to WalletState in types.ts ([9019346](https://tokenizedev///commit/90193468acfd38a04fc78df8523453158ccde39f))
+* **components:** Add AlertTriangle icon to lucide-react library ([ecc74de](https://tokenizedev///commit/ecc74de8f2f9b41f9ff0aec454d132541c05eeab))
+* **components:** add optional USD value display in BalanceDisplay component ([867ef04](https://tokenizedev///commit/867ef041f815fdef73a4178d2d9326dd7086b263))
+* **components:** Update WalletOverview component to use totalPortfolioUsdValue ([871b55d](https://tokenizedev///commit/871b55d8b20e29125375eb595437db32fe22d8f0))
+* **Navigation:** Add usdValue to BalanceDisplay component ([f46659b](https://tokenizedev///commit/f46659bea52b9e8ab7c4adae1197da8a1a3378c5))
+* **Navigation:** Implement changes to use nativeSolBalance and totalPortfolioUsdValue from store ([5aba96d](https://tokenizedev///commit/5aba96d786f60dc13388b0592befd1ea0a012db5))
+* **store:** Add TokenAmount to store imports ([d9f12bd](https://tokenizedev///commit/d9f12bd7fd59fe1c6b254404f30e24540da5fcad))
+* **store:** add USD balance calculation using SOL price API ([1d9615f](https://tokenizedev///commit/1d9615ffe9b4bdc315968dff737c1963c77b262e))
+* **types:** Add USD price and USD value fields to CreatedCoin interface ([3814120](https://tokenizedev///commit/38141201b16b3ff79c016f5debc8315d2259e661))
+
 ## [0.8.0](https://tokenizedev///compare/v0.7.1...v0.8.0) (2025-05-13)
 
 
