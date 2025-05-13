@@ -94,7 +94,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   }, []);
   
   
-  const { balance, error: walletError, investmentAmount: defaultInvestment, addCreatedCoin, createCoin } = useStore();
+  const { nativeSolBalance: balance, error: walletError, investmentAmount: defaultInvestment, addCreatedCoin, createCoin } = useStore();
   const [articleData, setArticleData] = useState<ArticleData>({
     title: '',
     primaryImage: '',
@@ -476,7 +476,9 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
 
     // Notify parent component that creation is starting
     if (onCreationStart) {
-      onCreationStart(innerHandleSubmit);
+      await onCreationStart(innerHandleSubmit);
+    } else {
+      await innerHandleSubmit();
     }
   };
 
