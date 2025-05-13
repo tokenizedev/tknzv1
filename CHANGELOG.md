@@ -2,6 +2,36 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.8.0](https://tokenizedev///compare/v0.7.1...v0.8.0) (2025-05-13)
+
+
+### ⚠ BREAKING CHANGES
+
+* **components:** Removed the old logo element and updated the layout in the Navigation component.
+
+### Features
+
+* Add BalanceDisplay component in Navigation component ([50ed2ea](https://tokenizedev///commit/50ed2ea2bc1462053a3674aefb303f532ece9ac8))
+* Add settings page functionality and UI components ([d280be4](https://tokenizedev///commit/d280be4c167aada383a43865adaa257215fee47b))
+* **balance-display:** implement balance display component ([2257de4](https://tokenizedev///commit/2257de45ed69e91424ad6e19b254d25fe46ad6dc))
+* **components:** Add 'Wallets' button to BottomNavigation ([d7ab49a](https://tokenizedev///commit/d7ab49a79044a3e507e0a41fd4faa4575f90716a))
+* **components:** add ArrowLeft icon to CreatedCoinsPage ([a58d17f](https://tokenizedev///commit/a58d17f6ca63eec2ea0ce5bcb1f4388f18cb1f7f))
+* **components:** add Fingerprint icon to lucide-react component library ([f11effd](https://tokenizedev///commit/f11effd84ad42fc04a13f556773907431c5aaa60))
+* **components:** Add wallet balance display and overview button in Navigation component ([657d7c5](https://tokenizedev///commit/657d7c5f0865bee61ccb88cc317ea1ca071ef101))
+* **components:** Update BottomNavigation title and icon ([7aee642](https://tokenizedev///commit/7aee642543b7bd038e7f421b7979b1a04a45ace5))
+* **components:** Update CoinCreator component styles ([402c5cd](https://tokenizedev///commit/402c5cdc2e9de29b5ba21a5894f1ae06c0de2fde))
+* **components:** Update SwapPage component to use initialMint and onBack function ([a50a05e](https://tokenizedev///commit/a50a05e27bf062950ca30eb3b869dd7c3a524012))
+* **MyCreatedCoinsPage:** Add back button functionality and update highlightCoin handling ([4281440](https://tokenizedev///commit/428144038be8dd200ca5607fe62253071aabd6eb))
+* **navigation:** add `BottomNavigation` component ([6e71bd5](https://tokenizedev///commit/6e71bd504f735eb62c70372765106dec0de1bcc0))
+* Reduce padding on WalletPageCyber component ([d5f0fe2](https://tokenizedev///commit/d5f0fe27bd0f8c22212c1ecdd5986c17eda5b1f2))
+* **WalletOverview:** Add back button and update portfolio header ([4b7761e](https://tokenizedev///commit/4b7761e279c3a6b79a7c5336b0fd8ea64fde8a87))
+
+
+### Bug Fixes
+
+* **components:** Fix padding value in Loader component ([9abaaba](https://tokenizedev///commit/9abaaba58ca801eb9afaf15c33c340ffe6c10110))
+* **components:** Fix wallet manager page layout padding issue ([1776ce1](https://tokenizedev///commit/1776ce1b86ca2b32f019d95feaf3c84393f507ec))
+
 ## [0.7.1](https://tokenizedev///compare/v0.7.0...v0.7.1) (2025-05-12)
 
 
