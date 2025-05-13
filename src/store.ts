@@ -18,6 +18,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 const TOKEN_CREATION_API_URL = 'https://tknz.fun/.netlify/functions/article-token';
 const APP_VERSION_API_URL = 'https://tknz.fun/.netlify/functions/version';
+const SOL_PRICE_API_URL = 'https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd'; // Example API for SOL price
 
 // Native SOL mint address for transfers
 const NATIVE_MINT = 'So11111111111111111111111111111111111111112';
@@ -59,6 +60,7 @@ export const useStore = create<WalletState>((set, get) => ({
   activeWallet: null,
   wallet: null,
   balance: 0,
+  usdBalance: 0,
   error: null,
   createdCoins: [],
   isRefreshing: false,
@@ -634,8 +636,25 @@ export const useStore = create<WalletState>((set, get) => ({
       const lamports = await connection.getBalance(activeWallet.publicKey);
       const solBalance = lamports / 1e9;
 
+      // Fetch SOL price and calculate USD balance
+      let usdBalance = 0;
+      try {
+        const priceResponse = await fetch(SOL_PRICE_API_URL);
+        if (priceResponse.ok) {
+          const priceData = await priceResponse.json();
+          const solPriceUsd = priceData.solana?.usd;
+          if (solPriceUsd) {
+            usdBalance = solBalance * solPriceUsd;
+          }
+        }
+      } catch (priceError) {
+        console.error('Failed to fetch SOL price:', priceError);
+        // Keep usdBalance as 0 or handle error as needed
+      }
+
       set({ 
         balance: solBalance,
+        usdBalance: usdBalance,
         error: null,
         isRefreshing: false
       });
