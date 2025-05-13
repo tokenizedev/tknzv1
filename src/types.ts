@@ -83,6 +83,18 @@ export interface WalletState {
     updateCoinBalance: (address: string, balance: number) => Promise<void>; // This might need re-evaluation if balance includes USD value
     // refreshTokenBalances: () => Promise<void>; // Will be replaced by refreshPortfolioData
     refreshPortfolioData: () => Promise<void>; // New consolidated refresh function
+    /**
+     * Address book mapping from address to user label
+     */
+    addressBook: Record<string, string>;
+    /**
+     * Add or update an entry in the address book
+     */
+    addAddressBookEntry: (address: string, label: string) => Promise<void>;
+    /**
+     * Remove an entry from the address book
+     */
+    removeAddressBookEntry: (address: string) => Promise<void>;
     createCoin: (params: CoinCreationParams) => Promise<{ address: string; pumpUrl: string; }>;
     getArticleData: () => Promise<ArticleData>;
     getTokenCreationData: (article: ArticleData, level: number) => Promise<TokenCreationData>;
