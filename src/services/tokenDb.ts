@@ -2,7 +2,6 @@ import { createRxDatabase, addRxPlugin } from 'rxdb';
 import type { RxDatabase } from 'rxdb';
 import { getRxStorageDexie } from 'rxdb/plugins/storage-dexie';
 import { RxDBDevModePlugin } from 'rxdb/plugins/dev-mode';
-// Use non-codegen validator to satisfy strict CSP (no unsafe-eval)
 import { wrappedValidateZSchemaStorage } from 'rxdb/plugins/validate-z-schema';
 
 // Register development plugin
@@ -69,7 +68,7 @@ let dbPromise: Promise<RxDatabase<Collections>> | null = null;
  */
 export function getTokenDb(): Promise<RxDatabase<Collections>> {
   if (!dbPromise) {
-    // Wrap storage with Z-Schema validation (avoids runtime codegen / eval)
+    // Wrap storage with Z-Schema validation (avoids unsafe-eval and enforces schema)
     const storage = wrappedValidateZSchemaStorage({ storage: getRxStorageDexie() });
     // Create database and add collections, then return the DB instance
     dbPromise = createRxDatabase<Collections>({
