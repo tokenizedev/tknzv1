@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.11.3](https://tokenizedev///compare/v0.11.2...v0.11.3) (2025-05-13)
+
+
+### Features
+
+* **tokenService:** updated decimals to 6 and added extensions field ([a5d8225](https://tokenizedev///commit/a5d8225a240d7eeb7ff1f6ed40a24fb575ad65c1))
+
 ## [0.11.2](https://tokenizedev///compare/v0.11.1...v0.11.2) (2025-05-13)
 
 
