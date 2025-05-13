@@ -54,13 +54,21 @@ export async function loadVerifiedTokens(): Promise<TokenInfoAPI[]> {
   // Bulk insert new docs into collection
   // Use bulkInsert on the RxCollection (not storageInstance.bulkWrite)
   if (tokens.length > 0) {
-    console.log('[tokenService] inserting tokens into DB');
+    // Normalize tokens to schema-defined fields
+    const normalized = tokens.map(t => ({
+      address: t.address,
+      symbol: t.symbol,
+      name: t.name,
+      ...(t.logoURI ? { logoURI: t.logoURI } : {}),
+      decimals: t.decimals,
+    }));
+    console.log('[tokenService] inserting', normalized.length, 'normalized tokens into DB');
     try {
-      const result = await tokenColl.bulkInsert(tokens);
-      console.log('[tokenService] bulkInsert result:', {
-        success: result.success.length,
-        error: result.error.length
-      });
+      const result = await tokenColl.bulkInsert(normalized);
+      console.log('[tokenService] bulkInsert result counts:', result.success.length, 'successes,', result.error.length, 'errors');
+      if (result.error.length > 0) {
+        console.error('[tokenService] bulkInsert errors sample:', result.error.slice(0, 5));
+      }
     } catch (err) {
       console.error('[tokenService] bulkInsert exception:', err);
     }
