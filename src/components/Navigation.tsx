@@ -61,7 +61,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   showSwap,
   copyConfirm
 }) => {
-  const { wallets } = useStore();
+  const { wallets, usdBalance } = useStore();
   const [copiedWallet, setCopiedWallet] = useState<string | null>(null);
 
   // Handle wallet selection
@@ -100,6 +100,7 @@ export const Navigation: React.FC<NavigationProps> = ({
             </div>
             <BalanceDisplay
               balance={balance}
+              usdValue={usdBalance}
               maybeCloseDrawer={maybeCloseDrawer}
               onViewOverview={onViewOverview}
             />
