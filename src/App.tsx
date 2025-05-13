@@ -592,10 +592,12 @@ function App({ isSidebar = false }: AppProps = {}) {
               ) : (
                 /* Default token creator view */
                 <CoinCreator
-                  onBack={() => {}}
-                  onSubmit={handleCoinCreationStart}
-                  onComplete={handleCoinCreationComplete}
-                  onError={handleCoinCreationError}
+                  /* Trigger the creation loader modal when starting */
+                  onCreationStart={handleCoinCreationStart}
+                  /* Navigate to My Created Coins on successful creation */
+                  onCreationComplete={handleCoinCreationComplete}
+                  /* Handle errors by stopping the loader */
+                  onCreationError={handleCoinCreationError}
                 />
               )}
             </div>
