@@ -3,12 +3,17 @@ import { useStore } from '../store';
 import { getCreatedCoins } from '../firebase';
 import { CreatedCoin, WalletInfo } from '../types';
 import { Loader } from './Loader';
-import { Coins, ExternalLink } from 'lucide-react';
+import { Coins, ExternalLink, ArrowLeft } from 'lucide-react';
 
 interface MyCreatedCoinsPageProps {
-  highlightCoinAddress?: string | null;
+  onBack: () => void;
+  highlightCoin?: string | null;
 }
-export const MyCreatedCoinsPage: React.FC<MyCreatedCoinsPageProps> = ({ highlightCoinAddress }) => {
+
+export const MyCreatedCoinsPage: React.FC<MyCreatedCoinsPageProps> = ({ 
+  onBack, 
+  highlightCoin: highlightCoinAddress 
+}) => {
   const { wallets } = useStore();
   const [coins, setCoins] = useState<CreatedCoin[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,7 +55,18 @@ export const MyCreatedCoinsPage: React.FC<MyCreatedCoinsPageProps> = ({ highligh
   if (loading) return <Loader />;
 
   return (
-    <div className="py-6 space-y-4">
+    <div className="py-2 space-y-4">
+      <div className="flex items-center px-4 mb-2">
+        <button
+          onClick={onBack}
+          className="p-1 hover:bg-cyber-green/10 rounded-full mr-3"
+          title="Back"
+        >
+          <ArrowLeft className="w-5 h-5 text-cyber-green/80 hover:text-cyber-green" />
+        </button>
+        <h1 className="text-xl font-terminal text-cyber-green">My Created Coins</h1>
+      </div>
+      
       <div className="crypto-card">
         <div className="crypto-card-header flex items-center justify-between">
           <h2 className="crypto-card-title">My Created Coins</h2>
