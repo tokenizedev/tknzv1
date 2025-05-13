@@ -32,11 +32,15 @@ interface TokenOption {
 // Token list state (fetched via Jupiter Token API)
 interface SwapPageProps {
   initialMint?: string | null;
+  /**
+   * Optional initial output mint; if provided, pre-selects the "to" token.
+   */
+  initialToMint?: string | null;
   onBack: () => void;
 }
 
 
-export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, onBack }) => {
+export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, onBack }) => {
   // Wallet state
   const activeWallet = useStore(state => state.activeWallet);
   // Platform-wide created tokens
@@ -113,6 +117,33 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, onBack }) => {
         .catch(err => console.error('Initial token lookup failed:', err));
     }
   }, [initialMint, tokenList]);
+  // If an initialToMint was provided, auto-select it as output token
+  useEffect(() => {
+    if (!initialToMint || tokenList.length === 0) return;
+    const t = tokenList.find(tok => tok.address === initialToMint);
+    if (t) {
+      setToToken({
+        id: t.address,
+        symbol: t.symbol,
+        name: t.name,
+        logoURI: t.logoURI,
+        decimals: t.decimals,
+      });
+    } else {
+      // fallback: fetch token info
+      getTokenInfo(initialToMint)
+        .then(data => {
+          setToToken({
+            id: data.address,
+            symbol: data.symbol,
+            name: data.name,
+            logoURI: data.logoURI,
+            decimals: data.decimals,
+          });
+        })
+        .catch(err => console.error('Initial to-token lookup failed:', err));
+    }
+  }, [initialToMint, tokenList]);
   // Jupiter order preview state, includes overall fee and platform (referral) fee in bps
   const [previewData, setPreviewData] = useState<{
     inputAmount: number;
