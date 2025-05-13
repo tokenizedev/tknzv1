@@ -541,7 +541,7 @@ const handleConfirmBackup = () => {
 };
 
   return (
-    <div className={`py-5 px-4 relative ${glitching ? 'animate-glitch' : ''}`}>
+    <div className={`py-2 px-4 relative ${glitching ? 'animate-glitch' : ''}`}>
       {/* CRT Scanlines effect */}
       <div className="fixed inset-0 pointer-events-none z-10 bg-scanlines opacity-5"></div>
       
