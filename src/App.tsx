@@ -650,12 +650,16 @@ function App({ isSidebar = false }: AppProps = {}) {
                 />
               ) : showCreatedCoins ? (
                 /* Created coins community page */
-                <CreatedCoinsPage onBack={() => setActiveView(null)} />
+                <CreatedCoinsPage
+                  onBack={() => setActiveView(null)}
+                  onSwapToken={handleSwapToken}
+                />
               ) : showMyCoins ? (
                 /* My created coins page */
                 <MyCreatedCoinsPage
                   onBack={() => setActiveView(null)}
                   highlightCoin={newCoinAddress}
+                  onSwapToken={handleSwapToken}
                 />
               ) : (
                 /* Default token creator view */
