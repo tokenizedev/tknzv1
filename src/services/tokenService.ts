@@ -116,8 +116,9 @@ export async function loadAllTokens(
   const customMeta = await getTokenInfo(customStub.address);
   const customToken: TokenInfoAPI = {
     ...customStub,
-    decimals: customMeta.decimals,
+    decimals: 6,
     logoURI: customStub.logoURI || customMeta.logoURI,
+    extensions: {},
   };
   // SOL token
   const solMint = 'So11111111111111111111111111111111111111112';
@@ -129,23 +130,19 @@ export async function loadAllTokens(
   // Platform-created tokens
   const created: TokenInfoAPI[] = await Promise.all(
     platformCoins.map(async c => {
-      const info = await getTokenInfo(c.address);
       return {
         address: c.address,
         name: c.name,
         symbol: c.ticker,
-        decimals: info.decimals,
-        logoURI: info.logoURI || '',
+        decimals: 6,
+        logoURI: c.logoURI || '',
         tags: [],
         daily_volume: 0,
-        created_at: c.createdAt
-          ? new Date(c.createdAt).toISOString()
-          : new Date().toISOString(),
-        freeze_authority: info.freeze_authority,
-        mint_authority: info.mint_authority,
-        permanent_delegate: info.permanent_delegate,
-        minted_at: info.minted_at,
-        extensions: info.extensions,
+        created_at: new Date().toISOString(),
+        freeze_authority: null,
+        mint_authority: null,
+        permanent_delegate: null,
+        minted_at: null,
       };
     })
   );
@@ -160,23 +157,17 @@ export async function loadAllTokens(
   const lbTokens: LeaderboardEntry[] = lbJson.entries || [];
   const leaderboard: TokenInfoAPI[] = await Promise.all(
     lbTokens.map(async r => {
-      const info = await getTokenInfo(r.address);
       return {
         address: r.address,
         name: r.name,
         symbol: (r.symbol || '').toString(),
-        decimals: info.decimals,
-        logoURI: r.logoURI || info.logoURI,
+        decimals: 6,
+        logoURI: r.logoURI,
         tags: [],
-        daily_volume: 0,
-        created_at: r.launchTime
-          ? new Date(r.launchTime).toISOString()
-          : new Date().toISOString(),
-        freeze_authority: info.freeze_authority,
-        mint_authority: info.mint_authority,
-        permanent_delegate: info.permanent_delegate,
-        minted_at: info.minted_at,
-        extensions: info.extensions,
+        freeze_authority: null,
+        mint_authority: null,
+        permanent_delegate: null,
+        minted_at: null,
       };
     })
   );
