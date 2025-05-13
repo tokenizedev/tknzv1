@@ -459,15 +459,20 @@ function App({ isSidebar = false }: AppProps = {}) {
         >
           <div className="flex items-center justify-between">
             <div className="text-sm break-all">
-              {notification.type === 'success' && notification.message.includes('Transaction sent:') ? (
+              {notification.type === 'success' &&
+               (notification.message.includes('Transaction sent:') || notification.message.includes('Transaction confirmed:')) ? (
                 <>
-                  <div className="text-xs opacity-80 mb-1">Transaction sent</div>
+                  <div className="text-xs opacity-80 mb-1">
+                    {notification.message.includes('Transaction sent:')
+                      ? 'Transaction sent'
+                      : 'Transaction confirmed'}
+                  </div>
                   <div className="flex items-center space-x-2">
                     <code className="text-xs break-all mr-2 font-mono tracking-tight">
-                      {notification.message.split('Transaction sent: ')[1]}
+                      {notification.message.split(': ')[1]}
                     </code>
                     <a
-                      href={`https://solscan.io/tx/${notification.message.split('Transaction sent: ')[1]}?cluster=mainnet-beta`}
+                      href={`https://solscan.io/tx/${notification.message.split(': ')[1]}?cluster=mainnet-beta`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-xs px-2 py-0.5 bg-cyber-green/30 hover:bg-cyber-green/50 rounded transition-colors flex items-center"
