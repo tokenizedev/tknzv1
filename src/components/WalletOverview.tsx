@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useStore } from '../store';
-import { getUltraBalances, getTokenInfo, getPrices, BalanceInfo } from '../services/jupiterService';
+import { getUltraBalances, getTokenInfo, getPrices, getBalance, BalanceInfo } from '../services/jupiterService';
 import { Send, Repeat, ArrowLeft } from 'lucide-react';
 
 // Native SOL mint address for token metadata and pricing
@@ -14,8 +14,8 @@ export const WalletOverview: React.FC<{
   onSwapToken?: (mint: string) => void;
   onSendToken?: (mint: string) => void;
 }> = ({ onBack, onSwapToken, onSendToken }) => {
-  const { activeWallet, totalPortfolioUsdValue, refreshPortfolioData } = useStore();
-  const [tokens, setTokens] = useState<{
+  const { activeWallet, totalPortfolioUsdValue, refreshPortfolioData, createdCoins } = useStore();
+  const [tokens, setTokens] = useState<Array<{
     mint: string;
     amount: number;
     symbol: string;
@@ -23,7 +23,8 @@ export const WalletOverview: React.FC<{
     decimals: number;
     priceUsd?: number;
     usdValue?: number;
-  }[]>([]);
+    pendingOnJupiter?: boolean;
+  }>>([]);
   if (!activeWallet) return null;
   const publicKey = activeWallet.publicKey;
 
@@ -42,10 +43,6 @@ export const WalletOverview: React.FC<{
       }
       // Filter out zero balances
       const entries = Object.entries(balances).filter(([, info]) => info.uiAmount > 0);
-      if (entries.length === 0) {
-        setTokens([]);
-        return;
-      }
       // Get list of mints for pricing
       const mints = entries.map(([mint]) => mint);
       // Fetch prices (best-effort)
@@ -79,14 +76,37 @@ export const WalletOverview: React.FC<{
           }
         }))
       ).filter((x): x is NonNullable<typeof x> => x !== null);
-      setTokens(tokenList);
+      // Append locally created tokens not yet listed on Jupiter
+      const combined = [...tokenList];
+      const jupiterMints = tokenList.map(t => t.mint);
+      for (const coin of createdCoins) {
+        if (!jupiterMints.includes(coin.address)) {
+          let amount = 0;
+          try {
+            amount = await getBalance(coin.address);
+          } catch (err) {
+            console.error(`Failed to fetch balance for local token ${coin.address}:`, err);
+          }
+          combined.push({
+            mint: coin.address,
+            amount,
+            symbol: coin.ticker,
+            name: coin.name,
+            decimals: 0,
+            priceUsd: coin.usdPrice,
+            usdValue: coin.usdValue,
+            pendingOnJupiter: true,
+          });
+        }
+      }
+      setTokens(combined);
     } catch (error) {
       console.error('Failed to load wallet tokens:', error);
       setTokens([]);
     } finally {
       setIsLoading(false);
     }
-  }, [publicKey]);
+  }, [publicKey, createdCoins]);
   // Load tokens on mount or when publicKey changes
   useEffect(() => {
     loadTokens();
@@ -182,8 +202,9 @@ export const WalletOverview: React.FC<{
                 </button>
                 <button
                   onClick={() => onSwapToken?.(token.mint)}
-                  className="p-1 hover:bg-cyber-green/10 rounded-full"
-                  title="Swap Token"
+                  disabled={token.pendingOnJupiter}
+                  className={`p-1 hover:bg-cyber-green/10 rounded-full ${token.pendingOnJupiter ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  title={token.pendingOnJupiter ? 'Pending to be listed on Jupiter' : 'Swap Token'}
                 >
                   <Repeat className="w-4 h-4 text-cyber-green/80 hover:text-cyber-green" />
                 </button>
