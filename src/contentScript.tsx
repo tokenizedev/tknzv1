@@ -524,8 +524,12 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
 
 
 
-// Token Buy Feature: observe dynamic content and inject buy buttons
+// Token Buy Feature: observe dynamic content and inject buy buttons (toggleable)
 (() => {
+  // Check user setting for buy buttons
+  chrome.storage.local.get(['buyModeEnabled'], ({ buyModeEnabled }) => {
+    // Default to enabled
+    if (buyModeEnabled === false) return;
   type TokenMsg = { cashtag?: string; symbol?: string; address?: string };
   const STATE = {
     buttonsAdded: new Set<string>(),
@@ -657,4 +661,5 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
   };
   // Periodic full DOM scan for Buy buttons (every 5s)
   setInterval(() => scanElement(document.body), 5000);
+  });
 })();
