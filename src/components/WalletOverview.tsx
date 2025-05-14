@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useStore } from '../store';
-import { getUltraBalances, getTokenInfo, getPrices, BalanceInfo } from '../services/jupiterService';
-import { Send, Repeat } from 'lucide-react';
+import { getUltraBalances, getTokenInfo, getPrices, getBalance, BalanceInfo } from '../services/jupiterService';
+import { Send, Repeat, ArrowLeft } from 'lucide-react';
 
 // Native SOL mint address for token metadata and pricing
 const NATIVE_MINT = 'So11111111111111111111111111111111111111112';
@@ -10,11 +10,12 @@ const NATIVE_MINT = 'So11111111111111111111111111111111111111112';
  * WalletOverview component shows total balance, change, chart, and list of tokens.
  */
 export const WalletOverview: React.FC<{
-  onSwapToken: (mint: string) => void;
-  onSendToken: (mint: string) => void;
-}> = ({ onSwapToken, onSendToken }) => {
-  const { activeWallet, balance, getBalance } = useStore();
-  const [tokens, setTokens] = useState<{
+  onBack: () => void;
+  onSwapToken?: (mint: string) => void;
+  onSendToken?: (mint: string) => void;
+}> = ({ onBack, onSwapToken, onSendToken }) => {
+  const { activeWallet, totalPortfolioUsdValue, refreshPortfolioData, createdCoins } = useStore();
+  const [tokens, setTokens] = useState<Array<{
     mint: string;
     amount: number;
     symbol: string;
@@ -22,7 +23,8 @@ export const WalletOverview: React.FC<{
     decimals: number;
     priceUsd?: number;
     usdValue?: number;
-  }[]>([]);
+    pendingOnJupiter?: boolean;
+  }>>([]);
   if (!activeWallet) return null;
   const publicKey = activeWallet.publicKey;
 
@@ -30,12 +32,6 @@ export const WalletOverview: React.FC<{
   const [isLoading, setIsLoading] = useState(false);
   const loadTokens = useCallback(async () => {
     setIsLoading(true);
-    // Refresh SOL balance
-    try {
-      await getBalance();
-    } catch (err) {
-      console.error('Failed to refresh SOL balance:', err);
-    }
     try {
       // Fetch raw balances (may include key 'SOL' for native)
       const rawBalances: Record<string, BalanceInfo> = await getUltraBalances(publicKey);
@@ -47,10 +43,6 @@ export const WalletOverview: React.FC<{
       }
       // Filter out zero balances
       const entries = Object.entries(balances).filter(([, info]) => info.uiAmount > 0);
-      if (entries.length === 0) {
-        setTokens([]);
-        return;
-      }
       // Get list of mints for pricing
       const mints = entries.map(([mint]) => mint);
       // Fetch prices (best-effort)
@@ -84,25 +76,44 @@ export const WalletOverview: React.FC<{
           }
         }))
       ).filter((x): x is NonNullable<typeof x> => x !== null);
-      setTokens(tokenList);
+      // Append locally created tokens not yet listed on Jupiter
+      const combined = [...tokenList];
+      const jupiterMints = tokenList.map(t => t.mint);
+      for (const coin of createdCoins) {
+        if (!jupiterMints.includes(coin.address)) {
+          let amount = 0;
+          try {
+            amount = await getBalance(coin.address);
+          } catch (err) {
+            console.error(`Failed to fetch balance for local token ${coin.address}:`, err);
+          }
+          combined.push({
+            mint: coin.address,
+            amount,
+            symbol: coin.ticker,
+            name: coin.name,
+            decimals: 0,
+            priceUsd: coin.usdPrice,
+            usdValue: coin.usdValue,
+            pendingOnJupiter: true,
+          });
+        }
+      }
+      setTokens(combined);
     } catch (error) {
       console.error('Failed to load wallet tokens:', error);
       setTokens([]);
     } finally {
       setIsLoading(false);
     }
-  }, [publicKey]);
+  }, [publicKey, createdCoins]);
   // Load tokens on mount or when publicKey changes
   useEffect(() => {
     loadTokens();
   }, [loadTokens]);
 
-  // Compute total wallet value in USD by summing each token's USD value
-  const totalUsd = useMemo(
-    () => tokens.reduce((sum, t) => sum + (t.usdValue ?? 0), 0),
-    [tokens]
-  );
-  const formattedTotal = totalUsd.toLocaleString('en-US', {
+  // Use total USD value from the global store
+  const formattedTotal = totalPortfolioUsdValue.toLocaleString('en-US', {
     style: 'currency',
     currency: 'USD',
     minimumFractionDigits: 2,
@@ -113,18 +124,25 @@ export const WalletOverview: React.FC<{
     <div className="space-y-6 p-4">
       {/* Header: Wallet Address and Refresh */}
       <div className="flex items-center justify-between">
+        <button
+          onClick={onBack}
+          className="p-1 hover:bg-cyber-green/10 rounded-full"
+          title="Back"
+        >
+          <ArrowLeft className="w-5 h-5 text-cyber-green/80 hover:text-cyber-green" />
+        </button>
         <div className="text-center flex-grow">
-          <h2 className="text-lg font-medium text-cyber-green font-terminal">Wallet Overview</h2>
-          <p className="text-xs text-cyber-green/70 font-mono truncate">{publicKey}</p>
+          <h2 className="text-lg font-medium text-cyber-green font-terminal">Portfolio</h2>
         </div>
         <button
-          onClick={loadTokens}
+          onClick={() => { loadTokens(); refreshPortfolioData(); }}
           className="p-1 hover:bg-cyber-green/10 rounded-full"
           title="Refresh"
         >
           <Repeat className={`w-5 h-5 text-cyber-green/80 hover:text-cyber-green ${isLoading ? 'animate-spin' : ''}`} />
         </button>
       </div>
+      <p className="text-xs text-cyber-green/70 font-mono truncate">{publicKey}</p>
 
       {/* Total Wallet Value (USD) */}
       <div className="text-center space-y-1">
@@ -176,16 +194,17 @@ export const WalletOverview: React.FC<{
               </div>
               <div className="flex items-center space-x-2">
                 <button
-                  onClick={() => onSendToken(token.mint)}
+                  onClick={() => onSendToken?.(token.mint)}
                   className="p-1 hover:bg-cyber-green/10 rounded-full"
                   title="Send Token"
                 >
                   <Send className="w-4 h-4 text-cyber-green/80 hover:text-cyber-green" />
                 </button>
                 <button
-                  onClick={() => onSwapToken(token.mint)}
-                  className="p-1 hover:bg-cyber-green/10 rounded-full"
-                  title="Swap Token"
+                  onClick={() => onSwapToken?.(token.mint)}
+                  disabled={token.pendingOnJupiter}
+                  className={`p-1 hover:bg-cyber-green/10 rounded-full ${token.pendingOnJupiter ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  title={token.pendingOnJupiter ? 'pending Jupiter trading support' : 'Swap Token'}
                 >
                   <Repeat className="w-4 h-4 text-cyber-green/80 hover:text-cyber-green" />
                 </button>

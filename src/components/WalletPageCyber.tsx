@@ -113,7 +113,7 @@ export const WalletPageCyber: React.FC<WalletPageCyberProps> = ({ highlightCoinA
   };
 
   return (
-    <div className="py-6 space-y-4">
+    <div className="py-2 space-y-4">
         {/* Wallet page styled as a terminal */}
         <div className="crypto-card">
             <div className="crypto-card-header flex items-center justify-between">
