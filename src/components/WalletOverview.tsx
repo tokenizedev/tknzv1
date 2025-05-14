@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useStore } from '../store';
 import { getUltraBalances, getTokenInfo, getPrices, getBalance, BalanceInfo } from '../services/jupiterService';
-import { Send, Repeat, ArrowLeft } from 'lucide-react';
+import { Send, Repeat, ArrowLeft, Copy, Check } from 'lucide-react';
 
 // Native SOL mint address for token metadata and pricing
 const NATIVE_MINT = 'So11111111111111111111111111111111111111112';
@@ -112,6 +112,14 @@ export const WalletOverview: React.FC<{
     loadTokens();
   }, [loadTokens]);
 
+  // Copy wallet address functionality
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    navigator.clipboard.writeText(publicKey).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }).catch(err => console.error('Copy failed:', err));
+  };
   // Use total USD value from the global store
   const formattedTotal = totalPortfolioUsdValue.toLocaleString('en-US', {
     style: 'currency',
@@ -142,7 +150,20 @@ export const WalletOverview: React.FC<{
           <Repeat className={`w-5 h-5 text-cyber-green/80 hover:text-cyber-green ${isLoading ? 'animate-spin' : ''}`} />
         </button>
       </div>
-      <p className="text-xs text-cyber-green/70 font-mono truncate">{publicKey}</p>
+      <div className="flex items-center space-x-2">
+        <p className="text-xs text-cyber-green/70 font-mono truncate">{publicKey}</p>
+        <button
+          onClick={handleCopy}
+          className="p-1 hover:bg-cyber-green/10 rounded-full"
+          title={copied ? 'Copied!' : 'Copy address'}
+        >
+          {copied ? (
+            <Check className="w-4 h-4 text-cyber-green" />
+          ) : (
+            <Copy className="w-4 h-4 text-cyber-green/80 hover:text-cyber-green" />
+          )}
+        </button>
+      </div>
 
       {/* Total Wallet Value (USD) */}
       <div className="text-center space-y-1">
