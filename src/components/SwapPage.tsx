@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { VersionedTransaction } from '@solana/web3.js';
 import { useStore } from '../store';
+import { web3Connection } from '../utils/connection';
+import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 import {
   getUltraBalances,
   getOrder,
@@ -20,6 +22,8 @@ import { SwapConfirmation } from './swap/SwapConfirmation';
 import { SwapStatus, SwapStatusType } from './swap/SwapStatus';
 import { FaInfoCircle } from 'react-icons/fa';
 const SYSTEM_TOKEN = 'AfyDiEptGHEDgD69y56XjNSbTs23LaF1YHANVKnWpump'
+// Native SOL mint address
+const NATIVE_MINT = 'So11111111111111111111111111111111111111112';
 // Simplified token option for UI
 interface TokenOption {
   id: string;
@@ -310,14 +314,31 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, 
     calculateFromAmount(value);
   };
 
-  // Handle max button click
-  const handleMaxClick = () => {
-    if (fromToken) {
-      const bal = getUiBalance(fromToken);
-      setFromAmount(bal.toString());
-      setFromAmountUsd('');
-      // preview fetch will recalc USD and toAmount
+  // Handle max button click, subtract platform & Jupiter fees and gas for SOL
+  const handleMaxClick = async () => {
+    if (!fromToken) return;
+    // Get raw balance in token units
+    let bal = getUiBalance(fromToken);
+    // Subtract gas estimate for native SOL
+    if (fromToken.id === NATIVE_MINT) {
+      try {
+        const latest = await web3Connection.getLatestBlockhash();
+        const feeCalcRes = await web3Connection.getFeeCalculatorForBlockhash(latest.blockhash);
+        const lamportsPerSig = feeCalcRes.value?.feeCalculator?.lamportsPerSignature ?? 0;
+        const gasSol = lamportsPerSig / LAMPORTS_PER_SOL;
+        bal = bal - gasSol;
+      } catch (err) {
+        console.error('Failed to estimate gas for swap max:', err);
+      }
     }
+    // Subtract total fee percentage (Jupiter fee + platform fee)
+    const feeBps = previewData?.feeBps ?? 0;
+    const platformFeeBps = previewData?.platformFeeBps 
+      ?? parseInt(import.meta.env.VITE_AFFILIATE_FEE_BPS ?? '0', 10);
+    const totalFeePct = (feeBps + platformFeeBps) / 10000;
+    const maxAmt = bal * (1 - totalFeePct);
+    setFromAmount(maxAmt > 0 ? maxAmt.toString() : '0');
+    setFromAmountUsd('');
   };
 
   // Switch tokens
