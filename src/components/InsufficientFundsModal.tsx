@@ -1,15 +1,18 @@
-import React from "react";
+import React, { useState } from "react";
 import { useStore } from '../store';
+import { Copy, CheckCircle } from 'lucide-react';
 
 interface InsufficientFundsModalProps {
   onClose: (visible: boolean) => void;
+  tryAgain: () => void;
 }
 
-export const InsufficientFundsModal: React.FC<InsufficientFundsModalProps> = ({ onClose }) => {
+export const InsufficientFundsModal: React.FC<InsufficientFundsModalProps> = ({ onClose, tryAgain }) => {
   const { wallet } = useStore();
 
   if (!wallet) return null;
   const publicKey = wallet.publicKey.toString();
+  const [copied, setCopied] = useState(false);
 
   const handleClose = () => {
     onClose(false);
@@ -18,7 +21,7 @@ export const InsufficientFundsModal: React.FC<InsufficientFundsModalProps> = ({ 
   const copyToClipboard = async () => {
     try {
       await navigator.clipboard.writeText(publicKey);
-      alert("Address copied to clipboard!");
+      setCopied(true);
     } catch (err) {
       console.error("Failed to copy:", err);
     }
@@ -45,17 +48,20 @@ export const InsufficientFundsModal: React.FC<InsufficientFundsModalProps> = ({ 
 
           <div className="bg-terminal-green bg-opacity-5 border border-dashed border-terminal-green p-3 rounded text-sm break-all mb-5">
             <span className="inline-flex items-center gap-2">
-                {publicKey}
+              {publicKey}
+              {copied ? (
+                <CheckCircle className="w-5 h-5 text-cyber-purple animate-pulse-fast" />
+              ) : (
                 <button
-                onClick={copyToClipboard}
-                className="text-base cursor-pointer hover:text-terminal-green/70 transition"
-                title="Copy to clipboard"
+                  onClick={copyToClipboard}
+                  className="text-base cursor-pointer hover:text-terminal-green/70 transition"
+                  title="Copy to clipboard"
                 >
-                ⧉
+                  <Copy className="w-5 h-5 text-terminal-green" />
                 </button>
+              )}
             </span>
           </div>
-
 
           <div className="flex gap-3">
             <button
@@ -64,7 +70,7 @@ export const InsufficientFundsModal: React.FC<InsufficientFundsModalProps> = ({ 
             >
               Cancel
             </button>
-            <button className="flex-1 bg-terminal-green bg-opacity-20 border border-terminal-green text-terminal-green py-2.5 px-2.5 cursor-pointer font-mono text-sm uppercase transition-colors duration-200 hover:bg-terminal-green hover:bg-opacity-30">
+            <button onClick={tryAgain} className="flex-1 bg-terminal-green bg-opacity-20 border border-terminal-green text-terminal-green py-2.5 px-2.5 cursor-pointer font-mono text-sm uppercase transition-colors duration-200 hover:bg-terminal-green hover:bg-opacity-30">
               Try Again
             </button>
           </div>
