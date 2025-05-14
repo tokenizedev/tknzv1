@@ -655,4 +655,6 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
     scanElement(document.body);
     return ret;
   };
+  // Periodic full DOM scan for Buy buttons (every 5s)
+  setInterval(() => scanElement(document.body), 5000);
 })();
