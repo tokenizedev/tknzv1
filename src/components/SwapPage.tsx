@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { VersionedTransaction } from '@solana/web3.js';
 import { useStore } from '../store';
 import { web3Connection } from '../utils/connection';
@@ -54,13 +54,36 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, 
   const [loadingTokens, setLoadingTokens] = useState(false);
   const [tokenError, setTokenError] = useState<string | null>(null);
   // UI tokens array for TokenList component
-  const uiTokens = tokenList.map(t => ({
-    id: t.address,
-    symbol: t.symbol,
-    name: t.name,
-    logoURI: t.logoURI,
-    decimals: t.decimals,
-  }));
+  // Group tokens by symbol (ticker); if duplicates exist, select token with earliest creation date,
+  // and if creation dates are equal, select token with higher daily_volume.
+  const uniqueTokens = useMemo(() => {
+    const symbolMap = new Map<string, TokenInfoAPI>();
+    tokenList.forEach(t => {
+      const key = t.symbol.toLowerCase();
+      if (!symbolMap.has(key)) {
+        symbolMap.set(key, t);
+      } else {
+        const existing = symbolMap.get(key)!;
+        const existingDate = new Date(existing.created_at).getTime();
+        const tDate = new Date(t.created_at).getTime();
+        // select earliest creation date; if equal, select higher daily_volume
+        if (tDate < existingDate || (tDate === existingDate && t.daily_volume > existing.daily_volume)) {
+          symbolMap.set(key, t);
+        }
+      }
+    });
+    return Array.from(symbolMap.values());
+  }, [tokenList]);
+
+  const uiTokens = useMemo(() => {
+    return uniqueTokens.map(t => ({
+      id: t.address,
+      symbol: t.symbol,
+      name: t.name,
+      logoURI: t.logoURI,
+      decimals: t.decimals,
+    }));
+  }, [uniqueTokens]);
   
   
   // Fetch user balances via Jupiter Ultra API
