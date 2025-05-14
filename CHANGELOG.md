@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.12.2](https://tokenizedev///compare/v0.12.1...v0.12.2) (2025-05-14)
+
+
+### Features
+
+* **SwapPage:** add handling for gas estimation and fee calculation on max button click ([009c359](https://tokenizedev///commit/009c3599dd458365a4ea21d4ac9dfc117ddf9549))
+
 ## [0.12.1](https://tokenizedev///compare/v0.12.0...v0.12.1) (2025-05-14)
 
 
