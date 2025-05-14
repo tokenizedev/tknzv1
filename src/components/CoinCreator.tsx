@@ -4,6 +4,7 @@ import { useStore } from '../store';
 import { TerminalLoader } from './TerminalLoader';
 import { VersionBadge } from './VersionBadge';
 import { Loader } from './Loader';
+import { InsufficientFundsModal } from './InsufficientFundsModal';
 
 interface ArticleData {
   title: string
@@ -95,6 +96,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   
   
   const { nativeSolBalance: balance, error: walletError, investmentAmount: defaultInvestment, createCoin } = useStore();
+  const refreshPortfolioData = useStore(state => state.refreshPortfolioData);
   const [articleData, setArticleData] = useState<ArticleData>({
     title: '',
     primaryImage: '',
@@ -132,6 +134,14 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [copySuccess, setCopySuccess] = useState<string | null>(null);
   const carouselRef = useRef<HTMLDivElement>(null);
+
+  // State for insufficient funds notice
+  const [insufficientFunds, setInsufficientFunds] = useState(false)
+
+  // Handle close insufficient funds modal
+  const handleCloseModal = () => {
+    setInsufficientFunds(false);
+  };
 
   // Handle content selection toggle: directly ask content script to start selection mode
   const handleSelectContent = async () => {
@@ -462,7 +472,11 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
     }
   }
   const handleSubmit = async () => {
-    if (balance < requiredBalance) {
+    // Refresh wallet balance before submitting
+    await refreshPortfolioData();
+    const currentBalance = useStore.getState().nativeSolBalance;
+    if (currentBalance < requiredBalance) {
+      setInsufficientFunds(true);
       setError(`Insufficient balance. Please add at least ${requiredBalance.toFixed(2)} SOL to your wallet (${investmentAmount} SOL for investment + 0.03 SOL for fees).`);
       return;
     }
@@ -576,7 +590,9 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   }
 
   return (
-    <div className="py-2">
+    <div className="relative min-h-screen">
+  {/* Overlay content (will blur when modal is open) */}  
+    <div className={insufficientFunds ? "blur-sm pointer-events-none select-none" : "py-2"}>
       {/* Compact header with logo, address dropdown, and action buttons */}
       <div className="flex items-center justify-between my-2">
         <div className="inline-flex rounded-sm overflow-hidden">
@@ -659,7 +675,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
               placeholder="Enter ticker (max 10 chars)"
             />
           </div>
-
+        
           <div className="space-y-2">
             <label className="flex items-center text-sm font-terminal text-cyber-pink">
               <Image className="w-4 h-4 mr-2" />
@@ -862,7 +878,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
 
           {balance < requiredBalance && (
             <div className="text-xs text-cyber-pink mt-1 font-terminal">
-              Add at least {requiredBalance.toFixed(2)} SOL to create a meme coin
+              Add at least {requiredBalance.toFixed(2)} SOL to create a coin
             </div>
           )}
         </div>
@@ -888,7 +904,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
         {/* Final create button with special styling */}
         <button
           onClick={handleSubmit}
-          disabled={balance < requiredBalance || isCreating}
+          disabled={isCreating}
           className={`w-full font-terminal text-lg uppercase tracking-wider border rounded-sm transition-all duration-300 relative overflow-hidden ${
             isCreating 
               ? 'bg-cyber-dark border-cyber-green/70 text-cyber-green py-2' 
@@ -911,6 +927,12 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
           )}
         </button>
       </div>
+    </div>
+    {/* Modal */}
+    {insufficientFunds && 
+      <InsufficientFundsModal onClose={handleCloseModal} tryAgain={handleSubmit}/> 
+    }
+  
 
       {/* Image Carousel Modal */}
       {isCarouselOpen && articleData.images.length > 0 && (
