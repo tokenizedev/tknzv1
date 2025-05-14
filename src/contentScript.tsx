@@ -527,15 +527,12 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
 // Token Buy Feature: scan for token tickers and inject buy buttons
 (() => {
   type TokenMsg = { cashtag?: string; symbol?: string; address?: string };
+  // State for tracking injected buttons
   const STATE = {
-    lastScan: 0,
-    scanInterval: 10000,
     buttonsAdded: new Set<string>(),
   };
   function scanForTokens() {
-    const now = Date.now();
-    if (now - STATE.lastScan < STATE.scanInterval) return;
-    STATE.lastScan = now;
+    // Always scan for tokens when invoked (reliably inject Buy buttons)
     const walker = document.createTreeWalker(
       document.body,
       NodeFilter.SHOW_TEXT,
