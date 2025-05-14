@@ -251,11 +251,9 @@ function startSelectionMode(isSidebar: boolean) {
     cleanup();
     
     extractContent(el).then(async content => {
-      if (!isSidebar) {
-        chrome.runtime.sendMessage({ type: 'SIDE_PANEL_CLOSED' });
-      }
-      chrome.runtime.sendMessage({ type: 'CONTENT_SELECTED', content });
-    });    
+      // Notify background of selected content and UI context
+      chrome.runtime.sendMessage({ type: 'CONTENT_SELECTED', content, isSidebar });
+    });
   };
 
   const cleanup = () => {
@@ -560,7 +558,10 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
     btn.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
-      chrome.runtime.sendMessage({ type: 'TKNZ_TOKEN_CLICKED', token });
+      // Determine UI context (sidebar vs popup) persisted by extension UI
+      chrome.storage.local.get(['isSidebarMode'], ({ isSidebarMode }) => {
+        chrome.runtime.sendMessage({ type: 'TKNZ_TOKEN_CLICKED', token, isSidebar: !!isSidebarMode });
+      });
       btn.textContent = 'Opening...';
       setTimeout(() => (btn.textContent = 'Buy with TKNZ'), 2000);
     };
