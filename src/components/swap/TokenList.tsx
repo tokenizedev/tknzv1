@@ -18,6 +18,9 @@ interface TokenListProps {
   onClose: () => void;
 }
 
+// Helper to show a truncated contract address
+const truncateAddress = (addr: string): string => `${addr.slice(0,4)}...${addr.slice(-4)}`;
+
 export const TokenList: React.FC<TokenListProps> = ({
   tokens,
   onSelect,
@@ -160,7 +163,7 @@ export const TokenList: React.FC<TokenListProps> = ({
           
           <div className="max-h-80 overflow-y-auto">
             {filteredTokens.length > 0 ? (
-              filteredTokens.map(token => (
+            filteredTokens.map(token => (
                 <div
                   key={token.id}
                   className="flex items-center justify-between p-3 hover:bg-cyber-green/5 cursor-pointer border-b border-cyber-green/10 transition-colors"
@@ -181,6 +184,7 @@ export const TokenList: React.FC<TokenListProps> = ({
                     <div>
                       <div className="text-white font-terminal">{token.symbol}</div>
                       <div className="text-cyber-green/70 text-xs">{token.name}</div>
+                      <div className="text-cyber-green/50 text-xs font-mono">{truncateAddress(token.id)}</div>
                     </div>
                   </div>
                   {token.balance && (
@@ -223,6 +227,7 @@ export const TokenList: React.FC<TokenListProps> = ({
                   <div>
                     <div className="text-white font-terminal">{fallbackToken.symbol}</div>
                     <div className="text-cyber-green/70 text-xs">{fallbackToken.name}</div>
+                    <div className="text-cyber-green/50 text-xs font-mono">{truncateAddress(fallbackToken.id)}</div>
                   </div>
                 </div>
               </div>
