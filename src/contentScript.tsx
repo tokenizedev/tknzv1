@@ -521,3 +521,100 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
     }
   }).observe(document, { subtree: true, childList: true });
 }
+
+
+
+// Token Buy Feature: scan for token tickers and inject buy buttons
+(() => {
+  type TokenMsg = { cashtag?: string; symbol?: string; address?: string };
+  const STATE = {
+    lastScan: 0,
+    scanInterval: 10000,
+    buttonsAdded: new Set<string>(),
+  };
+  function scanForTokens() {
+    const now = Date.now();
+    if (now - STATE.lastScan < STATE.scanInterval) return;
+    STATE.lastScan = now;
+    const walker = document.createTreeWalker(
+      document.body,
+      NodeFilter.SHOW_TEXT,
+      {
+        acceptNode(node) {
+          const parent = (node as Node & { parentElement?: HTMLElement }).parentElement;
+          if (!parent) return NodeFilter.FILTER_REJECT;
+          const tag = parent.tagName.toLowerCase();
+          if (tag === 'script' || tag === 'style') return NodeFilter.FILTER_REJECT;
+          if (node.textContent?.trim()) return NodeFilter.FILTER_ACCEPT;
+          return NodeFilter.FILTER_REJECT;
+        },
+      }
+    );
+    let node: Node | null;
+    while ((node = walker.nextNode())) {
+      const text = node.textContent!;
+      const parent = (node as Node & { parentElement: HTMLElement }).parentElement!;
+      // Find cashtags like $ABC
+      const cashtags = text.match(/\$[A-Za-z][A-Za-z0-9]{1,9}\b/g) || [];
+      cashtags.forEach(tag => {
+        const symbol = tag.replace('$', '');
+        const key = parent.innerText.slice(0, 50) + '-' + tag;
+        if (!STATE.buttonsAdded.has(key) && !parent.querySelector('.tknz-buy-button')) {
+          addBuyButton(parent, { cashtag: tag, symbol });
+          STATE.buttonsAdded.add(key);
+        }
+      });
+      // Find possible addresses
+      const words = text.split(/\s+/);
+      words.forEach(word => {
+        if (
+          word.length >= 32 && word.length <= 44 && /^[A-Za-z0-9]+$/.test(word) &&
+          /[A-Z]/.test(word) && /[a-z]/.test(word) && /[0-9]/.test(word)
+        ) {
+          const key = parent.innerText.slice(0, 50) + '-' + word;
+          if (!STATE.buttonsAdded.has(key) && !parent.querySelector('.tknz-buy-button')) {
+            addBuyButton(parent, { address: word });
+            STATE.buttonsAdded.add(key);
+          }
+        }
+      });
+    }
+  }
+  function addBuyButton(el: HTMLElement, token: TokenMsg) {
+    const btn = document.createElement('span');
+    btn.className = 'tknz-buy-button';
+    Object.assign(btn.style, {
+      display: 'inline-block',
+      background: '#00ff9d',
+      color: 'black',
+      padding: '3px 8px',
+      marginLeft: '5px',
+      borderRadius: '4px',
+      fontSize: '11px',
+      fontWeight: 'bold',
+      cursor: 'pointer',
+      verticalAlign: 'middle',
+      transition: 'opacity 0.2s',
+    } as Partial<CSSStyleDeclaration>);
+    btn.textContent = 'Buy';
+    btn.onmouseover = () => (btn.style.opacity = '0.8');
+    btn.onmouseout = () => (btn.style.opacity = '1');
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      chrome.runtime.sendMessage({ type: 'TKNZ_TOKEN_CLICKED', token });
+      btn.textContent = 'Opening...';
+      setTimeout(() => (btn.textContent = 'Buy'), 2000);
+    };
+    el.appendChild(btn);
+  }
+  // Initialize scanning
+  scanForTokens();
+  window.addEventListener('scroll', () => {
+    clearTimeout((window as any)._tknzScrollTimeout);
+    (window as any)._tknzScrollTimeout = setTimeout(scanForTokens, 2000);
+  });
+  const observer = new MutationObserver(() => setTimeout(scanForTokens, 1000));
+  observer.observe(document.body, { childList: true, subtree: true });
+  setInterval(scanForTokens, 30000);
+})();
