@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.12.1](https://tokenizedev///compare/v0.12.0...v0.12.1) (2025-05-14)
+
+
+### Features
+
+* **SendTokenModal:** Add ability to calculate and set MAX amount including estimated fee for native SOL ([a113f42](https://tokenizedev///commit/a113f42b91aa8841d2a7fcb14bf1717c57a3f30c))
+
 ## [0.12.0](https://tokenizedev///compare/v0.11.3...v0.12.0) (2025-05-13)
 
 
