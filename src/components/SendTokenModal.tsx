@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { X, Send, AlertCircle, CheckCircle, User } from 'lucide-react';
 import { useStore } from '../store';
-import { createConnection } from '../utils/connection';
+import { createConnection, web3Connection } from '../utils/connection';
+import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 
 interface SendTokenModalProps {
   visible: boolean;
@@ -101,9 +102,29 @@ const SendTokenModal: React.FC<SendTokenModalProps> = ({ visible, mint, onClose,
   };
 
   // Calculate how much of available balance the amount represents
-  const amountPercent = parseFloat(amount) > 0 && available > 0 
-    ? Math.min((parseFloat(amount) / available) * 100, 100) 
+  const amountPercent = parseFloat(amount) > 0 && available > 0
+    ? Math.min((parseFloat(amount) / available) * 100, 100)
     : 0;
+
+  // Handler for MAX button: subtract estimated fee for native SOL
+  const handleMax = async () => {
+    if (mint === NATIVE_MINT) {
+      try {
+        const latest = await web3Connection.getLatestBlockhash();
+        // @ts-ignore: deprecated fee calculator for legacy RPC
+        const feeCalc = await web3Connection.getFeeCalculatorForBlockhash(latest.blockhash);
+        const lamportsPerSig = feeCalc?.value?.feeCalculator?.lamportsPerSignature ?? 0;
+        const feeSol = lamportsPerSig / LAMPORTS_PER_SOL;
+        const maxVal = available - feeSol;
+        setAmount(maxVal > 0 ? maxVal.toString() : '0');
+      } catch (error) {
+        console.error('Failed to estimate fee, defaulting to full balance', error);
+        setAmount(available.toString());
+      }
+    } else {
+      setAmount(available.toString());
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-cyber-black/90 backdrop-blur-lg flex items-center justify-center z-50 p-4 animate-fade-in">
@@ -164,7 +185,7 @@ const SendTokenModal: React.FC<SendTokenModalProps> = ({ visible, mint, onClose,
                 />
                 <button
                   type="button"
-                  onClick={() => setAmount(available.toString())}
+                  onClick={handleMax}
                   className="ml-2 px-2 py-1 bg-cyber-green/20 text-cyber-green text-xs font-terminal rounded-md hover:bg-cyber-green/30 transition-colors"
                 >
                   MAX
