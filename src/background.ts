@@ -15,19 +15,32 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 
 // Track content script status per tab
 const contentScriptStatus = new Map<number, boolean>();
-// Track side panel status per tab
-const sidePanelStatus = new Map<number, boolean>();
+// Track side panel visibility per window (requires Chrome 117+ sidePanel API)
+const sidePanelOpenWindows = new Set<number>();
+
+// Listen for side panel visibility changes (available in Chrome 117+)
+if ((chrome as any).sidePanel?.onVisibilityChanged) {
+  (chrome as any).sidePanel.onVisibilityChanged.addListener((info: any) => {
+    const { windowId, visible } = info;
+    if (visible) {
+      sidePanelOpenWindows.add(windowId);
+    } else {
+      sidePanelOpenWindows.delete(windowId);
+    }
+  });
+}
+
+// Clean up when windows are closed
+chrome.windows.onRemoved.addListener(windowId => {
+  sidePanelOpenWindows.delete(windowId);
+});
 
 let lastMessage: any = null;
 // Handle messages from content script
 chrome.runtime.onMessage.addListener((message: any, sender, sendResponse) => {
   // Determine target tab: provided in message or from sender.tab
   const targetTabId = message.tabId ?? sender.tab?.id;
-  // Handle side panel ready notification
-  if (message.type === 'SIDEBAR_READY' && typeof message.tabId === 'number') {
-    sidePanelStatus.set(message.tabId, true);
-    return;
-  }
+  // (Legacy) ignore SIDEBAR_READY messages; using onVisibilityChanged for robust tracking
   if (!targetTabId) return;
 
   // Messages from content script to background
@@ -53,11 +66,12 @@ chrome.runtime.onMessage.addListener((message: any, sender, sendResponse) => {
   }
   // Handle user content selection from page
   else if (message.type === 'CONTENT_SELECTED') {
-    const content = message.content; 
-    console.log('sidePanelStatus', sidePanelStatus);
-    console.trace();
+    const content = message.content;
+    const isSidebarMsg = message.isSidebar === true;
+    console.trace('CONTENT_SELECTED, isSidebar:', isSidebarMsg);
     chrome.storage.local.set({ selectedContent: JSON.stringify(content) }, () => {
-      if (!sidePanelStatus.get(targetTabId)) {
+      // Only open popup when not in sidebar context
+      if (!isSidebarMsg) {
         chrome.action.openPopup().catch(err => console.error('Failed to open popup:', err));
       }
     });
@@ -71,31 +85,27 @@ chrome.runtime.onMessage.addListener((message: any, sender, sendResponse) => {
     } catch (e) {
       console.error('Failed to store buy token:', e);
     }
-    // Notify UI to show swap page
-    chrome.runtime.sendMessage({ type: 'SHOW_SWAP', token });
-    // Open popup or side panel based on current state
-    if (sidePanelStatus.get(targetTabId)) {
-      // Sidebar is open, ensure swap UI is shown there
+    // Use mode flag from content script to decide where to open
+    const isSidebarMsg = message.isSidebar === true;
+    // Notify UI to show swap page in correct context
+    chrome.runtime.sendMessage({ type: 'SHOW_SWAP', token, isSidebar: isSidebarMsg });
+    // Open side panel or popup exclusively
+    if (isSidebarMsg) {
       (chrome as any).sidePanel?.open({ tabId: targetTabId }).catch((err: any) => console.error('Failed to open side panel:', err));
       (chrome as any).sidePanel?.setOptions({ tabId: targetTabId, path: 'sidebar.html', enabled: true });
     } else {
-      // Open extension popup
       chrome.action.openPopup().catch((err: any) => console.error('Failed to open popup:', err));
     }
     sendResponse({ success: true });
     return;
   }
   
-  if (message.type === 'SIDE_PANEL_CLOSED') {
-    console.log('SIDE_PANEL_CLOSED', targetTabId);
-    sidePanelStatus.delete(targetTabId);
-  }
   return true;
 });
 
 // Clean up when tabs are closed
 // Clean up status when tabs are closed
+// Clean up content script status when tabs are closed
 chrome.tabs.onRemoved.addListener((tabId) => {
   contentScriptStatus.delete(tabId);
-  sidePanelStatus.delete(tabId);
 });
