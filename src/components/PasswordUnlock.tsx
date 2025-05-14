@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Keypair } from '@solana/web3.js';
-import { Lock, Shield, Code, Terminal, KeySquare } from 'lucide-react';
+import { Lock, Shield, Code, Terminal, KeySquare, Fingerprint, AlertTriangle } from 'lucide-react';
 import { storage } from '../utils/storage';
 // Derive seed from mnemonic using PBKDF2-HMAC-SHA512 via Web Crypto API.
 async function deriveSeedFromMnemonic(mnemonic: string, password: string = ''): Promise<Uint8Array> {
@@ -27,6 +27,12 @@ async function deriveSeedFromMnemonic(mnemonic: string, password: string = ''): 
   return new Uint8Array(derivedBitsArray);
 }
 
+interface PasskeyCredential {
+  id: string;
+  name: string;
+  createdAt: number;
+}
+
 interface PasswordUnlockProps {
   onUnlock: () => void;
 }
@@ -36,27 +42,55 @@ export const PasswordUnlock: React.FC<PasswordUnlockProps> = ({ onUnlock }) => {
   const [error, setError] = useState('');
   const [forgot, setForgot] = useState(false);
   const [mnemonic, setMnemonic] = useState('');
-  const [passkeyAvailable, setPasskeyAvailable] = useState(false);
-  const [passkeyId, setPasskeyId] = useState<string>();
-  const [passkeyUserId, setPasskeyUserId] = useState<string>();
+  const [passkeys, setPasskeys] = useState<PasskeyCredential[]>([]);
+  const [hasMultiPasskeys, setHasMultiPasskeys] = useState(false);
+  const [hasLegacyPasskey, setHasLegacyPasskey] = useState(false);
+  const [hasPasswordAuth, setHasPasswordAuth] = useState(false);
+  const [legacyPasskeyId, setLegacyPasskeyId] = useState<string>('');
+  const [legacyPasskeyUserId, setLegacyPasskeyUserId] = useState<string>('');
+  const [isWebAuthnSupported, setIsWebAuthnSupported] = useState(false);
   const [glitchEffect, setGlitchEffect] = useState(false);
   const [securityText, setSecurityText] = useState<string[]>([]);
+  const [passkeyLoading, setPasskeyLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
 
   useEffect(() => {
+    // Check WebAuthn support
+    setIsWebAuthnSupported(
+      window.PublicKeyCredential !== undefined && 
+      typeof window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === 'function'
+    );
+    
+    // Check for available authentication methods
     (async () => {
       try {
-        // Retrieve stored passkey credential ID and user ID separately
+        // Check if password is set
+        const { walletPasswordHash } = await storage.get('walletPasswordHash');
+        setHasPasswordAuth(!!walletPasswordHash);
+        
+        // Check for legacy passkey
         const resId = await storage.get('walletPasskeyId');
         const id = resId.walletPasskeyId;
         const resUser = await storage.get('walletPasskeyUserId');
         const userId = resUser.walletPasskeyUserId;
+        
         if (id && userId) {
-          setPasskeyAvailable(true);
-          setPasskeyId(id);
-          setPasskeyUserId(userId);
+          setHasLegacyPasskey(true);
+          setLegacyPasskeyId(id);
+          setLegacyPasskeyUserId(userId);
         }
+        
+        // Check for new passkey credentials
+        const { passkeyCredentials } = await storage.get('passkeyCredentials');
+        if (passkeyCredentials && passkeyCredentials.length > 0) {
+          setPasskeys(passkeyCredentials);
+          setHasMultiPasskeys(true);
+        }
+        
+        setInitialLoading(false);
       } catch (e) {
-        console.error('Failed to check passkey:', e);
+        console.error('Failed to load authentication methods:', e);
+        setInitialLoading(false);
       }
     })();
   }, []);
@@ -115,35 +149,123 @@ export const PasswordUnlock: React.FC<PasswordUnlockProps> = ({ onUnlock }) => {
     }
   };
 
-  const handlePasskeyUnlock = async () => {
+  // Handle legacy passkey authentication
+  const handleLegacyPasskeyUnlock = async () => {
+    if (!hasLegacyPasskey || !isWebAuthnSupported) {
+      setError('No legacy passkey available');
+      return;
+    }
+    
     setError('');
+    setPasskeyLoading(true);
+    setGlitchEffect(true);
+    
     try {
-      setGlitchEffect(true);
-      if (!passkeyId || !passkeyUserId) {
-        setError('Biometric authentication not configured');
-        setGlitchEffect(false);
-        return;
-      }
-      const rawId = Uint8Array.from(atob(passkeyId), c => c.charCodeAt(0));
-      const userId = Uint8Array.from(atob(passkeyUserId), c => c.charCodeAt(0));
+      // Convert base64 string to ArrayBuffer
+      const rawId = Uint8Array.from(atob(legacyPasskeyId), c => c.charCodeAt(0));
+      
+      // Create a random challenge
+      const challenge = new Uint8Array(32);
+      window.crypto.getRandomValues(challenge);
+      
+      // Legacy authentication
       const options: PublicKeyCredentialRequestOptions = {
-        challenge: crypto.getRandomValues(new Uint8Array(32)),
+        challenge,
         allowCredentials: [{ id: rawId, type: 'public-key' }],
         timeout: 60000,
         userVerification: 'preferred'
       };
+      
       await navigator.credentials.get({ publicKey: options });
       await storage.set({ walletLastUnlocked: Date.now() });
+      
       setTimeout(() => {
         setGlitchEffect(false);
+        setPasskeyLoading(false);
         onUnlock();
       }, 800);
     } catch (e) {
-      console.error('Passkey unlock failed:', e);
-      setError('Biometric verification failed');
+      console.error('Legacy passkey unlock failed:', e);
+      setError(`Biometric verification failed: ${e instanceof Error ? e.message : String(e)}`);
       setGlitchEffect(false);
+      setPasskeyLoading(false);
     }
   };
+
+  // Handle new multi-passkey authentication
+  const handleMultiPasskeyUnlock = async () => {
+    if (!hasMultiPasskeys || !isWebAuthnSupported) {
+      setError('No passkeys available');
+      return;
+    }
+    
+    setError('');
+    setPasskeyLoading(true);
+    setGlitchEffect(true);
+    
+    try {
+      // For passkey authentication, we need to collect the credential IDs
+      const allowCredentials = passkeys.map(passkey => {
+        // Convert base64 string to ArrayBuffer
+        const rawId = Uint8Array.from(atob(passkey.id), c => c.charCodeAt(0));
+        return {
+          id: rawId,
+          type: 'public-key' as PublicKeyCredentialType
+        };
+      });
+      
+      // Create a random challenge
+      const challenge = new Uint8Array(32);
+      window.crypto.getRandomValues(challenge);
+      
+      // Create authentication options
+      const authOptions: PublicKeyCredentialRequestOptions = {
+        challenge,
+        allowCredentials,
+        timeout: 60000,
+        userVerification: 'preferred'
+      };
+      
+      // Authenticate with WebAuthn
+      const credential = await navigator.credentials.get({
+        publicKey: authOptions
+      });
+      
+      if (credential) {
+        // Authentication successful
+        await storage.set({ walletLastUnlocked: Date.now() });
+        setTimeout(() => {
+          setGlitchEffect(false);
+          setPasskeyLoading(false);
+          onUnlock();
+        }, 800);
+      } else {
+        throw new Error('Authentication failed');
+      }
+    } catch (e) {
+      console.error('Passkey authentication failed:', e);
+      setError(`Biometric authentication failed: ${e instanceof Error ? e.message : String(e)}`);
+      setGlitchEffect(false);
+      setPasskeyLoading(false);
+    }
+  };
+
+  // Combined passkey handler
+  const handlePasskeyUnlock = async () => {
+    // Try the multi-passkey system first if available
+    if (hasMultiPasskeys) {
+      return handleMultiPasskeyUnlock();
+    }
+    // Fall back to legacy passkey if available
+    else if (hasLegacyPasskey) {
+      return handleLegacyPasskeyUnlock();
+    }
+    // No passkeys available
+    else {
+      setError('No passkeys available');
+    }
+  };
+
   // Handle recovery via mnemonic seed phrase
   const handleMnemonicRecover = async () => {
     setError('');
@@ -183,6 +305,19 @@ export const PasswordUnlock: React.FC<PasswordUnlockProps> = ({ onUnlock }) => {
       setGlitchEffect(false);
     }
   };
+
+  // Check if we have any authentication methods available
+  const hasAnyAuthMethod = hasPasswordAuth || hasMultiPasskeys || hasLegacyPasskey;
+
+  if (initialLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[536px]">
+        <div className="text-cyber-green font-terminal animate-pulse">
+          INITIALIZING SECURITY SYSTEMS...
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[536px] space-y-8 py-4 relative">
@@ -233,50 +368,81 @@ export const PasswordUnlock: React.FC<PasswordUnlockProps> = ({ onUnlock }) => {
                   onClick={() => { setForgot(false); setError(''); }}
                   className="w-full text-cyber-green font-terminal text-xs underline mt-2"
                 >
-                  BACK TO PASSWORD
+                  BACK TO LOGIN
                 </button>
               </>
             ) : (
               <>
+                {!hasAnyAuthMethod && (
+                  <div className="bg-cyber-orange/10 border border-cyber-orange/30 p-4 rounded-sm mb-4 animate-pulse">
+                    <div className="flex items-center text-cyber-orange">
+                      <AlertTriangle className="w-5 h-5 mr-2 text-cyber-orange" />
+                      <h3 className="text-sm font-terminal">NO AUTHENTICATION METHODS</h3>
+                    </div>
+                    <p className="text-cyber-orange/80 text-xs font-terminal mt-2">
+                      No password or passkeys are set up for this wallet. Use the recovery option below.
+                    </p>
+                  </div>
+                )}
+
                 <h3 className="text-cyber-green font-terminal text-sm mb-3 flex items-center border-b border-cyber-green/20 pb-2">
                   <Lock className="w-4 h-4 mr-1 text-cyber-pink" />
                   <span className="tracking-wider">DECRYPT ACCESS KEY</span>
                 </h3>
-                <div className="relative">
-                  <div className="absolute -left-2 -top-2 text-[8px] font-terminal text-cyber-green/60">SYS:// root/access</div>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    placeholder="Enter cryptographic key"
-                    className="w-full bg-cyber-black/70 border border-cyber-green/50 rounded-sm p-2 text-cyber-green font-terminal text-sm focus:border-cyber-pink focus:outline-none shadow-[0_0_8px_rgba(37,255,151,0.3)]"
-                  />
-                  <div className="absolute right-2 top-2 text-[8px] font-terminal text-cyber-green/40">
-                    {password && Array(password.length).fill('*').join('')}
-                  </div>
-                  <div className="absolute -right-2 -bottom-2 text-[8px] font-terminal text-cyber-green/60">SEC://LVL.9</div>
-                </div>
+                
+                {(hasMultiPasskeys || hasLegacyPasskey) && isWebAuthnSupported && (
+                  <button
+                    onClick={handlePasskeyUnlock}
+                    disabled={passkeyLoading}
+                    className="w-full p-3 mb-3 bg-cyber-green/5 text-cyber-green border border-cyber-green/50 rounded-sm hover:bg-cyber-green/10 transition-all duration-300 font-terminal text-sm flex items-center justify-center shadow-[0_0_12px_rgba(37,255,151,0.2)]"
+                  >
+                    {passkeyLoading ? (
+                      <span className="flex items-center animate-pulse">
+                        <Shield className="w-4 h-4 text-cyber-green mr-2 animate-pulse" />
+                        VERIFYING...
+                      </span>
+                    ) : (
+                      <>
+                        <Fingerprint className="w-5 h-5 text-cyber-green mr-2" />
+                        UNLOCK WITH PASSKEY
+                      </>
+                    )}
+                  </button>
+                )}
+                
+                {hasPasswordAuth && (
+                  <>
+                    <div className="relative">
+                      <div className="absolute -left-2 -top-2 text-[8px] font-terminal text-cyber-green/60">SYS:// root/access</div>
+                      <input
+                        type="password"
+                        value={password}
+                        onChange={e => setPassword(e.target.value)}
+                        placeholder="Enter cryptographic key"
+                        className="w-full bg-cyber-black/70 border border-cyber-green/50 rounded-sm p-2 text-cyber-green font-terminal text-sm focus:border-cyber-pink focus:outline-none shadow-[0_0_8px_rgba(37,255,151,0.3)]"
+                      />
+                      <div className="absolute right-2 top-2 text-[8px] font-terminal text-cyber-green/40">
+                        {password && Array(password.length).fill('*').join('')}
+                      </div>
+                      <div className="absolute -right-2 -bottom-2 text-[8px] font-terminal text-cyber-green/60">SEC://LVL.9</div>
+                    </div>
+                    
+                    <button
+                      onClick={handlePasswordUnlock}
+                      disabled={!password}
+                      className="btn-primary w-full flex items-center justify-center space-x-2 font-terminal text-xs disabled:opacity-50 disabled:cursor-not-allowed border-cyber-pink hover:bg-cyber-pink/20 transition-all duration-300"
+                    >
+                      <span className="text-cyber-pink mr-1">&gt;</span> AUTHENTICATE
+                    </button>
+                  </>
+                )}
+                
                 {error && (
                   <p className="text-cyber-pink text-xs font-terminal border border-cyber-pink/30 bg-cyber-pink/10 p-2 animate-pulse">
                     [ERROR] {error}
                   </p>
                 )}
-                <button
-                  onClick={handlePasswordUnlock}
-                  disabled={!password}
-                  className="btn-primary w-full flex items-center justify-center space-x-2 font-terminal text-xs disabled:opacity-50 disabled:cursor-not-allowed border-cyber-pink hover:bg-cyber-pink/20 transition-all duration-300"
-                >
-                  <span className="text-cyber-pink mr-1">&gt;</span> AUTHENTICATE
-                </button>
-                {passkeyAvailable && (
-                  <button
-                    onClick={handlePasskeyUnlock}
-                    className="w-full p-2 bg-cyber-green/5 text-cyber-green border border-cyber-green/50 rounded-sm hover:bg-cyber-green/10 transition-all duration-300 font-terminal text-xs flex items-center justify-center space-x-1 shadow-[0_0_12px_rgba(37,255,151,0.2)]"
-                  >
-                    <Shield className="w-3 h-3 text-cyber-pink" />
-                    <span className="ml-1">BIOMETRIC AUTH</span>
-                  </button>
-                )}
+                
                 {/* Matrix-like raining code effect */}
                 <div className="absolute right-3 bottom-20 text-[6px] font-terminal text-cyber-green/60 opacity-70" style={{writingMode: 'vertical-rl'}}>
                   {Array(6).fill(0).map((_, i) => (

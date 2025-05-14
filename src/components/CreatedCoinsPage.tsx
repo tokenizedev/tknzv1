@@ -3,9 +3,14 @@ import { useStore } from '../store';
 import { getAllCreatedCoins } from '../firebase';
 import { CreatedCoin } from '../types';
 import { Loader } from './Loader';
-import { Coins, ExternalLink } from 'lucide-react';
+import { Coins, ExternalLink, ArrowLeft, Repeat } from 'lucide-react';
 
-export const CreatedCoinsPage: React.FC = () => {
+interface CreatedCoinsPageProps {
+  onBack: () => void;
+  onSwapToken?: (mint: string) => void;
+}
+
+export const CreatedCoinsPage: React.FC<CreatedCoinsPageProps> = ({ onBack, onSwapToken }) => {
   const { wallets } = useStore();
   const [coins, setCoins] = useState<CreatedCoin[]>([]);
   const [loading, setLoading] = useState(true);
@@ -23,7 +28,18 @@ export const CreatedCoinsPage: React.FC = () => {
   }
 
   return (
-    <div className="py-6 space-y-4">
+    <div className="py-2 space-y-2">
+      <div className="flex items-center px-2 mb-2">
+        <button
+          onClick={onBack}
+          className="p-1 hover:bg-cyber-green/10 rounded-full mr-3"
+          title="Back"
+        >
+          <ArrowLeft className="w-5 h-5 text-cyber-green/80 hover:text-cyber-green" />
+        </button>
+        <h1 className="text-xl font-terminal text-cyber-green">Community Coins</h1>
+      </div>
+      
       <div className="crypto-card">
         <div className="crypto-card-header flex items-center justify-between">
           <h2 className="crypto-card-title">All Created Coins</h2>
@@ -70,6 +86,13 @@ export const CreatedCoinsPage: React.FC = () => {
                     >
                       <ExternalLink className="w-4 h-4 text-cyber-green" />
                     </a>
+                    <button
+                      onClick={() => onSwapToken?.(coin.address)}
+                      className="p-2 border border-cyber-green/30 hover:bg-cyber-green/10 rounded-sm transition-colors"
+                      title="Swap Token"
+                    >
+                      <Repeat className="w-4 h-4 text-cyber-green" />
+                    </button>
                   </div>
                 </div>
               );
