@@ -439,7 +439,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
             <p className="text-cyber-green/70 text-sm mt-1 ml-8">Enable or disable on-page Buy buttons</p>
           </div>
           {activeSection === 'buy' && (
-            <div className="p-4 bg-cyber-black/50 animate-slide-down">
+            <div className="p-4 bg-cyber-black/50 animate-slide-down space-y-2">
               <label className="flex items-center space-x-2">
                 <input
                   type="checkbox"
@@ -453,6 +453,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
                 />
                 <span className="text-cyber-green text-sm font-terminal">Enable Buy Buttons</span>
               </label>
+              <p className="text-cyber-green/50 text-xs font-terminal">
+                Changes will take effect after page refresh.
+              </p>
             </div>
           )}
         </div>
