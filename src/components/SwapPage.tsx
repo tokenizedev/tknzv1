@@ -124,17 +124,22 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, 
   // If an initialToMint was provided, auto-select it as output token
   useEffect(() => {
     if (!initialToMint || tokenList.length === 0) return;
-    const t = tokenList.find(tok => tok.address === initialToMint);
-    if (t) {
+    // Attempt to find token by mint address
+    let found = tokenList.find(tok => tok.address === initialToMint);
+    // If not found by address, try symbol (case-insensitive)
+    if (!found) {
+      found = tokenList.find(tok => tok.symbol.toLowerCase() === initialToMint.toLowerCase());
+    }
+    if (found) {
       setToToken({
-        id: t.address,
-        symbol: t.symbol,
-        name: t.name,
-        logoURI: t.logoURI,
-        decimals: t.decimals,
+        id: found.address,
+        symbol: found.symbol,
+        name: found.name,
+        logoURI: found.logoURI,
+        decimals: found.decimals,
       });
-    } else {
-      // fallback: fetch token info
+    } else if (initialToMint.length >= 32) {
+      // Fallback: treat initialToMint as mint address and fetch token info
       getTokenInfo(initialToMint)
         .then(data => {
           setToToken({
@@ -146,6 +151,8 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, 
           });
         })
         .catch(err => console.error('Initial to-token lookup failed:', err));
+    } else {
+      console.error(`Token ${initialToMint} not found as address or symbol`);
     }
   }, [initialToMint, tokenList]);
   // Jupiter order preview state, includes overall fee and platform (referral) fee in bps
