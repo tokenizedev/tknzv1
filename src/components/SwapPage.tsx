@@ -1,16 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { VersionedTransaction } from '@solana/web3.js';
 import { useStore } from '../store';
+import { web3Connection } from '../utils/connection';
+import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 import {
-  getTaggedTokens,
-  getTokenInfo,
-  TokenInfoAPI,
   getUltraBalances,
-  BalanceInfo,
   getOrder,
   executeOrder,
   getPrices,
+  getTokenInfo,
 } from '../services/jupiterService';
+import type { TokenInfoAPI, BalanceInfo } from '../services/jupiterService';
+import { loadAllTokens } from '../services/tokenService';
 import type { CreatedCoin } from '../types';
 import { TokenSelector } from './swap/TokenSelector';
 import { AmountInput } from './swap/AmountInput';
@@ -21,6 +22,8 @@ import { SwapConfirmation } from './swap/SwapConfirmation';
 import { SwapStatus, SwapStatusType } from './swap/SwapStatus';
 import { FaInfoCircle } from 'react-icons/fa';
 const SYSTEM_TOKEN = 'AfyDiEptGHEDgD69y56XjNSbTs23LaF1YHANVKnWpump'
+// Native SOL mint address
+const NATIVE_MINT = 'So11111111111111111111111111111111111111112';
 // Simplified token option for UI
 interface TokenOption {
   id: string;
@@ -32,13 +35,16 @@ interface TokenOption {
 
 // Token list state (fetched via Jupiter Token API)
 interface SwapPageProps {
-  isSidebar?: boolean;
-  // Optional initial mint address to pre-select as 'from' token
-  initialFromMint?: string;
+  initialMint?: string | null;
+  /**
+   * Optional initial output mint; if provided, pre-selects the "to" token.
+   */
+  initialToMint?: string | null;
+  onBack: () => void;
 }
 
 
-export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false, initialFromMint }) => {
+export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, onBack }) => {
   // Wallet state
   const activeWallet = useStore(state => state.activeWallet);
   // Platform-wide created tokens
@@ -68,117 +74,13 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false, initialFr
   }, [activeWallet]);
   // Load all platform-created tokens from the api
   
-  // Fetch verified Jupiter tokens, merge with custom TKNZ, SOL, platform-created, and leaderboard tokens
+  // Load tokens (cached via RxDB) and merge with platform coins
   useEffect(() => {
     setLoadingTokens(true);
-    (async () => {
-      try {
-        // Fetch verified tokens from Jupiter
-        const tokens = await getTaggedTokens('verified');
-        // Define custom TKNZ stub
-        const customStub: TokenInfoAPI = {
-          address: 'AfyDiEptGHEDgD69y56XjNSbTs23LaF1YHANVKnWpump',
-          name: 'TKNZ.fun',
-          symbol: 'TKNZ',
-          decimals: 0, // placeholder
-          logoURI: 'https://ipfs.io/ipfs/QmPjLEGEcvEDgGrxNPZdFy1RzfiWRyJYu6YaicM6oZGddQ',
-          tags: [],
-          daily_volume: 0,
-          created_at: new Date('2025-04-30 17:07:42').toISOString(),
-          freeze_authority: null,
-          mint_authority: null,
-          permanent_delegate: null,
-          minted_at: null,
-          extensions: {},
-        };
-        // Fetch real metadata for custom token
-        const customMeta = await getTokenInfo(customStub.address);
-        const customToken: TokenInfoAPI = {
-          ...customStub,
-          decimals: customMeta.decimals,
-          logoURI: customStub.logoURI || customMeta.logoURI,
-        };
-        // Identify SOL token
-        const solMint = 'So11111111111111111111111111111111111111112';
-        const solToken = tokens.find(t => t.address === solMint);
-        // Filter out duplicates
-        const remaining = tokens.filter(
-          t => t.address !== solMint && t.address !== customToken.address
-        );
-        // Map platform-created coins into token info objects with on-chain decimals
-        const createdTokens: TokenInfoAPI[] = await Promise.all(
-          platformCoins.map(async c => {
-            const info = await getTokenInfo(c.address);
-            return {
-              address: c.address,
-              name: c.name,
-              symbol: c.ticker,
-              decimals: info.decimals,
-              logoURI: info.logoURI || '',
-              tags: [],
-              daily_volume: 0,
-              created_at: c.createdAt
-                ? new Date(c.createdAt).toISOString()
-                : new Date().toISOString(),
-              freeze_authority: info.freeze_authority,
-              mint_authority: info.mint_authority,
-              permanent_delegate: info.permanent_delegate,
-              minted_at: info.minted_at,
-              extensions: info.extensions,
-            };
-          })
-        );
-        // Build the final token list: custom, SOL, created, verified remaining
-        const finalList: TokenInfoAPI[] = [customToken];
-        if (solToken) finalList.push(solToken);
-        finalList.push(...createdTokens);
-        
-        // Fetch leaderboard tokens
-        const lbResponse = await fetch('https://tknz.fun/.netlify/functions/leaderboard');
-        if (!lbResponse.ok) {
-          throw new Error(`Leaderboard fetch error: ${lbResponse.status} ${lbResponse.statusText}`);
-        }
-
-        const lbData = await lbResponse.json()
-        const { entries: lbTokens } = lbData
-        
-        // Map leaderboard tokens with on-chain decimals
-        const leaderboardTokens: TokenInfoAPI[] = await Promise.all(
-          lbTokens.map(async r => {
-            const info = await getTokenInfo(r.address);
-            return {
-              address: r.address,
-              name: r.name,
-              symbol: (r.symbol || '').toString(),
-              decimals: info.decimals,
-              logoURI: r.logoURI || info.logoURI,
-              tags: [],
-              daily_volume: 0,
-              created_at: r.launchTime
-                ? new Date(r.launchTime).toISOString()
-                : new Date().toISOString(),
-              freeze_authority: info.freeze_authority,
-              mint_authority: info.mint_authority,
-              permanent_delegate: info.permanent_delegate,
-              minted_at: info.minted_at,
-              extensions: info.extensions,
-            };
-          })
-        );
-
-        if (leaderboardTokens.find(t => t.address === SYSTEM_TOKEN)) {
-          leaderboardTokens.splice(leaderboardTokens.findIndex(t => t.address === SYSTEM_TOKEN), 1)
-        }
-
-        const allTokens = [...finalList, ...leaderboardTokens]
-        allTokens.push(...remaining);
-        setTokenList(allTokens);
-      } catch (err) {
-        setTokenError(err instanceof Error ? err.message : String(err));
-      } finally {
-        setLoadingTokens(false);
-      }
-    })();
+    loadAllTokens(platformCoins)
+      .then(tokens => setTokenList(tokens))
+      .catch(err => setTokenError(err instanceof Error ? err.message : String(err)))
+      .finally(() => setLoadingTokens(false));
   }, [platformCoins]);
   // Token states
   const [fromToken, setFromToken] = useState<TokenOption | null>(null);
@@ -204,21 +106,48 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false, initialFr
     show: false,
     status: 'pending',
   });
-  // If an initialFromMint was provided, auto-select it as input token
+  // If an initialMint was provided, auto-select it as input token (fallback to Jupiter lookup)
   useEffect(() => {
-    if (initialFromMint && tokenList.length > 0) {
-      const t = tokenList.find(tok => tok.address === initialFromMint);
-      if (t) {
-        setFromToken({
-          id: t.address,
-          symbol: t.symbol,
-          name: t.name,
-          logoURI: t.logoURI,
-          decimals: t.decimals,
-        });
-      }
+    if (!initialMint || tokenList.length === 0) return;
+    const t = tokenList.find(tok => tok.address === initialMint);
+    if (t) {
+      setFromToken({ id: t.address, symbol: t.symbol, name: t.name, logoURI: t.logoURI, decimals: t.decimals });
+    } else {
+      // fallback: fetch token info from Jupiter Token API
+      getTokenInfo(initialMint)
+        .then(data => {
+          setFromToken({ id: data.address, symbol: data.symbol, name: data.name, logoURI: data.logoURI, decimals: data.decimals });
+        })
+        .catch(err => console.error('Initial token lookup failed:', err));
     }
-  }, [initialFromMint, tokenList]);
+  }, [initialMint, tokenList]);
+  // If an initialToMint was provided, auto-select it as output token
+  useEffect(() => {
+    if (!initialToMint || tokenList.length === 0) return;
+    const t = tokenList.find(tok => tok.address === initialToMint);
+    if (t) {
+      setToToken({
+        id: t.address,
+        symbol: t.symbol,
+        name: t.name,
+        logoURI: t.logoURI,
+        decimals: t.decimals,
+      });
+    } else {
+      // fallback: fetch token info
+      getTokenInfo(initialToMint)
+        .then(data => {
+          setToToken({
+            id: data.address,
+            symbol: data.symbol,
+            name: data.name,
+            logoURI: data.logoURI,
+            decimals: data.decimals,
+          });
+        })
+        .catch(err => console.error('Initial to-token lookup failed:', err));
+    }
+  }, [initialToMint, tokenList]);
   // Jupiter order preview state, includes overall fee and platform (referral) fee in bps
   const [previewData, setPreviewData] = useState<{
     inputAmount: number;
@@ -385,14 +314,31 @@ export const SwapPage: React.FC<SwapPageProps> = ({ isSidebar = false, initialFr
     calculateFromAmount(value);
   };
 
-  // Handle max button click
-  const handleMaxClick = () => {
-    if (fromToken) {
-      const bal = getUiBalance(fromToken);
-      setFromAmount(bal.toString());
-      setFromAmountUsd('');
-      // preview fetch will recalc USD and toAmount
+  // Handle max button click, subtract platform & Jupiter fees and gas for SOL
+  const handleMaxClick = async () => {
+    if (!fromToken) return;
+    // Get raw balance in token units
+    let bal = getUiBalance(fromToken);
+    // Subtract gas estimate for native SOL
+    if (fromToken.id === NATIVE_MINT) {
+      try {
+        const latest = await web3Connection.getLatestBlockhash();
+        const feeCalcRes = await web3Connection.getFeeCalculatorForBlockhash(latest.blockhash);
+        const lamportsPerSig = feeCalcRes.value?.feeCalculator?.lamportsPerSignature ?? 0;
+        const gasSol = lamportsPerSig / LAMPORTS_PER_SOL;
+        bal = bal - gasSol;
+      } catch (err) {
+        console.error('Failed to estimate gas for swap max:', err);
+      }
     }
+    // Subtract total fee percentage (Jupiter fee + platform fee)
+    const feeBps = previewData?.feeBps ?? 0;
+    const platformFeeBps = previewData?.platformFeeBps 
+      ?? parseInt(import.meta.env.VITE_AFFILIATE_FEE_BPS ?? '0', 10);
+    const totalFeePct = (feeBps + platformFeeBps) / 10000;
+    const maxAmt = bal * (1 - totalFeePct);
+    setFromAmount(maxAmt > 0 ? maxAmt.toString() : '0');
+    setFromAmountUsd('');
   };
 
   // Switch tokens

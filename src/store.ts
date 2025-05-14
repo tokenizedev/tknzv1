@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Keypair, VersionedTransaction, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL, TransactionInstruction } from '@solana/web3.js';
+import { Keypair, VersionedTransaction, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL, TransactionInstruction, TokenAmount } from '@solana/web3.js';
 import { 
   logEventToFirestore, 
   getCreatedCoins, 
@@ -12,18 +12,16 @@ import { createConnection, web3Connection } from './utils/connection';
 const DEV_MODE = process.env.NODE_ENV === 'development' && !chrome?.tabs;
 import { compareVersions } from 'compare-versions'
 import { TOKEN_PROGRAM_ID, createTransferInstruction, getAssociatedTokenAddress, createAssociatedTokenAccountInstruction } from '@solana/spl-token';
-import { getTokenInfo } from './services/jupiterService';
+import { getTokenInfo, getUltraBalances, getPrices, BalanceInfo } from './services/jupiterService';
 import { WalletState, CreatedCoin, ArticleData, CoinCreationParams, TokenCreationData, WalletInfo } from './types';
 import { v4 as uuidv4 } from 'uuid';
 
 const TOKEN_CREATION_API_URL = 'https://tknz.fun/.netlify/functions/article-token';
 const APP_VERSION_API_URL = 'https://tknz.fun/.netlify/functions/version';
+const SOL_PRICE_API_URL = 'https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd';
 
-// Native SOL mint address for transfers
 const NATIVE_MINT = 'So11111111111111111111111111111111111111112';
 const connection = createConnection();
-
-// Refresh interval in milliseconds (1 minute)
 const REFRESH_INTERVAL = 60 * 1000;
 
 /**
@@ -54,11 +52,42 @@ async function deriveSeedFromMnemonic(mnemonic: string, password: string = ''): 
   return new Uint8Array(derivedBits);
 }
 
+// Fetch the USD price for an SPL token or SOL using Jupiter lite-api
+async function fetchPriceForToken(mintAddress: string): Promise<number> {
+  // Native SOL price via Coingecko
+  if (mintAddress === NATIVE_MINT) {
+    try {
+      const priceResponse = await fetch(SOL_PRICE_API_URL);
+      if (priceResponse.ok) {
+        const priceData = await priceResponse.json();
+        return priceData.solana?.usd || 0;
+      }
+    } catch (error) {
+      console.error(`Failed to fetch SOL price for ${mintAddress}:`, error);
+    }
+    return 0;
+  }
+  // Example flat price for USDC (replace with actual mint if needed)
+  if (mintAddress.toLowerCase() === 'epjfixtd3cvsmr9ftjmy5x5rpc17hm1ccly48jmyrhbf') {
+    return 1.0;
+  }
+  // Other tokens: use Jupiter lite-api with caching
+  try {
+    const priceResp = await getPrices([mintAddress], 'usd');
+    const detail = priceResp.data[mintAddress];
+    return detail ? parseFloat(detail.price) : 0;
+  } catch (error) {
+    console.warn(`Could not fetch price for token ${mintAddress}:`, error);
+    return 0;
+  }
+}
+
 export const useStore = create<WalletState>((set, get) => ({
   wallets: [],
   activeWallet: null,
   wallet: null,
-  balance: 0,
+  nativeSolBalance: 0,
+  totalPortfolioUsdValue: 0,
   error: null,
   createdCoins: [],
   isRefreshing: false,
@@ -66,26 +95,22 @@ export const useStore = create<WalletState>((set, get) => ({
   isLatestVersion: true,
   updateAvailable: null,
   migrationStatus: 'idle',
+  // Address book entries (address -> label)
+  addressBook: {},
 
   initializeWallet: async () => {
     try {
       set({ error: null });
-
-      // Get wallet data from storage
       const storedWallets = await storage.get('wallets');
       const storedActiveWalletId = await storage.get('activeWalletId');
       const storedInvestment = await storage.get('investmentAmount');
       let wallets: WalletInfo[] = [];
       let activeWallet: WalletInfo | null = null;
 
-      // Check if we have stored wallets
       if (storedWallets.wallets && Array.isArray(storedWallets.wallets) && storedWallets.wallets.length > 0) {
-        // Convert stored wallet data back to WalletInfo objects with Keypair
         wallets = storedWallets.wallets.map((walletData: any) => {
-          // Convert secretKey from array to Uint8Array for Keypair
           const secretKey = new Uint8Array(walletData.keypairSecretKey);
           const keypair = Keypair.fromSecretKey(secretKey);
-
           return {
             id: walletData.id,
             name: walletData.name,
@@ -94,118 +119,68 @@ export const useStore = create<WalletState>((set, get) => ({
             isActive: walletData.id === storedActiveWalletId.activeWalletId
           };
         });
-
-        // Find the active wallet
         activeWallet = wallets.find(w => w.isActive) || wallets[0];
-        
-        // If no active wallet set, mark first one as active
-        if (!activeWallet.isActive) {
-          activeWallet.isActive = true;
-        }
+        if (activeWallet && !wallets.find(w => w.isActive)) activeWallet.isActive = true;
       } else {
-        // Check for legacy wallet data
         const storedLegacySecret = await storage.get('walletSecret');
-        
         if (storedLegacySecret.walletSecret && Array.isArray(storedLegacySecret.walletSecret)) {
-          try {
-            // Convert legacy wallet to new format
-            const secret = new Uint8Array(storedLegacySecret.walletSecret);
-            const keypair = Keypair.fromSecretKey(secret);
-            const walletId = uuidv4();
-            
-            activeWallet = {
-              id: walletId,
-              name: 'Primary Wallet',
-              publicKey: keypair.publicKey.toString(),
-              keypair,
-              isActive: true
-            };
-            
-            wallets = [activeWallet];
-          } catch (e) {
-            console.error('Invalid stored wallet secret, generating new wallet');
-            // Create a new wallet
+            try {
+                const secret = new Uint8Array(storedLegacySecret.walletSecret);
+                const keypair = Keypair.fromSecretKey(secret);
+                const walletId = uuidv4();
+                activeWallet = { id: walletId, name: 'Primary Wallet', publicKey: keypair.publicKey.toString(), keypair, isActive: true };
+                wallets = [activeWallet];
+            } catch (e) {
+                console.error('Invalid legacy secret, generating new wallet');
+                const keypair = Keypair.generate();
+                const walletId = uuidv4();
+                activeWallet = { id: walletId, name: 'Primary Wallet', publicKey: keypair.publicKey.toString(), keypair, isActive: true };
+                wallets = [activeWallet];
+            }
+        } else {
             const keypair = Keypair.generate();
             const walletId = uuidv4();
-            
-            activeWallet = {
-              id: walletId,
-              name: 'Primary Wallet',
-              publicKey: keypair.publicKey.toString(),
-              keypair,
-              isActive: true
-            };
-            
+            activeWallet = { id: walletId, name: 'Primary Wallet', publicKey: keypair.publicKey.toString(), keypair, isActive: true };
             wallets = [activeWallet];
-          }
-        } else {
-          // No wallets found, create a new wallet
-          const keypair = Keypair.generate();
-          const walletId = uuidv4();
-          
-          activeWallet = {
-            id: walletId,
-            name: 'Primary Wallet',
-            publicKey: keypair.publicKey.toString(),
-            keypair,
-            isActive: true
-          };
-          
-          wallets = [activeWallet];
         }
-        
-        // Save the new wallet data
         await storage.set({
-          wallets: wallets.map(w => ({
-            id: w.id,
-            name: w.name,
-            publicKey: w.publicKey,
-            keypairSecretKey: Array.from(w.keypair.secretKey), // Store as array for JSON serialization
-            avatar: (w as any).avatar
-          })),
+          wallets: wallets.map(w => ({ id: w.id, name: w.name, publicKey: w.publicKey, keypairSecretKey: Array.from(w.keypair.secretKey), avatar: (w as any).avatar })),
           activeWalletId: activeWallet.id
         });
       }
 
-      // Run Migration for the active wallet
       if (activeWallet) {
         await get().migrateLocalStorageToFirestore(activeWallet.keypair);
       }
       
-      // Fetch created coins from Firestore for active wallet
-      const fetchedCoins = activeWallet 
-        ? await getCreatedCoins(activeWallet.publicKey) 
-        : [];
+      const fetchedCoins = activeWallet ? await getCreatedCoins(activeWallet.publicKey) : [];
       
-      // Set state with wallet data
+      // Load persisted address book
+      const storedAB = await storage.get('addressBook');
+      const addressBook = storedAB.addressBook ?? {};
       set({ 
         wallets,
         activeWallet,
-        wallet: activeWallet?.keypair || null, // Backwards compatibility
+        wallet: activeWallet?.keypair || null,
         createdCoins: fetchedCoins || [],
-        investmentAmount: storedInvestment.investmentAmount || 0
+        investmentAmount: storedInvestment.investmentAmount || 0,
+        addressBook
       });
 
-      // Get initial balance and token balances
-      await get().getBalance();
-      await get().refreshTokenBalances();
+      await get().refreshPortfolioData();
 
-      // Set up auto-refresh every minute
       const autoRefresh = setInterval(async () => {
         if (get().activeWallet) {
-          await get().getBalance();
-          await get().refreshTokenBalances();
+          await get().refreshPortfolioData();
         } else {
           clearInterval(autoRefresh);
         }
       }, REFRESH_INTERVAL);
 
-      // Add visibility change listener for Chrome extension
       if (!DEV_MODE && document.hidden !== undefined) {
         document.addEventListener('visibilitychange', async () => {
           if (!document.hidden && get().activeWallet) {
-            await get().getBalance();
-            await get().refreshTokenBalances();
+            await get().refreshPortfolioData();
           }
         });
       }
@@ -213,11 +188,118 @@ export const useStore = create<WalletState>((set, get) => ({
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       console.error('Failed to initialize wallet:', error);
-      set({ 
-        error: `Failed to initialize wallet: ${errorMessage}. Please try reloading the extension.`,
-        wallets: [],
-        activeWallet: null,
-        wallet: null 
+      set({ error: `Failed to initialize wallet: ${errorMessage}.`, wallets: [], activeWallet: null, wallet: null });
+    }
+  },
+  
+  refreshPortfolioData: async () => {
+    const { activeWallet } = get();
+    if (!activeWallet) return;
+
+    set({ isRefreshing: true });
+    let currentNativeSolBalance = 0;
+    let nativeSolTotalUsdValue = 0;
+    let sumOfSplTokensUsdValue = 0;
+    const updatedCreatedCoins: CreatedCoin[] = [];
+
+    try {
+      // 1. Fetch Native SOL Data
+      const lamports = await connection.getBalance(activeWallet.publicKey);
+      currentNativeSolBalance = lamports / LAMPORTS_PER_SOL;
+      
+      const solPriceUsd = await fetchPriceForToken(NATIVE_MINT); // Using NATIVE_MINT for SOL price
+      nativeSolTotalUsdValue = currentNativeSolBalance * solPriceUsd;
+
+      // 2. Fetch SPL Token Data
+      const currentCoins = get().createdCoins;
+      for (const coin of currentCoins) {
+        let tokenUiAmount = 0;
+        let tokenPrice = 0;
+        let tokenTotalUsdValue = 0;
+        try {
+          const tokenBalanceInfo = await web3Connection.getTokenAccountBalance(new PublicKey(coin.address));
+          // Check if tokenBalanceInfo.value exists and has uiAmount
+          if (tokenBalanceInfo && tokenBalanceInfo.value) {
+             tokenUiAmount = tokenBalanceInfo.value.uiAmount || 0;
+          } else {
+            // If coin.address is not a token account but a mint, try to get ATA balance
+             try {
+                const ata = await getAssociatedTokenAddress(new PublicKey(coin.address), new PublicKey(activeWallet.publicKey));
+                const ataBalanceInfo = await web3Connection.getTokenAccountBalance(ata);
+                if (ataBalanceInfo && ataBalanceInfo.value) {
+                    tokenUiAmount = ataBalanceInfo.value.uiAmount || 0;
+                }
+             } catch (ataError) {
+                console.warn(`Could not get ATA balance for mint ${coin.address}:`, ataError);
+             }
+          }
+
+          tokenPrice = await fetchPriceForToken(coin.address);
+          tokenTotalUsdValue = tokenUiAmount * tokenPrice;
+          sumOfSplTokensUsdValue += tokenTotalUsdValue;
+          
+          updatedCreatedCoins.push({ 
+            ...coin, 
+            balance: tokenUiAmount, 
+            usdPrice: tokenPrice, 
+            usdValue: tokenTotalUsdValue 
+          });
+        } catch (tokenError) {
+          console.error(`Error processing token ${coin.name} (${coin.address}):`, tokenError);
+          updatedCreatedCoins.push({ ...coin, balance: 0, usdPrice: 0, usdValue: 0 }); // Push with zero values on error
+        }
+      }
+
+      // 3. Calculate Total Portfolio USD using Ultra Balances for all tokens
+      let newTotalPortfolioUsdValue = 0;
+      try {
+        const rawBalances: Record<string, BalanceInfo> = await getUltraBalances(activeWallet.publicKey);
+        const balances: Record<string, BalanceInfo> = {};
+        for (const [mint, info] of Object.entries(rawBalances)) {
+          const key = mint === 'SOL' ? NATIVE_MINT : mint;
+          if (info.uiAmount > 0) {
+            balances[key] = info;
+          }
+        }
+        const entries = Object.entries(balances);
+        if (entries.length > 0) {
+          const mints = entries.map(([mint]) => mint);
+          let priceMap: Record<string, { price: string }> = {};
+          try {
+            const priceResp = await getPrices(mints);
+            priceMap = priceResp.data;
+          } catch (priceErr) {
+            console.error('Failed to fetch prices for portfolio value:', priceErr);
+          }
+          newTotalPortfolioUsdValue = entries.reduce((sum, [mint, info]) => {
+            const detail = priceMap[mint];
+            const price = detail ? parseFloat(detail.price) : 0;
+            return sum + price * info.uiAmount;
+          }, 0);
+        }
+      } catch (err) {
+        console.error('Failed to compute total portfolio value via Ultra:', err);
+      }
+
+      // 4. Set State
+      set({
+        nativeSolBalance: currentNativeSolBalance,
+        balance: currentNativeSolBalance,
+        totalPortfolioUsdValue: newTotalPortfolioUsdValue,
+        createdCoins: updatedCreatedCoins,
+        isRefreshing: false,
+        error: null,
+      });
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to refresh portfolio data';
+      console.error('Failed to refresh portfolio data:', error);
+      set({
+        isRefreshing: false,
+        error: errorMessage,
+        // Optionally reset values or keep stale ones
+        // nativeSolBalance: 0, 
+        // totalPortfolioUsdValue: 0,
       });
     }
   },
@@ -387,46 +469,25 @@ export const useStore = create<WalletState>((set, get) => ({
   switchWallet: async (walletId: string) => {
     try {
       const { wallets } = get();
-      
-      // Find the wallet to switch to
       const targetWallet = wallets.find(w => w.id === walletId);
-      
-      if (!targetWallet) {
-        throw new Error('Wallet not found');
-      }
-      
-      // Update all wallets to set the active one
-      const updatedWallets = wallets.map(w => ({
-        ...w,
-        isActive: w.id === walletId
-      }));
-      
-      // Save the active wallet ID to storage
+      if (!targetWallet) throw new Error('Wallet not found');
+
+      const updatedWallets = wallets.map(w => ({ ...w, isActive: w.id === walletId }));
       await storage.set({
         activeWalletId: walletId,
-        wallets: updatedWallets.map(w => ({
-          id: w.id,
-          name: w.name,
-          publicKey: w.publicKey,
-          keypairSecretKey: Array.from(w.keypair.secretKey),
-          avatar: w.avatar
-        }))
+        wallets: updatedWallets.map(w => ({ id: w.id, name: w.name, publicKey: w.publicKey, keypairSecretKey: Array.from(w.keypair.secretKey), avatar: w.avatar }))
       });
       
-      // Fetch created coins for the new active wallet
       const fetchedCoins = await getCreatedCoins(targetWallet.publicKey);
       
-      // Update state
       set({ 
         wallets: updatedWallets,
         activeWallet: targetWallet,
-        wallet: targetWallet.keypair, // Backwards compatibility
-        createdCoins: fetchedCoins || []
+        wallet: targetWallet.keypair,
+        createdCoins: fetchedCoins || [] 
       });
       
-      // Get balance for new active wallet
-      await get().getBalance();
-      await get().refreshTokenBalances();
+      await get().refreshPortfolioData(); // Refresh for new wallet
 
     } catch (error) {
       console.error('Failed to switch wallet:', error);
@@ -537,6 +598,25 @@ export const useStore = create<WalletState>((set, get) => ({
       throw error;
     }
   },
+  /**
+   * Add or update an entry in the address book
+   */
+  addAddressBookEntry: async (address: string, label: string) => {
+    const { addressBook } = get();
+    const newBook = { ...addressBook, [address]: label };
+    await storage.set({ addressBook: newBook });
+    set({ addressBook: newBook });
+  },
+  /**
+   * Remove an entry from the address book
+   */
+  removeAddressBookEntry: async (address: string) => {
+    const { addressBook } = get();
+    const newBook = { ...addressBook };
+    delete newBook[address];
+    await storage.set({ addressBook: newBook });
+    set({ addressBook: newBook });
+  },
 
   migrateLocalStorageToFirestore: async (wallet: Keypair) => {
     if (!wallet) return; // Should not happen if called after wallet init
@@ -634,8 +714,25 @@ export const useStore = create<WalletState>((set, get) => ({
       const lamports = await connection.getBalance(activeWallet.publicKey);
       const solBalance = lamports / 1e9;
 
+      // Fetch SOL price and calculate USD balance
+      let usdBalance = 0;
+      try {
+        const priceResponse = await fetch(SOL_PRICE_API_URL);
+        if (priceResponse.ok) {
+          const priceData = await priceResponse.json();
+          const solPriceUsd = priceData.solana?.usd;
+          if (solPriceUsd) {
+            usdBalance = solBalance * solPriceUsd;
+          }
+        }
+      } catch (priceError) {
+        console.error('Failed to fetch SOL price:', priceError);
+        // Keep usdBalance as 0 or handle error as needed
+      }
+
       set({ 
         balance: solBalance,
+        usdBalance: usdBalance,
         error: null,
         isRefreshing: false
       });
@@ -657,34 +754,26 @@ export const useStore = create<WalletState>((set, get) => ({
       const { activeWallet, createdCoins } = get();
       if (!activeWallet) throw new Error('Wallet not initialized when adding coin');
 
-      // Add the new coin (potentially without createdAt yet)
-      let updatedCoins = [...createdCoins, { ...coin, createdAt: new Date() }]; // Add with client date temporarily
-      
-      // Sort immediately after adding
+      let updatedCoins = [...createdCoins, { ...coin, createdAt: new Date(), usdPrice:0, usdValue: 0 }]; 
       updatedCoins.sort((a, b) => {
-        const timeA = a.createdAt 
-          ? (a.createdAt instanceof Date ? a.createdAt.getTime() : a.createdAt.toDate().getTime()) 
-          : 0;
-        const timeB = b.createdAt 
-          ? (b.createdAt instanceof Date ? b.createdAt.getTime() : b.createdAt.toDate().getTime()) 
-          : 0;
-        return timeB - timeA; // Descending order
+        const timeA = a.createdAt ? (a.createdAt instanceof Date ? a.createdAt.getTime() : (a.createdAt as any).toDate().getTime()) : 0;
+        const timeB = b.createdAt ? (b.createdAt instanceof Date ? b.createdAt.getTime() : (b.createdAt as any).toDate().getTime()) : 0;
+        return timeB - timeA;
       });
       
-      // Update state optimistically
       set({ createdCoins: updatedCoins });
-      // Persist updated coins to storage
       try {
         await storage.set({ createdCoins: updatedCoins });
       } catch (err) {
         console.error('Failed to persist created coins to storage:', err);
       }
-      // Save to Firestore (which adds server timestamp), suppress errors
       try {
-        await addCreatedCoinToFirestore(activeWallet.publicKey, coin);
+        await addCreatedCoinToFirestore(activeWallet.publicKey, coin); // Original coin without local enrichments
       } catch (err) {
         console.error('Failed to add created coin to Firestore:', err);
       }
+      // Optionally trigger a portfolio refresh after adding a new coin
+      await get().refreshPortfolioData();
     } catch (error) {
       console.error('Failed to add created coin:', error);
       throw error;
@@ -702,16 +791,17 @@ export const useStore = create<WalletState>((set, get) => ({
   },
 
   updateCoinBalance: async (address: string, balance: number) => {
+    // This function might be less relevant if refreshPortfolioData handles all balance and value updates.
+    // If used for optimistic updates, ensure it aligns with the CreatedCoin structure.
     try {
       const { createdCoins } = get();
-      // Keep the existing order when updating balance
+      const coinToUpdate = createdCoins.find(c => c.address === address);
+      const usdPrice = coinToUpdate?.usdPrice || 0;
+
       const updatedCoins = createdCoins.map(coin => 
-        coin.address === address ? { ...coin, balance } : coin
+        coin.address === address ? { ...coin, balance, usdValue: balance * usdPrice } : coin
       );
-      // No need to sort here as order doesn't change
-      // Update state optimistically
       set({ createdCoins: updatedCoins });
-      // Persist updated coins to storage
       try {
         await storage.set({ createdCoins: updatedCoins });
       } catch (err) {
@@ -835,20 +925,12 @@ export const useStore = create<WalletState>((set, get) => ({
     if (!activeWallet) {
       throw new Error('Wallet not initialized');
     }
-
-    // Prevent creation of tokens with reserved symbol TKNZ
     if (ticker.trim().toUpperCase() === 'TKNZ') {
       throw new Error("Ticker 'TKNZ' is reserved and cannot be used.");
     }
-
     try {
-      // Generate a random keypair for the token
       const mintKeypair = Keypair.generate();
-
-      // Create form data for metadata
       const formData = new FormData();
-      
-      // Append image data: use provided blob or fetch from URL
       let fileBlob: Blob;
       if (imageFile) {
         fileBlob = imageFile;
@@ -859,8 +941,6 @@ export const useStore = create<WalletState>((set, get) => ({
         throw new Error('No image provided for coin creation');
       }
       formData.append("file", fileBlob);
-      
-      // Append other metadata
       formData.append("name", name);
       formData.append("symbol", ticker);
       formData.append("description", description);
@@ -869,24 +949,16 @@ export const useStore = create<WalletState>((set, get) => ({
       if (telegram) formData.append("telegram", telegram);
       formData.append("showName", "true");
 
-      // Create IPFS metadata storage
       const metadataResponse = await fetch("https://pump.fun/api/ipfs", {
         method: "POST",
         body: formData,
       });
-
-      if (!metadataResponse.ok) {
-        throw new Error(`Failed to upload metadata: ${metadataResponse.statusText}`);
-      }
-
+      if (!metadataResponse.ok) throw new Error(`Failed to upload metadata: ${metadataResponse.statusText}`);
       const metadataResponseJSON = await metadataResponse.json();
 
-      // Get the create transaction
       const response = await fetch(`https://pumpportal.fun/api/trade-local`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           publicKey: activeWallet.publicKey,
           action: "create",
@@ -903,44 +975,23 @@ export const useStore = create<WalletState>((set, get) => ({
           pool: "pump"
         })
       });
-
-      if (!response.ok) {
-        throw new Error(`Failed to create transaction: ${response.statusText}`);
-      }
-
+      if (!response.ok) throw new Error(`Failed to create transaction: ${response.statusText}`);
       const data = await response.arrayBuffer();
       const tx = VersionedTransaction.deserialize(new Uint8Array(data));
-      
-      // Sign with both the mint keypair and wallet
       tx.sign([mintKeypair, activeWallet.keypair]);
-      
-      // Send the transaction
       const signature = await web3Connection.sendTransaction(tx);
-      
-      // Wait for confirmation
       const confirmation = await web3Connection.confirmTransaction(signature);
-      
-      if (confirmation.value.err) {
-        throw new Error('Transaction failed to confirm');
-      }
+      if (confirmation.value.err) throw new Error('Transaction failed to confirm');
 
       const tokenAddress = mintKeypair.publicKey.toString();
       const pumpUrl = `https://pump.fun/coin/${tokenAddress}`;
+      logEventToFirestore('token_launched', { walletAddress: activeWallet.publicKey, contractAddress: tokenAddress, name, ticker, investmentAmount });
+      
+      // Add to created coins and refresh portfolio
+      await get().addCreatedCoin({ address: tokenAddress, name, ticker, pumpUrl, balance: 0 /* will be updated by refresh */ });
+      // refreshPortfolioData is called by addCreatedCoin
 
-      // Log an analytics event with relevant info
-      logEventToFirestore('token_launched', {
-        walletAddress: activeWallet.publicKey,
-        contractAddress: tokenAddress,
-        name,
-        ticker,
-        investmentAmount,
-      });
-
-      return {
-        address: tokenAddress,
-        pumpUrl
-      };
-
+      return { address: tokenAddress, pumpUrl };
     } catch (error) {
       console.error('Failed to create coin:', error);
       throw error;
@@ -953,55 +1004,28 @@ export const useStore = create<WalletState>((set, get) => ({
     try {
       const { keypair } = activeWallet;
       const destPubkey = new PublicKey(recipient);
+      let signature = '';
       if (mintAddress === NATIVE_MINT) {
-        // SOL transfer
         const lamports = Math.floor(amount * LAMPORTS_PER_SOL);
-        const tx = new Transaction().add(
-          SystemProgram.transfer({
-            fromPubkey: keypair.publicKey,
-            toPubkey: destPubkey,
-            lamports,
-          })
-        );
-        const signature = await web3Connection.sendTransaction(tx, [keypair]);
-        await web3Connection.confirmTransaction(signature, 'confirmed');
-        return signature;
+        const tx = new Transaction().add(SystemProgram.transfer({ fromPubkey: keypair.publicKey, toPubkey: destPubkey, lamports }));
+        signature = await web3Connection.sendTransaction(tx, [keypair]);
       } else {
-        // SPL token transfer
         const mintPubkey = new PublicKey(mintAddress);
         const fromATA = await getAssociatedTokenAddress(mintPubkey, keypair.publicKey);
         const toATA = await getAssociatedTokenAddress(mintPubkey, destPubkey);
         const instructions: TransactionInstruction[] = [];
-        // Create recipient ATA if it doesn't exist
         const ataInfo = await web3Connection.getAccountInfo(toATA);
         if (!ataInfo) {
-          instructions.push(
-            createAssociatedTokenAccountInstruction(
-              keypair.publicKey,
-              toATA,
-              destPubkey,
-              mintPubkey
-            )
-          );
+          instructions.push(createAssociatedTokenAccountInstruction(keypair.publicKey, toATA, destPubkey, mintPubkey));
         }
-        // Fetch token decimals for accurate amount
-        const meta = await getTokenInfo(mintAddress);
+        const meta = await getTokenInfo(mintAddress); // Potentially use this for decimals if not from balance info
         const rawAmount = BigInt(Math.floor(amount * 10 ** meta.decimals));
-        instructions.push(
-          createTransferInstruction(
-            fromATA,
-            toATA,
-            keypair.publicKey,
-            Number(rawAmount),
-            [],
-            TOKEN_PROGRAM_ID
-          )
-        );
+        instructions.push(createTransferInstruction(fromATA, toATA, keypair.publicKey, Number(rawAmount), [], TOKEN_PROGRAM_ID));
         const tx = new Transaction().add(...instructions);
-        const signature = await web3Connection.sendTransaction(tx, [keypair]);
-        await web3Connection.confirmTransaction(signature, 'confirmed');
-        return signature;
+        signature = await web3Connection.sendTransaction(tx, [keypair]);
       }
+      // Return signature immediately; confirmation and portfolio refresh handled by UI
+      return signature;
     } catch (error) {
       console.error('sendToken error:', error);
       throw error;

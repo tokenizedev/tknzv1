@@ -2,6 +2,168 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.12.2](https://tokenizedev///compare/v0.12.1...v0.12.2) (2025-05-14)
+
+
+### Features
+
+* **SwapPage:** add handling for gas estimation and fee calculation on max button click ([009c359](https://tokenizedev///commit/009c3599dd458365a4ea21d4ac9dfc117ddf9549))
+
+## [0.12.1](https://tokenizedev///compare/v0.12.0...v0.12.1) (2025-05-14)
+
+
+### Features
+
+* **SendTokenModal:** Add ability to calculate and set MAX amount including estimated fee for native SOL ([a113f42](https://tokenizedev///commit/a113f42b91aa8841d2a7fcb14bf1717c57a3f30c))
+
+## [0.12.0](https://tokenizedev///compare/v0.11.3...v0.12.0) (2025-05-13)
+
+
+### ⚠ BREAKING CHANGES
+
+* **components:** Updated state type for `tokens` in `useStore` hook to include a `pendingOnJupiter` flag for pending tokens. This may affect components relying on the
+
+### Features
+
+* **App:** Add the ability to swap to a specific token ([a3b4967](https://tokenizedev///commit/a3b49673a08d09942a29b3c35c42f7f29eb65cb3))
+* **components:** Add support for initialToMint selection ([25901f4](https://tokenizedev///commit/25901f4b18d09be0c0c32bc3fe48d15dca4b9a63))
+* **components:** add support for locally created tokens ([43ff7b6](https://tokenizedev///commit/43ff7b67a34ac38bbacceb768409fb5a8bb9c53a))
+
+
+### Bug Fixes
+
+* **components:** update tooltip text for Jupiter trading support ([484628f](https://tokenizedev///commit/484628f6fc1df6490207f156bfe09209fc92dbf1))
+
+## [0.11.3](https://tokenizedev///compare/v0.11.2...v0.11.3) (2025-05-13)
+
+
+### Features
+
+* **tokenService:** updated decimals to 6 and added extensions field ([a5d8225](https://tokenizedev///commit/a5d8225a240d7eeb7ff1f6ed40a24fb575ad65c1))
+
+## [0.11.2](https://tokenizedev///compare/v0.11.1...v0.11.2) (2025-05-13)
+
+
+### Features
+
+* **App:** add 'onSwapToken' prop to 'CreatedCoinsPage' and 'MyCreatedCoinsPage' components ([a06a200](https://tokenizedev///commit/a06a200ec222fcf22c4e35402ebd3f9a05fdda9e))
+* **CreatedCoinsPage:** Add ability to swap tokens ([975d5ec](https://tokenizedev///commit/975d5ec5a756e3d611ea614205789a2608d5509f))
+* **MyCreatedCoinsPage:** Add onSwapToken prop for swapping token functionality ([81f062a](https://tokenizedev///commit/81f062a3aed803ce714282862cc7f493d10e4ebf))
+
+## [0.11.1](https://tokenizedev///compare/v0.11.0...v0.11.1) (2025-05-13)
+
+
+### Features
+
+* **App:** enhance notification handling for transaction statuses ([1f817bb](https://tokenizedev///commit/1f817bb70675e7da1c76d7fc248f10ab40b73b3b))
+
+## [0.11.0](https://tokenizedev///compare/v0.10.1...v0.11.0) (2025-05-13)
+
+
+### ⚠ BREAKING CHANGES
+
+* **store:** The method for fetching token prices has been updated and enhanced, including the introduction of new parameters and API requests.
+
+### Features
+
+* Add functionality to seed token database on startup using loadVerifiedTokens from tokenService ([8197a06](https://tokenizedev///commit/8197a06a3ba99e1dbd60321b524e7e6da1bf87ee))
+* Add support for handling pending transactions and notifications in App component ([be6e28f](https://tokenizedev///commit/be6e28f0ca3d58cd4931412244cbb5cf6e17d038))
+* **components/swap:** Add default tokens to TokenList ([c365518](https://tokenizedev///commit/c3655185a78de2966e1376d5077e9242f36aa821))
+* **components:** add fallback token lookup for initialMint ([a81fc95](https://tokenizedev///commit/a81fc954e8265faec723227a779f431c5cf3e8dd))
+* **package.json:** add rxdb and rxjs dependencies ([8343818](https://tokenizedev///commit/83438185f1e0d0cef98b516176c4ac94083a4188))
+* **services:** implement simple in-memory caching for price data ([7cf1617](https://tokenizedev///commit/7cf1617db2742b1e40ba05667152022255af5f66))
+* **services:** normalize token data before bulk insertion ([31db9b7](https://tokenizedev///commit/31db9b71a08cb03bb0371afd9127de555d817f41))
+* **store:** Add function to fetch USD price for SPL tokens or SOL ([dde1b3a](https://tokenizedev///commit/dde1b3a55c90394529c129ba1249f95b0cd65225))
+* **store:** modify sendToken function to return signature immediately ([69b4975](https://tokenizedev///commit/69b4975141f65e5f4e2ee1831f489554090e5137))
+* **swap:** Add memoization to improve TokenList performance ([b042cc7](https://tokenizedev///commit/b042cc7c466af2da0b9d922ef72f6cb4986d354d))
+* **swap:** Add token info fallback for missing local matches ([3123c0e](https://tokenizedev///commit/3123c0e6b370d2637ac63687d87117ef33277394))
+* **SwapPage:** Refactor token loading to use cached tokens and merge with platform coins ([4bd34b5](https://tokenizedev///commit/4bd34b5fa7763c39ee9f0f172d07c378221c01fb))
+* **tokenDb:** introduce logging for database creation and collection addition ([f16c36a](https://tokenizedev///commit/f16c36a1f39351f6c8e487e120d23ed401eacef1))
+* **tokenService:** add logging statements and metadata patching ([a382a34](https://tokenizedev///commit/a382a3413ee3063a9454721d820874b4de4d7d19))
+* **tokens:** implement token datasources services ([16f076e](https://tokenizedev///commit/16f076e0f3b859e7c1a2b87ebec40e64c26ff137))
+
+
+### Bug Fixes
+
+* **database:** Update Z-Schema validation comment in tokenDb service ([957e553](https://tokenizedev///commit/957e55305836efa7b1b55081c437eb46e39fa204))
+
+## [0.10.1](https://tokenizedev///compare/v0.10.0...v0.10.1) (2025-05-13)
+
+
+### Features
+
+* **components:** add 'isSuccess' state to track success in SendTokenModal ([5a13dc8](https://tokenizedev///commit/5a13dc852533310483d95b72ca22ea64d9d0e9f0))
+* **components:** add support for displaying token symbol in SendTokenModal ([4f357ad](https://tokenizedev///commit/4f357ad439b227bdfe139ffe6fb5af91c10cbd36))
+* **components:** add useMemo hook and address book functionality in SendTokenModal ([0226479](https://tokenizedev///commit/02264797eec19f1bf1976dc8c8a07b8d71eacd7d))
+* **components:** update button alignment in BalanceDisplay ([1cc68ff](https://tokenizedev///commit/1cc68ffbdb51c486543677f20acce5b0db52a012))
+* **store:** add address book functionality ([afd5dd8](https://tokenizedev///commit/afd5dd8a786fe7fb734d98bb291b161517ec01d7))
+* **types:** Add address book functionality with addAddressBookEntry and removeAddressBookEntry methods ([cfb1cd5](https://tokenizedev///commit/cfb1cd588c39f9375b0aea3f5075d2cd251b70f9))
+
+## [0.10.0](https://tokenizedev///compare/v0.9.0...v0.10.0) (2025-05-13)
+
+
+### ⚠ BREAKING CHANGES
+
+* **components:** The addCreatedCoin function has been removed from CoinCreator component. Users relying on this function need to update their usage to accommodate the changes.
+* **store:** This introduces a new field 'balance' to the WalletState interface. Users relying on the previous structure will need to update their code accordingly.
+
+### Features
+
+* Add polyfills for improved browser compatibility ([cb45667](https://tokenizedev///commit/cb456677b3018265421038256321f41b756d689c))
+* **App:** add more descriptive event listeners for CoinCreator component ([612c4df](https://tokenizedev///commit/612c4df9a6f6642654ae8657e3558a20a5025a51))
+* **components:** update CoinCreator component to remove addCreatedCoin function ([176face](https://tokenizedev///commit/176face72028ae6b27c337cfd891f00c989dd830))
+* **components:** Update CoinCreator to use nativeSolBalance instead of balance in useStore ([1c16ad1](https://tokenizedev///commit/1c16ad1f5df251efce03480ae84336b096b16a59))
+* **store:** Add balance field to WalletState ([081c06b](https://tokenizedev///commit/081c06bd818bd471103db44e53c26a7b6ceeeeb0))
+
+## [0.9.0](https://tokenizedev///compare/v0.8.0...v0.9.0) (2025-05-13)
+
+
+### ⚠ BREAKING CHANGES
+
+* **components:** This update adds a new prop 'usdValue' to the BalanceDisplay component, which may affect existing implementations that rely solely on the balance prop.
+
+### Features
+
+* Add usdBalance field to WalletState in types.ts ([9019346](https://tokenizedev///commit/90193468acfd38a04fc78df8523453158ccde39f))
+* **components:** Add AlertTriangle icon to lucide-react library ([ecc74de](https://tokenizedev///commit/ecc74de8f2f9b41f9ff0aec454d132541c05eeab))
+* **components:** add optional USD value display in BalanceDisplay component ([867ef04](https://tokenizedev///commit/867ef041f815fdef73a4178d2d9326dd7086b263))
+* **components:** Update WalletOverview component to use totalPortfolioUsdValue ([871b55d](https://tokenizedev///commit/871b55d8b20e29125375eb595437db32fe22d8f0))
+* **Navigation:** Add usdValue to BalanceDisplay component ([f46659b](https://tokenizedev///commit/f46659bea52b9e8ab7c4adae1197da8a1a3378c5))
+* **Navigation:** Implement changes to use nativeSolBalance and totalPortfolioUsdValue from store ([5aba96d](https://tokenizedev///commit/5aba96d786f60dc13388b0592befd1ea0a012db5))
+* **store:** Add TokenAmount to store imports ([d9f12bd](https://tokenizedev///commit/d9f12bd7fd59fe1c6b254404f30e24540da5fcad))
+* **store:** add USD balance calculation using SOL price API ([1d9615f](https://tokenizedev///commit/1d9615ffe9b4bdc315968dff737c1963c77b262e))
+* **types:** Add USD price and USD value fields to CreatedCoin interface ([3814120](https://tokenizedev///commit/38141201b16b3ff79c016f5debc8315d2259e661))
+
+## [0.8.0](https://tokenizedev///compare/v0.7.1...v0.8.0) (2025-05-13)
+
+
+### ⚠ BREAKING CHANGES
+
+* **components:** Removed the old logo element and updated the layout in the Navigation component.
+
+### Features
+
+* Add BalanceDisplay component in Navigation component ([50ed2ea](https://tokenizedev///commit/50ed2ea2bc1462053a3674aefb303f532ece9ac8))
+* Add settings page functionality and UI components ([d280be4](https://tokenizedev///commit/d280be4c167aada383a43865adaa257215fee47b))
+* **balance-display:** implement balance display component ([2257de4](https://tokenizedev///commit/2257de45ed69e91424ad6e19b254d25fe46ad6dc))
+* **components:** Add 'Wallets' button to BottomNavigation ([d7ab49a](https://tokenizedev///commit/d7ab49a79044a3e507e0a41fd4faa4575f90716a))
+* **components:** add ArrowLeft icon to CreatedCoinsPage ([a58d17f](https://tokenizedev///commit/a58d17f6ca63eec2ea0ce5bcb1f4388f18cb1f7f))
+* **components:** add Fingerprint icon to lucide-react component library ([f11effd](https://tokenizedev///commit/f11effd84ad42fc04a13f556773907431c5aaa60))
+* **components:** Add wallet balance display and overview button in Navigation component ([657d7c5](https://tokenizedev///commit/657d7c5f0865bee61ccb88cc317ea1ca071ef101))
+* **components:** Update BottomNavigation title and icon ([7aee642](https://tokenizedev///commit/7aee642543b7bd038e7f421b7979b1a04a45ace5))
+* **components:** Update CoinCreator component styles ([402c5cd](https://tokenizedev///commit/402c5cdc2e9de29b5ba21a5894f1ae06c0de2fde))
+* **components:** Update SwapPage component to use initialMint and onBack function ([a50a05e](https://tokenizedev///commit/a50a05e27bf062950ca30eb3b869dd7c3a524012))
+* **MyCreatedCoinsPage:** Add back button functionality and update highlightCoin handling ([4281440](https://tokenizedev///commit/428144038be8dd200ca5607fe62253071aabd6eb))
+* **navigation:** add `BottomNavigation` component ([6e71bd5](https://tokenizedev///commit/6e71bd504f735eb62c70372765106dec0de1bcc0))
+* Reduce padding on WalletPageCyber component ([d5f0fe2](https://tokenizedev///commit/d5f0fe27bd0f8c22212c1ecdd5986c17eda5b1f2))
+* **WalletOverview:** Add back button and update portfolio header ([4b7761e](https://tokenizedev///commit/4b7761e279c3a6b79a7c5336b0fd8ea64fde8a87))
+
+
+### Bug Fixes
+
+* **components:** Fix padding value in Loader component ([9abaaba](https://tokenizedev///commit/9abaaba58ca801eb9afaf15c33c340ffe6c10110))
+* **components:** Fix wallet manager page layout padding issue ([1776ce1](https://tokenizedev///commit/1776ce1b86ca2b32f019d95feaf3c84393f507ec))
+
 ## [0.7.1](https://tokenizedev///compare/v0.7.0...v0.7.1) (2025-05-12)
 
 

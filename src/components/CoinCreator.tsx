@@ -94,7 +94,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   }, []);
   
   
-  const { balance, error: walletError, investmentAmount: defaultInvestment, addCreatedCoin, createCoin } = useStore();
+  const { nativeSolBalance: balance, error: walletError, investmentAmount: defaultInvestment, createCoin } = useStore();
   const [articleData, setArticleData] = useState<ArticleData>({
     title: '',
     primaryImage: '',
@@ -441,15 +441,8 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
         params.imageUrl = imageUrl;
       }
 
+      // Create the coin and add it to the store (createCoin already persists it)
       const response = await createCoin(params);
-
-      await addCreatedCoin({
-        address: response.address,
-        name: coinName,
-        ticker: ticker,
-        pumpUrl: response.pumpUrl,
-        balance: investmentAmount
-      });
 
       setCreatedCoin(response);
 
@@ -476,7 +469,9 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
 
     // Notify parent component that creation is starting
     if (onCreationStart) {
-      onCreationStart(innerHandleSubmit);
+      await onCreationStart(innerHandleSubmit);
+    } else {
+      await innerHandleSubmit();
     }
   };
 
@@ -583,7 +578,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   return (
     <div className="py-2">
       {/* Compact header with logo, address dropdown, and action buttons */}
-      <div className="flex items-center justify-between my-4">
+      <div className="flex items-center justify-between my-2">
         <div className="inline-flex rounded-sm overflow-hidden">
           <button
             onClick={handleSelectContent}
@@ -896,7 +891,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
           disabled={balance < requiredBalance || isCreating}
           className={`w-full font-terminal text-lg uppercase tracking-wider border rounded-sm transition-all duration-300 relative overflow-hidden ${
             isCreating 
-              ? 'bg-cyber-dark border-cyber-green/70 text-cyber-green py-6' 
+              ? 'bg-cyber-dark border-cyber-green/70 text-cyber-green py-2' 
               : 'bg-cyber-black hover:bg-cyber-green/20 border-cyber-green text-cyber-green py-4 hover:shadow-neon-green'
           }`}
         >

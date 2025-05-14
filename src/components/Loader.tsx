@@ -26,7 +26,7 @@ export const Loader: React.FC<LoaderProps> = ({ isSidebar = false, isChild = fal
             {/* Placeholder fixed header to match App component */}
             
             
-            <main className="overflow-auto px-4 relative" style={{ height: '90%', marginTop: isChild ? '10px' : '56px' }}>
+            <main className="overflow-auto px-4 relative" style={{ height: '90%', marginTop: isChild ? '10px' : '10px' }}>
                 {/* Main loading container */}
                 <div 
                     className={`flex flex-col items-center justify-center h-full relative overflow-hidden opacity-0 ${isVisible ? 'animate-fade-scale-in' : ''}`}

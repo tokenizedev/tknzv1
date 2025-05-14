@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import { loadVerifiedTokens } from './services/tokenService';
 import { useStore } from './store';
 import { WalletSetup } from './components/WalletSetup';
 import { CoinCreator } from './components/CoinCreator';
@@ -13,14 +14,21 @@ import { storage } from './utils/storage';
 import { TokenCreationProgress } from './components/TokenCreationProgress';
 import { WalletManagerPage } from './components/WalletManagerPage';
 import { Navigation } from './components/Navigation';
+import { BottomNavigation } from './components/BottomNavigation';
 import { SwapPage } from './components/SwapPage';
 import { VersionBadge } from './components/VersionBadge';
 import { WalletOverview } from './components/WalletOverview';
 import SendTokenModal from './components/SendTokenModal';
+import { SettingsPage } from './components/SettingsPage';
 import { ExternalLink } from 'lucide-react';
+import { web3Connection } from './utils/connection';
 
 interface AppProps { isSidebar?: boolean; }
 function App({ isSidebar = false }: AppProps = {}) {
+  // Seed token database: fetch verified tokens into IndexedDB on startup
+  useEffect(() => {
+    loadVerifiedTokens().catch(err => console.error('Token DB init error:', err));
+  }, []);
   // Notify background that side panel is open for this tab
   useEffect(() => {
     if (isSidebar && chrome?.tabs) {
@@ -37,29 +45,29 @@ function App({ isSidebar = false }: AppProps = {}) {
       })();
     }
   }, [isSidebar]);
-  
-  const { 
-    activeWallet, 
-    balance, 
-    initializeWallet, 
-    getBalance, 
-    isRefreshing, 
+
+  const {
+    activeWallet,
+    balance,
+    initializeWallet,
+    getBalance,
+    isRefreshing,
     isLatestVersion,
     updateAvailable,
     checkVersion,
     sendToken,
     refreshTokenBalances
   } = useStore();
-  
+
   const [loading, setLoading] = useState(true);
   // Show initial password & passkey setup or unlock guard
   const [showPasswordSetup, setShowPasswordSetup] = useState(false);
   const [showUnlock, setShowUnlock] = useState(false);
   // Wallet drawer visibility
   const [showWalletDrawer, setShowWalletDrawer] = useState(false);
-  // Exclusive UI panels: 'wallet', 'swap', 'manager'
+  // Exclusive UI panels: 'wallet', 'swap', 'manager', 'settings', etc.
   // Views: null shows default creation page, others show specific screens
-  const [activeView, setActiveView] = useState<'wallet' | 'swap' | 'manager' | 'createdCoins' | 'myCoins' | 'overview' | null>(null);
+  const [activeView, setActiveView] = useState<'wallet' | 'swap' | 'manager' | 'createdCoins' | 'myCoins' | 'overview' | 'settings' | null>(null);
 
   // Derived view flags
   const showWallet = activeView === 'wallet';
@@ -68,14 +76,16 @@ function App({ isSidebar = false }: AppProps = {}) {
   const showCreatedCoins = activeView === 'createdCoins';
   const showMyCoins = activeView === 'myCoins';
   const showOverview = activeView === 'overview';
-  // Track a specific token mint to swap
+  const showSettings = activeView === 'settings';
+  // Track specific token mints for swap: from and to
   const [selectedSwapMint, setSelectedSwapMint] = useState<string | null>(null);
+  const [selectedSwapToMint, setSelectedSwapToMint] = useState<string | null>(null);
   // Timeout for wallet unlock in milliseconds (1 hour)
   const UNLOCK_TIMEOUT = 60 * 60 * 1000;
-  
+
   // Add this for cypherpunk animation effects
   const [_animateZap, setAnimateZap] = useState(false);
-  
+
   const [glitching, setGlitching] = useState(false);
   const mainAreaRef = useRef<HTMLDivElement>(null);
   const [copyConfirm, setCopyConfirm] = useState(false);
@@ -87,6 +97,8 @@ function App({ isSidebar = false }: AppProps = {}) {
   const [sendModalMint, setSendModalMint] = useState<string | null>(null);
   // On-screen notification for actions
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  // Pending transactions signatures
+  const [pendingTxs, setPendingTxs] = useState<string[]>([]);
   // Auto-dismiss notifications after 5s
   useEffect(() => {
     if (notification) {
@@ -94,15 +106,15 @@ function App({ isSidebar = false }: AppProps = {}) {
       return () => clearTimeout(timer);
     }
   }, [notification]);
-  
+
   // Animation state for nav components
   const [navAnimated, setNavAnimated] = useState(false);
   const [logoAnimated, setLogoAnimated] = useState(false);
   const [controlsAnimated, setControlsAnimated] = useState(false);
-  
+
   // Wallet address and copy handler
   const address = activeWallet?.publicKey || '';
-  
+
   const copyAddress = async () => {
     try {
       await navigator.clipboard.writeText(address);
@@ -121,7 +133,7 @@ function App({ isSidebar = false }: AppProps = {}) {
         setTimeout(() => setGlitching(false), 100 + Math.random() * 100);
       }
     }, 10000);
-    
+
     return () => clearInterval(glitchInterval);
   }, []);
 
@@ -130,15 +142,15 @@ function App({ isSidebar = false }: AppProps = {}) {
     // Main nav animation
     const navTimer = setTimeout(() => {
       setNavAnimated(true);
-      
+
       // Logo animation with slight delay
       setTimeout(() => {
         setLogoAnimated(true);
-        
+
         // Controls animation follows
         setTimeout(() => {
           setControlsAnimated(true);
-          
+
           // Trigger a subtle glitch when animations complete
           setTimeout(() => {
             setGlitching(true);
@@ -147,7 +159,7 @@ function App({ isSidebar = false }: AppProps = {}) {
         }, 150);
       }, 100);
     }, 300);
-    
+
     return () => clearTimeout(navTimer);
   }, []);
 
@@ -173,7 +185,7 @@ function App({ isSidebar = false }: AppProps = {}) {
     try {
       const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
       const tab = tabs[0];
-      
+
       if (tab?.id != null) {
         if (isSidebar) {
           chrome.tabs.sendMessage(tab.id, { type: 'SIDE_PANEL_CLOSED' });
@@ -195,7 +207,7 @@ function App({ isSidebar = false }: AppProps = {}) {
     getBalance();
     setTimeout(() => setAnimateZap(false), 1500);
   };
-  
+
   // Toggle the wallet drawer
   const toggleWalletDrawer = () => {
     setShowWalletDrawer(!showWalletDrawer);
@@ -204,10 +216,18 @@ function App({ isSidebar = false }: AppProps = {}) {
     setTimeout(() => setGlitching(false), 200);
   };
 
-  // Function to handle wallet manager navigation
+  // Open wallet manager page
   const openWalletManager = () => {
     // Switch to wallet-manager view
     setActiveView('manager');
+    setShowWalletDrawer(false);
+    setGlitching(true);
+    setTimeout(() => setGlitching(false), 200);
+  };
+
+  // Open settings page
+  const openSettings = () => {
+    setActiveView('settings');
     setShowWalletDrawer(false);
     setGlitching(true);
     setTimeout(() => setGlitching(false), 200);
@@ -254,9 +274,19 @@ function App({ isSidebar = false }: AppProps = {}) {
     // Toggle swap view, ensuring exclusivity
     setActiveView(prev => (prev === 'swap' ? null : 'swap'));
   };
-  // Swap a specific token
+  // Swap a specific token (as input)
   const handleSwapToken = (mint: string) => {
     setSelectedSwapMint(mint);
+    setSelectedSwapToMint(null);
+    setActiveView('swap');
+    setShowWalletDrawer(false);
+    setGlitching(true);
+    setTimeout(() => setGlitching(false), 200);
+  };
+  // Swap to a specific token (as output), e.g., from community coins
+  const handleSwapToToken = (mint: string) => {
+    setSelectedSwapMint(null);
+    setSelectedSwapToMint(mint);
     setActiveView('swap');
     setShowWalletDrawer(false);
     setGlitching(true);
@@ -272,14 +302,37 @@ function App({ isSidebar = false }: AppProps = {}) {
     setShowSendModal(false);
     setSendModalMint(null);
   };
-  // Confirm and send token with on-screen notifications
+  // Send token and handle pending/confirmation notifications
   const handleConfirmSend = async (mint: string, recipient: string, amt: number) => {
     try {
+      // Send transaction and get signature quickly (no confirmation wait)
       const signature = await sendToken(mint, recipient, amt);
+      // Close modal immediately
       closeSendModal();
-      setNotification({ message: `Transaction sent: ${signature}`, type: 'success' });
-      await getBalance();
-      await refreshTokenBalances();
+      // Add to pending transactions
+      setPendingTxs(prev => [...prev, signature]);
+      // Optionally refresh balances immediately
+      getBalance();
+      refreshTokenBalances();
+      // Confirm transaction in background
+      web3Connection.confirmTransaction(signature, 'confirmed')
+        .then((confirmation) => {
+          // Remove from pending
+          setPendingTxs(prev => prev.filter(sig => sig !== signature));
+          // Notify user of result
+          if (confirmation.value.err) {
+            setNotification({ message: `Transaction failed to confirm: ${signature}`, type: 'error' });
+          } else {
+            setNotification({ message: `Transaction confirmed: ${signature}`, type: 'success' });
+          }
+          // Refresh balances after confirmation
+          getBalance();
+          refreshTokenBalances();
+        })
+        .catch((err) => {
+          setPendingTxs(prev => prev.filter(sig => sig !== signature));
+          setNotification({ message: `Transaction confirmation error: ${err}`, type: 'error' });
+        });
     } catch (error: any) {
       console.error('Send failed:', error);
       setNotification({ message: `Send failed: ${error.message || error}`, type: 'error' });
@@ -307,6 +360,8 @@ function App({ isSidebar = false }: AppProps = {}) {
     setShowPasswordSetup(false);
     setShowUnlock(false);
     setLoading(true);
+    // Store last unlocked timestamp for session management
+    // This works for both password and passkey authentication
     await storage.set({ walletLastUnlocked: Date.now() });
     await initializeWallet();
     await checkVersion();
@@ -317,7 +372,7 @@ function App({ isSidebar = false }: AppProps = {}) {
   const handleCoinCreationStart = async (innerHandleSubmit: () => Promise<void>) => {
     setIsCreatingCoin(true);
     setCreationProgress(0);
-    
+
     // Start the animation
     const interval = setInterval(() => {
       setCreationProgress(prev => {
@@ -335,13 +390,13 @@ function App({ isSidebar = false }: AppProps = {}) {
 
     setTimeout(() => setGlitching(false), 200);
   };
-  
+
   // Function to handle coin creation completion
   const handleCoinCreationComplete = (coinAddress: string) => {
     setCreationProgress(100);
     // Store the new coin address for highlighting
     setNewCoinAddress(coinAddress);
-    
+
     // Flash a glitch effect
     setGlitching(true);
     setTimeout(() => {
@@ -394,8 +449,16 @@ function App({ isSidebar = false }: AppProps = {}) {
     init();
   }, [initializeWallet, checkVersion]);
 
+  // Navigation to home/TKNZ button
+  const navigateToHome = () => {
+    setActiveView(null);
+    setShowWalletDrawer(false);
+    setGlitching(true);
+    setTimeout(() => setGlitching(false), 200);
+  };
+
   return (
-    <div className={`${isSidebar ? 'w-full h-full ' : 'w-[400px] h-[600px] '}bg-cyber-black bg-binary-pattern binary-overlay`}>
+    <div className={`${isSidebar ? 'w-full h-full ' : 'w-[400px] h-[650px] '}bg-cyber-black bg-binary-pattern binary-overlay`}>
       {/* In-app notification */}
       {notification && (
         <div
@@ -407,16 +470,21 @@ function App({ isSidebar = false }: AppProps = {}) {
         >
           <div className="flex items-center justify-between">
             <div className="text-sm break-all">
-              {notification.type === 'success' && notification.message.includes('Transaction sent:') ? (
+              {notification.type === 'success' &&
+               (notification.message.includes('Transaction sent:') || notification.message.includes('Transaction confirmed:')) ? (
                 <>
-                  <div className="text-xs opacity-80 mb-1">Transaction sent</div>
+                  <div className="text-xs opacity-80 mb-1">
+                    {notification.message.includes('Transaction sent:')
+                      ? 'Transaction sent'
+                      : 'Transaction confirmed'}
+                  </div>
                   <div className="flex items-center space-x-2">
                     <code className="text-xs break-all mr-2 font-mono tracking-tight">
-                      {notification.message.split('Transaction sent: ')[1]}
+                      {notification.message.split(': ')[1]}
                     </code>
-                    <a 
-                      href={`https://solscan.io/tx/${notification.message.split('Transaction sent: ')[1]}?cluster=mainnet-beta`}
-                      target="_blank" 
+                    <a
+                      href={`https://solscan.io/tx/${notification.message.split(': ')[1]}?cluster=mainnet-beta`}
+                      target="_blank"
                       rel="noopener noreferrer"
                       className="text-xs px-2 py-0.5 bg-cyber-green/30 hover:bg-cyber-green/50 rounded transition-colors flex items-center"
                       onClick={e => e.stopPropagation()}
@@ -430,7 +498,7 @@ function App({ isSidebar = false }: AppProps = {}) {
                 notification.message
               )}
             </div>
-            <button 
+            <button
               className="ml-2 text-xs opacity-70 hover:opacity-100"
               onClick={() => setNotification(null)}
             >
@@ -439,6 +507,38 @@ function App({ isSidebar = false }: AppProps = {}) {
           </div>
         </div>
       )}
+      {/* Pending transaction notifications */}
+      {pendingTxs.map((sig) => (
+        <div
+          key={sig}
+          className="fixed bottom-4 inset-x-4 z-50 px-4 py-3 rounded font-terminal shadow-neon-green backdrop-blur-sm border transition-all bg-cyber-green/20 text-cyber-green border-cyber-green/40"
+        >
+          <div className="flex items-center justify-between">
+            <div className="text-sm break-all">
+              <div className="text-xs opacity-80 mb-1">Transaction pending</div>
+              <div className="flex items-center space-x-2">
+                <code className="text-xs break-all mr-2 font-mono tracking-tight">{sig}</code>
+                <a
+                  href={`https://solscan.io/tx/${sig}?cluster=mainnet-beta`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs px-2 py-0.5 bg-cyber-green/30 hover:bg-cyber-green/50 rounded transition-colors flex items-center"
+                  onClick={(e) => e.stopPropagation()}
+                  title="View on Solscan"
+                >
+                  <ExternalLink size={14} className="text-cyber-green" />
+                </a>
+              </div>
+            </div>
+            <button
+              className="ml-2 text-xs opacity-70 hover:opacity-100"
+              onClick={() => setPendingTxs(prev => prev.filter(s => s !== sig))}
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      ))}
       {/* Background crypto pattern */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-0 left-0 w-full h-0.5 bg-cyber-green/10"></div>
@@ -446,11 +546,11 @@ function App({ isSidebar = false }: AppProps = {}) {
         <div className="absolute top-0 left-0 h-full w-0.5 bg-cyber-green/10"></div>
         <div className="absolute top-0 right-0 h-full w-0.5 bg-cyber-green/10"></div>
       </div>
-      
+
       {/* Matrix-style code rain animation in background - very subtle */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-5">
         {[...Array(10)].map((_, i) => (
-          <div 
+          <div
             key={i}
             className="absolute text-cyber-green font-mono text-xs"
             style={{
@@ -468,7 +568,7 @@ function App({ isSidebar = false }: AppProps = {}) {
           </div>
         ))}
       </div>
-      
+
       {loading || showPasswordSetup || showUnlock ? (
         showPasswordSetup ? (
           <PasswordSetup onComplete={handlePostUnlock} />
@@ -508,11 +608,11 @@ function App({ isSidebar = false }: AppProps = {}) {
             showSwap={showSwapPage}
             copyConfirm={copyConfirm}
           />
-          
-          <main 
+
+          <main
             className={`overflow-auto px-4 relative main-content-transition ${glitching ? 'animate-glitch' : ''}`}
-            style={{ 
-              height: '90%', 
+            style={{
+              height: 'calc(100vh - 112px)',
               transition: 'padding-top 0.3s ease-out'
             }}
             ref={mainAreaRef}
@@ -521,50 +621,76 @@ function App({ isSidebar = false }: AppProps = {}) {
             <div className="absolute inset-0 pointer-events-none">
               {/* Scanlines */}
               <div className="absolute inset-0 bg-[linear-gradient(transparent_50%,rgba(0,255,65,0.02)_50%)] bg-[length:100%_4px] opacity-20"></div>
-              
+
               {/* Screen flicker */}
               <div className={`absolute inset-0 bg-cyber-green/5 opacity-0 ${glitching ? 'animate-flicker' : ''}`}></div>
             </div>
 
             {/* Conditional rendering of main content */}
-            {!activeWallet ? (
-              <WalletSetup />
-            ) : showSwapPage ? (
-              <SwapPage
-                isSidebar={isSidebar}
-                initialFromMint={selectedSwapMint || undefined}
-              />
-            ) : showWalletManager ? (
-              <WalletManagerPage onBack={closeWalletManager} />
-            ) : isCreatingCoin ? (
-              /* Using our new TokenCreationProgress component */
-              <TokenCreationProgress progress={creationProgress} />
-            ) : showWallet ? (
-              <WalletPageCyber highlightCoinAddress={newCoinAddress} />
-            ) : showOverview ? (
-              <WalletOverview
-                onSwapToken={handleSwapToken}
-                onSendToken={openSendModal}
-              />
-            ) : showMyCoins ? (
-              <MyCreatedCoinsPage highlightCoinAddress={newCoinAddress} />
-            ) : showCreatedCoins ? (
-              <CreatedCoinsPage />
-            ) : !isLatestVersion ? (
-              <VersionCheck updateAvailable={updateAvailable || ''} />
-            ) : (
-              <CoinCreator 
-                isSidebar={isSidebar} 
-                onCreationStart={handleCoinCreationStart}
-                onCreationComplete={handleCoinCreationComplete}
-                onCreationError={handleCoinCreationError}
-              />
-            )}
-            
+            <div 
+              ref={mainAreaRef}
+              className={`bg-cyber-black h-full ${glitching ? 'glitch-text' : ''} pt-3 ${isCreatingCoin ? 'flex items-center justify-center' : ''}`}
+            >
+              {isCreatingCoin ? (
+                /* Token creation progress display */
+                <TokenCreationProgress progress={creationProgress} />
+              ) : showSettings ? (
+                /* Settings page */
+                <SettingsPage onBack={() => setActiveView(null)} />
+              ) : showWalletManager ? (
+                /* Wallet manager interface */
+                <WalletManagerPage onBack={closeWalletManager} />
+              ) : showWallet ? (
+                /* Wallet details view */
+                <WalletPageCyber onBack={closeWalletManager} />
+              ) : showSwapPage ? (
+                /* Swap interface */
+                <SwapPage
+                  initialMint={selectedSwapMint}
+                  initialToMint={selectedSwapToMint}
+                  onBack={() => {
+                    setActiveView(null);
+                    setSelectedSwapMint(null);
+                    setSelectedSwapToMint(null);
+                  }}
+                />
+              ) : showOverview ? (
+                /* Portfolio overview */
+                <WalletOverview 
+                  onBack={() => setActiveView(null)}
+                  onSwapToken={handleSwapToken}
+                  onSendToken={openSendModal}
+                />
+              ) : showCreatedCoins ? (
+                /* Created coins community page */
+                <CreatedCoinsPage
+                  onBack={() => setActiveView(null)}
+                  onSwapToken={handleSwapToToken}
+                />
+              ) : showMyCoins ? (
+                /* My created coins page */
+                <MyCreatedCoinsPage
+                  onBack={() => setActiveView(null)}
+                  highlightCoin={newCoinAddress}
+                  onSwapToken={handleSwapToken}
+                />
+              ) : (
+                /* Default token creator view */
+                <CoinCreator
+                  /* Trigger the creation loader modal when starting */
+                  onCreationStart={handleCoinCreationStart}
+                  /* Navigate to My Created Coins on successful creation */
+                  onCreationComplete={handleCoinCreationComplete}
+                  /* Handle errors by stopping the loader */
+                  onCreationError={handleCoinCreationError}
+                />
+              )}
+            </div>
+
             {/* Subtle floating particles */}
             <div className="absolute inset-0 pointer-events-none overflow-hidden">
               {[...Array(6)].map((_, i) => (
-                <div 
+                <div
                   key={i}
                   className="absolute w-1 h-1 rounded-full opacity-20"
                   style={{
@@ -578,6 +704,16 @@ function App({ isSidebar = false }: AppProps = {}) {
               ))}
             </div>
           </main>
+
+          <BottomNavigation
+            active={activeView}
+            onHome={navigateToHome}
+            onSwap={toggleSwapPage}
+            onPortfolio={toggleOverview}
+            onSettings={openSettings}
+            onWalletManager={openWalletManager}
+          />
+
           {/* Send Token Modal */}
           <SendTokenModal
             visible={showSendModal}

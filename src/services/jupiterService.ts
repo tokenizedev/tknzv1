@@ -307,13 +307,26 @@ export interface PriceResponse {
 }
 
 /**
- * Fetches price data for given token IDs
+ * In-memory cache for price data to reduce API calls
+ */
+const _priceCache: Map<string, { timestamp: number; data: PriceResponse }> = new Map();
+/** Cache time-to-live in milliseconds */
+const PRICE_CACHE_TTL = 30 * 1000; // 30 seconds
+
+/**
+ * Fetches price data for given token IDs, with simple in-memory caching
  */
 export async function getPrices(
   ids: string[],
   vsToken?: string,
   showExtraInfo: boolean = false
 ): Promise<PriceResponse> {
+  // build cache key based on parameters
+  const key = [ids.join(','), vsToken || '', showExtraInfo ? '1' : '0'].join('|');
+  const cached = _priceCache.get(key);
+  if (cached && (Date.now() - cached.timestamp) < PRICE_CACHE_TTL) {
+    return cached.data;
+  }
   try {
     const response = await client.get<PriceResponse>('price/v2', {
       params: {
@@ -325,6 +338,8 @@ export async function getPrices(
     if (!response.data?.data) {
       throw new Error('getPrices: missing data field');
     }
+    // cache the result
+    _priceCache.set(key, { timestamp: Date.now(), data: response.data });
     return response.data;
   } catch (err) {
     if (axios.isAxiosError(err) && err.response) {
