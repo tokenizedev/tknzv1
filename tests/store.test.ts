@@ -1,4 +1,12 @@
-import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { vi } from 'vitest';
+// Mock firebase module to prevent real Firestore interactions
+vi.mock('../src/firebase', () => ({
+  __esModule: true,
+  logEventToFirestore: vi.fn(),
+  getCreatedCoins: vi.fn().mockResolvedValue([]),
+  addCreatedCoinToFirestore: vi.fn(),
+  getLaunchedTokenEvents: vi.fn()
+}));
 // Sanity check to ensure test file loads
 it('store test file loads', () => {
   expect(true).toBe(true);
