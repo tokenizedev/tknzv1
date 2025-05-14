@@ -3,11 +3,12 @@ import { useStore } from '../store';
 import { Copy, CheckCircle } from 'lucide-react';
 
 interface InsufficientFundsModalProps {
+  balance: number;
   onClose: (visible: boolean) => void;
   tryAgain: () => void;
 }
 
-export const InsufficientFundsModal: React.FC<InsufficientFundsModalProps> = ({ onClose, tryAgain }) => {
+export const InsufficientFundsModal: React.FC<InsufficientFundsModalProps> = ({ onClose, tryAgain, balance }) => {
   const { wallet } = useStore();
 
   if (!wallet) return null;
@@ -43,7 +44,7 @@ export const InsufficientFundsModal: React.FC<InsufficientFundsModalProps> = ({ 
           <p className="mb-5 leading-relaxed">
             <span className="animate-blink inline-block">&gt;</span>{" "}
             Need <span className="font-bold">0.03 SOL</span> to create a meme coin. Current balance:{" "}
-            <span className="font-bold">0.00 SOL</span>
+            <span className="font-bold">{balance.toFixed(2)} SOL</span>
           </p>
 
           <div className="bg-terminal-green bg-opacity-5 border border-dashed border-terminal-green p-3 rounded text-sm break-all mb-5">
