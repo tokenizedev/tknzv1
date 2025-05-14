@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { VersionedTransaction } from '@solana/web3.js';
 import { useStore } from '../store';
 import { web3Connection } from '../utils/connection';
+import { logEventToFirestore } from '../firebase';
 import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 import {
   getUltraBalances,
@@ -415,6 +416,15 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, 
       // Execute order
       const exec = await executeOrder({ signedTransaction: signedBase64, requestId: order.requestId });
       if (exec.status === 'Success') {
+        // Log token swap event to Firestore
+        await logEventToFirestore('token_swapped', {
+          walletAddress: activeWallet.publicKey,
+          fromMint: inputMint,
+          toMint: outputMint,
+          fromAmount: parseFloat(fromAmount),
+          toAmount: parseFloat(toAmount),
+          transactionHash: exec.signature
+        });
         setSwapStatus({ show: true, status: 'success', hash: exec.signature });
       } else {
         throw new Error(exec.error || `Swap failed: ${exec.status}`);
