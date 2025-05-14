@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Lock, Key, Shield, RefreshCw, Check, X, Plus, Trash2, LogIn } from 'lucide-react';
+import { ArrowLeft, Lock, Key, Shield, RefreshCw, Check, X, Plus, Trash2, LogIn, ShoppingCart } from 'lucide-react';
 import { storage } from '../utils/storage';
 
 interface PasskeyCredential {
@@ -13,7 +13,7 @@ interface SettingsPageProps {
 }
 
 export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
-  const [activeSection, setActiveSection] = useState<'password' | 'passkey' | null>(null);
+  const [activeSection, setActiveSection] = useState<'password' | 'buy' | 'passkey' | null>(null);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -28,6 +28,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
   const [legacyPasskeyId, setLegacyPasskeyId] = useState<string>('');
   const [legacyMigrationName, setLegacyMigrationName] = useState('Primary Passkey');
   const [migrationLoading, setMigrationLoading] = useState(false);
+  // Buy button feature toggle
+  const [buyEnabled, setBuyEnabled] = useState<boolean>(true);
   
   // Check if WebAuthn is supported on this device/browser
   useEffect(() => {
@@ -59,6 +61,19 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
     };
     
     loadPasskeys();
+  }, []);
+  // Load buy button setting
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await storage.get('buyModeEnabled');
+        const enabled = res.buyModeEnabled;
+        setBuyEnabled(enabled === undefined ? true : enabled);
+      } catch (err) {
+        console.error('Failed to load buy mode setting:', err);
+        setBuyEnabled(true);
+      }
+    })();
   }, []);
   
   // Handle password change
@@ -406,6 +421,41 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
           )}
         </div>
         
+        {/* Buy Button Feature Section */}
+        <div className="border border-cyber-green/30 rounded-sm overflow-hidden">
+          <div
+            className={`p-4 bg-gradient-to-r from-cyber-black to-cyber-black/80 ${activeSection === 'buy' ? 'border-b border-cyber-green/30' : ''}`}
+            onClick={() => activeSection !== 'buy' ? setActiveSection('buy') : null}
+          >
+            <div className="flex items-center justify-between">
+              <ShoppingCart className="w-5 h-5 mr-3 text-cyber-green" />
+              <h2 className="text-cyber-green font-terminal">Buy Button Feature</h2>
+              {activeSection !== 'buy' && (
+                <button className="text-cyber-green border border-cyber-green/50 px-2 py-1 rounded-sm text-xs font-terminal hover:bg-cyber-green/10 transition-colors">
+                  SETTINGS
+                </button>
+              )}
+            </div>
+            <p className="text-cyber-green/70 text-sm mt-1 ml-8">Enable or disable on-page Buy buttons</p>
+          </div>
+          {activeSection === 'buy' && (
+            <div className="p-4 bg-cyber-black/50 animate-slide-down">
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  className="form-checkbox h-4 w-4 text-cyber-green bg-cyber-black border border-cyber-green/50 rounded"
+                  checked={buyEnabled}
+                  onChange={e => {
+                    const enabled = e.target.checked;
+                    setBuyEnabled(enabled);
+                    storage.set({ buyModeEnabled: enabled });
+                  }}
+                />
+                <span className="text-cyber-green text-sm font-terminal">Enable Buy Buttons</span>
+              </label>
+            </div>
+          )}
+        </div>
         {/* Passkey Management Section */}
         <div className="border border-cyber-green/30 rounded-sm overflow-hidden">
           <div 
