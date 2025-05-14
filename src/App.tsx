@@ -80,6 +80,42 @@ function App({ isSidebar = false }: AppProps = {}) {
   // Track specific token mints for swap: from and to
   const [selectedSwapMint, setSelectedSwapMint] = useState<string | null>(null);
   const [selectedSwapToMint, setSelectedSwapToMint] = useState<string | null>(null);
+  
+  // Handle token buy requests from content script or background
+  useEffect(() => {
+    const DEFAULT_INPUT_MINT = 'So11111111111111111111111111111111111111112';
+    // On initial load, check for stored buy token
+    if (chrome?.storage?.local) {
+      chrome.storage.local.get(['lastBuyToken'], (result) => {
+        if (result.lastBuyToken) {
+          try {
+            const token = JSON.parse(result.lastBuyToken);
+            setSelectedSwapMint(DEFAULT_INPUT_MINT);
+            setSelectedSwapToMint(token.address || token.symbol || null);
+            setActiveView('swap');
+          } catch (_) {}
+          // Clear stored token
+          chrome.storage.local.remove(['lastBuyToken']);
+        }
+      });
+    }
+    // Listen for direct messages to show swap
+    const listener = (message: any) => {
+      if (message.type === 'SHOW_SWAP' && message.token) {
+        setSelectedSwapMint(DEFAULT_INPUT_MINT);
+        setSelectedSwapToMint(message.token.address || message.token.symbol || null);
+        setActiveView('swap');
+      }
+    };
+    if (chrome?.runtime && chrome.runtime.onMessage) {
+      chrome.runtime.onMessage.addListener(listener);
+    }
+    return () => {
+      if (chrome?.runtime && chrome.runtime.onMessage) {
+        chrome.runtime.onMessage.removeListener(listener);
+      }
+    };
+  }, []);
   // Timeout for wallet unlock in milliseconds (1 hour)
   const UNLOCK_TIMEOUT = 60 * 60 * 1000;
 
