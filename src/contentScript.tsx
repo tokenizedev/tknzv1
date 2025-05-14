@@ -525,6 +525,7 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
 
 
 // Token Buy Feature: observe dynamic content and inject buy buttons (toggleable)
+// Note: live toggling requires a page reload to apply changes
 (() => {
   // Check user setting for buy buttons
   chrome.storage.local.get(['buyModeEnabled'], ({ buyModeEnabled }) => {
@@ -545,6 +546,7 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
       color: 'black',
       padding: '3px 8px',
       marginLeft: '5px',
+      marginRight: '5px',
       borderRadius: '4px',
       fontSize: '11px',
       fontWeight: 'bold',
