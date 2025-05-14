@@ -96,6 +96,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   
   
   const { nativeSolBalance: balance, error: walletError, investmentAmount: defaultInvestment, createCoin } = useStore();
+  const refreshPortfolioData = useStore(state => state.refreshPortfolioData);
   const [articleData, setArticleData] = useState<ArticleData>({
     title: '',
     primaryImage: '',
@@ -471,7 +472,10 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
     }
   }
   const handleSubmit = async () => {
-    if (balance < requiredBalance) {
+    // Refresh wallet balance before submitting
+    await refreshPortfolioData();
+    const currentBalance = useStore.getState().nativeSolBalance;
+    if (currentBalance < requiredBalance) {
       setInsufficientFunds(true);
       setError(`Insufficient balance. Please add at least ${requiredBalance.toFixed(2)} SOL to your wallet (${investmentAmount} SOL for investment + 0.03 SOL for fees).`);
       return;
@@ -874,7 +878,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
 
           {balance < requiredBalance && (
             <div className="text-xs text-cyber-pink mt-1 font-terminal">
-              Add at least {requiredBalance.toFixed(2)} SOL to create a meme coin
+              Add at least {requiredBalance.toFixed(2)} SOL to create a coin
             </div>
           )}
         </div>
@@ -900,7 +904,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
         {/* Final create button with special styling */}
         <button
           onClick={handleSubmit}
-          disabled={balance < requiredBalance || isCreating}
+          disabled={isCreating}
           className={`w-full font-terminal text-lg uppercase tracking-wider border rounded-sm transition-all duration-300 relative overflow-hidden ${
             isCreating 
               ? 'bg-cyber-dark border-cyber-green/70 text-cyber-green py-2' 
@@ -926,7 +930,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
     </div>
     {/* Modal */}
     {insufficientFunds && 
-      <InsufficientFundsModal onClose={handleCloseModal}/> 
+      <InsufficientFundsModal onClose={handleCloseModal} tryAgain={handleSubmit}/> 
     }
   
 
