@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.13.0](https://tokenizedev///compare/v0.12.2...v0.13.0) (2025-05-14)
+
+
+### ⚠ BREAKING CHANGES
+
+* **components:** The behavior of selecting initialToMint token has been enhanced to handle both address and symbol lookup.
+
+### Features
+
+* Add functionality to handle token buy button clicks from content script ([610f3cc](https://tokenizedev///commit/610f3ccb79cb231a8d1c9d62a2a6655c4e5d2bc8))
+* Add functionality to handle token buy requests and show swap modal ([8c6ef3f](https://tokenizedev///commit/8c6ef3fec74ae3796aa3ea08d8c95fc0f054d651))
+* **ci:** update Node.js version to '23' and set cache to 'yarn' ([b3e90a0](https://tokenizedev///commit/b3e90a0ddd6fcfdec809af0f8b8657cc8a3436b6))
+* **components:** Add functionality to refresh portfolio data ([f3009b3](https://tokenizedev///commit/f3009b320aa92d0285c94c2641d14953425e8640))
+* **components:** add tryAgain functionality to InsufficientFundsModal component ([21754a5](https://tokenizedev///commit/21754a5a24c1d6e0450f54c2b01d63c1f0aa7d74))
+* **components:** improve initialToMint token selection logic ([e713dfe](https://tokenizedev///commit/e713dfe35e88dd321f2f2e09c5b59b3ea3bc1008))
+* **contentScript:** add periodic full DOM scan for Buy buttons every 5s ([25153cf](https://tokenizedev///commit/25153cfdc57361949c11af51618a10098bcc4cf9))
+* **contentScript:** Add state for tracking injected buttons and always scan for tokens ([f8bb85f](https://tokenizedev///commit/f8bb85fdabb88c3769fa0ffabb9d5a6b8c6ba432))
+* **contentScript:** introduce Token Buy Feature ([d2b7391](https://tokenizedev///commit/d2b7391149f9a8420c8969de3113c773fdcb1dbb))
+* **contentScript:** observe dynamic content and inject buy buttons ([f2fa671](https://tokenizedev///commit/f2fa671afbf6acc77b308b88b1abadf1c30294aa))
+
 ## [0.12.2](https://tokenizedev///compare/v0.12.1...v0.12.2) (2025-05-14)
 
 
