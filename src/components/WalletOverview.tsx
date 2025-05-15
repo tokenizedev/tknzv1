@@ -189,31 +189,36 @@ export const WalletOverview: React.FC<{
           tokens.map(token => (
             <div
               key={token.mint}
-              className="flex justify-between items-center py-2 border-b border-cyber-green/20"
+              className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)_auto] gap-2 items-center py-2 border-b border-cyber-green/20"
             >
-              <div className="flex flex-col">
-                <span className="text-sm font-medium text-cyber-green font-terminal">
+              {/* Token Name/Symbol Section - Left */}
+              <div className="flex flex-col min-w-0">
+                <span className="text-sm font-medium text-cyber-green font-terminal truncate">
                   {token.symbol}
                 </span>
-                <span className="text-xs text-cyber-green/70 font-mono truncate">
+                <span className="text-xs text-cyber-green/70 font-mono truncate max-w-full">
                   {token.name}
                 </span>
               </div>
-              <div className="flex flex-col items-end w-36 ml-auto mr-4">
-                <span className="text-sm font-medium text-cyber-green font-terminal text-right w-full">
+              
+              {/* Amount/Value Section - Middle */}
+              <div className="flex flex-col items-end min-w-0">
+                <span className="text-sm font-medium text-cyber-green font-terminal text-right truncate">
                   {token.amount >= 1000000 
                     ? token.amount.toLocaleString('en-US', { maximumFractionDigits: 2 })
                     : token.amount >= 1000 
                       ? token.amount.toLocaleString('en-US', { maximumFractionDigits: 4 })
                       : token.amount.toLocaleString('en-US', { maximumFractionDigits: 8 })}
                 </span>
-                <span className="text-xs text-cyber-green/70 font-mono text-right w-full">
+                <span className="text-xs text-cyber-green/70 font-mono text-right truncate">
                   {token.usdValue !== undefined 
                     ? `$${token.usdValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` 
                     : 'N/A USD'}
                 </span>
               </div>
-              <div className="flex items-center space-x-2">
+              
+              {/* Action Buttons - Right */}
+              <div className="flex items-center space-x-1 shrink-0">
                 <button
                   onClick={() => onSendToken?.(token.mint)}
                   className="p-1 hover:bg-cyber-green/10 rounded-full"
