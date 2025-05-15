@@ -930,7 +930,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
     </div>
     {/* Modal */}
     {insufficientFunds && 
-      <InsufficientFundsModal onClose={handleCloseModal} tryAgain={handleSubmit}/> 
+      <InsufficientFundsModal onClose={handleCloseModal} tryAgain={handleSubmit} balance={balance}/> 
     }
   
 
