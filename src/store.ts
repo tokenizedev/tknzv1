@@ -112,6 +112,7 @@ export const useStore = create<WalletState>((set, get) => ({
           const secretKey = new Uint8Array(walletData.keypairSecretKey);
           const keypair = Keypair.fromSecretKey(secretKey);
           return {
+            avatar: walletData.avatar,
             id: walletData.id,
             name: walletData.name,
             publicKey: walletData.publicKey,
