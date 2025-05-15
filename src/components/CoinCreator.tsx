@@ -626,7 +626,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
             <span className="sr-only">Clear</span>
           </button>
         </div>
-        <VersionBadge version={version} className="ml-auto mt-3" />
+        <VersionBadge version={version} className="ml-auto mt-1" />
       </div>
       
       {(error || walletError) && (
