@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.13.1](https://tokenizedev///compare/v0.13.0...v0.13.1) (2025-05-15)
+
+
+### Features
+
+* **App:** Persist UI mode for content script to detect sidePanel vs popup ([53f9a17](https://tokenizedev///commit/53f9a17eab5cbd3b72bf434fc895331711106793))
+* **background:** Add support for tracking side panel visibility per window ([8d335cb](https://tokenizedev///commit/8d335cb7dc1abfa4f0f994eb7c6add96429d49c9))
+* **components:** add copy wallet address functionality ([b9343f1](https://tokenizedev///commit/b9343f1615204b3fc8d20648d139a7e3cab6f4b0))
+* **components:** add message about changes taking effect after page refresh ([a981e58](https://tokenizedev///commit/a981e58dd0f11d474ae811e3d38ea8b1668fa3de))
+* **components:** add retry shake animation effect ([1f3b96a](https://tokenizedev///commit/1f3b96abf2ba62647d6bac9dbc9ea8f19118575e))
+* **components:** log token swap event to Firestore ([077c1e9](https://tokenizedev///commit/077c1e912c6d600dda3a517c2c5f1a146552a21f))
+* **contentScript:** add 'marginRight' style to buy buttons ([0047c1e](https://tokenizedev///commit/0047c1e4e21a317cabccd37ffff2532dd31a4a54))
+* **contentScript:** add toggleable buy buttons feature ([7b1212c](https://tokenizedev///commit/7b1212c56ca89ac3f4db8da0bab7ad55cf815939))
+* **contentScript:** Notify background of selected content and UI context ([06d88f4](https://tokenizedev///commit/06d88f4139695f282c148f497bd41c6b24763fea))
+* **SettingsPage:** Add Buy Button Feature ([392b1c1](https://tokenizedev///commit/392b1c15b372c43c2611d68fc9fee038b734d9d2)), closes [#123](https://tokenizedev///issues/123)
+* **swap:** Add helper function to show truncated contract address ([5c95e18](https://tokenizedev///commit/5c95e182ed9317913796d67a77497dff3ec86071))
+* **SwapPage:** Add useMemo for uniqueTokens and uiTokens creation ([a30bfb0](https://tokenizedev///commit/a30bfb098353af9384f86f1a8f82374bcdf87c1b))
+
 ## [0.13.0](https://tokenizedev///compare/v0.12.2...v0.13.0) (2025-05-14)
 
 
