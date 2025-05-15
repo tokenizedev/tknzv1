@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.13.2](https://tokenizedev///compare/v0.13.1...v0.13.2) (2025-05-15)
+
+
+### Features
+
+* **components:** Update WalletOverview component layout for better token display ([4672126](https://tokenizedev///commit/4672126b75665f710b862be943ce8aa4acf47bfa))
+
+
+### Bug Fixes
+
+* **components:** Adjust layout of VersionBadge in CoinCreator component ([a411ac0](https://tokenizedev///commit/a411ac0586cac9a3406aef7eab940486e004a158))
+
 ## [0.13.1](https://tokenizedev///compare/v0.13.0...v0.13.1) (2025-05-15)
 
 
