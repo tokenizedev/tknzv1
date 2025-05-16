@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Lock, Key, Shield, RefreshCw, Check, X, Plus, Trash2, LogIn, ShoppingCart } from 'lucide-react';
+import { ArrowLeft, Lock, Key, Shield, RefreshCw, Check, X, Plus, Trash2, LogIn, ShoppingCart, Ban, CheckCircle } from 'lucide-react';
 import { storage } from '../utils/storage';
 
 interface PasskeyCredential {
@@ -13,7 +13,7 @@ interface SettingsPageProps {
 }
 
 export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
-  const [activeSection, setActiveSection] = useState<'password' | 'buy' | 'passkey' | null>(null);
+  const [activeSection, setActiveSection] = useState<'password' | 'buy' | 'passkey' | 'blackwhite' | null>(null);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -30,14 +30,18 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
   const [migrationLoading, setMigrationLoading] = useState(false);
   // Buy button feature toggle
   const [buyEnabled, setBuyEnabled] = useState<boolean>(true);
-  
+  const [blacklist, setBlacklist] = useState<string[]>([]);
+  const [whitelist, setWhitelist] = useState<string[]>([]);
+  const [blacklistInput, setBlacklistInput] = useState('');
+  const [whitelistInput, setWhitelistInput] = useState('');
+
   // Check if WebAuthn is supported on this device/browser
   useEffect(() => {
     setIsWebAuthnSupported(
-      window.PublicKeyCredential !== undefined && 
+      window.PublicKeyCredential !== undefined &&
       typeof window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === 'function'
     );
-    
+
     // Load existing passkey credentials
     const loadPasskeys = async () => {
       try {
@@ -48,7 +52,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
           setHasLegacyPasskey(true);
           setLegacyPasskeyId(id);
         }
-        
+
         // Check for new passkey credentials
         const { passkeyCredentials } = await storage.get('passkeyCredentials');
         if (passkeyCredentials) {
@@ -59,7 +63,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
         setCredentials([]);
       }
     };
-    
+
     loadPasskeys();
   }, []);
   // Load buy button setting
@@ -75,26 +79,26 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
       }
     })();
   }, []);
-  
+
   // Handle password change
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
-    
+
     if (newPassword !== confirmPassword) {
       setError('New passwords do not match');
       return;
     }
-    
+
     if (newPassword.length < 8) {
       setError('Password must be at least 8 characters long');
       return;
     }
-    
+
     try {
       setLoading(true);
-      
+
       // Verify current password
       const { walletPasswordHash } = await storage.get('walletPasswordHash');
       const currentHashed = await crypto.subtle.digest(
@@ -104,13 +108,13 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
       const currentHashedHex = Array.from(new Uint8Array(currentHashed))
         .map(b => b.toString(16).padStart(2, '0'))
         .join('');
-        
+
       if (currentHashedHex !== walletPasswordHash) {
         setError('Current password is incorrect');
         setLoading(false);
         return;
       }
-      
+
       // Hash new password
       const newHashed = await crypto.subtle.digest(
         'SHA-256',
@@ -119,10 +123,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
       const newHashedHex = Array.from(new Uint8Array(newHashed))
         .map(b => b.toString(16).padStart(2, '0'))
         .join('');
-      
+
       // Save new password hash
       await storage.set({ walletPasswordHash: newHashedHex });
-      
+
       setSuccess('Password updated successfully');
       setCurrentPassword('');
       setNewPassword('');
@@ -135,7 +139,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
       setLoading(false);
     }
   };
-  
+
   // Reset form state when closing a section
   const handleCloseSection = () => {
     setActiveSection(null);
@@ -152,20 +156,20 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
       setError('Please enter a name for your passkey');
       return;
     }
-    
+
     setPasskeyLoading(true);
     setError('');
-    
+
     try {
       // Generate user ID - here we're using current timestamp for simplicity
       const userId = new Uint8Array(8);
       const timestamp = Date.now();
       new DataView(userId.buffer).setBigUint64(0, BigInt(timestamp), false);
-      
+
       // Challenge should be a random value, using a random array here
       const challenge = new Uint8Array(32);
       window.crypto.getRandomValues(challenge);
-      
+
       // Create publicKey credential request options
       const publicKeyCredentialCreationOptions: PublicKeyCredentialCreationOptions = {
         challenge,
@@ -191,35 +195,35 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
           requireResidentKey: true
         }
       };
-      
+
       // Create credential
       const credential = await navigator.credentials.create({
         publicKey: publicKeyCredentialCreationOptions
       }) as PublicKeyCredential;
-      
+
       if (!credential) {
         throw new Error('Failed to create credential');
       }
-      
+
       // Extract credential ID
       const credentialId = btoa(
         String.fromCharCode(...new Uint8Array(credential.rawId))
       );
-      
+
       // Save credential info
       const newCredential: PasskeyCredential = {
         id: credentialId,
         name: passkeyName,
         createdAt: Date.now()
       };
-      
+
       // Add to existing credentials
       const updatedCredentials = [...credentials, newCredential];
       setCredentials(updatedCredentials);
-      
+
       // Save to storage
       await storage.set({ passkeyCredentials: updatedCredentials });
-      
+
       setSuccess('Passkey successfully registered');
       setPasskeyName('');
     } catch (err) {
@@ -229,19 +233,19 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
       setPasskeyLoading(false);
     }
   };
-  
+
   // Delete a passkey
   const deletePasskey = async (credentialId: string) => {
     try {
       setPasskeyLoading(true);
-      
+
       // Filter out the credential to delete
       const updatedCredentials = credentials.filter(cred => cred.id !== credentialId);
-      
+
       // Update state and storage
       setCredentials(updatedCredentials);
       await storage.set({ passkeyCredentials: updatedCredentials });
-      
+
       setSuccess('Passkey removed successfully');
     } catch (err) {
       console.error('Error removing passkey:', err);
@@ -262,38 +266,38 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
       setError('Please enter a name for the migrated passkey');
       return;
     }
-    
+
     setMigrationLoading(true);
     setError('');
-    
+
     try {
       // Fetch the user ID from storage
       const resUser = await storage.get('walletPasskeyUserId');
       const userId = resUser.walletPasskeyUserId;
-      
+
       if (!userId) {
         throw new Error('Legacy passkey is missing user ID');
       }
-      
+
       // Create new passkey credential entry
       const newCredential: PasskeyCredential = {
         id: legacyPasskeyId,
         name: legacyMigrationName,
         createdAt: Date.now()
       };
-      
+
       // Add the legacy passkey to the credentials array
       const updatedCredentials = [...credentials, newCredential];
       setCredentials(updatedCredentials);
-      
+
       // Save to storage
       await storage.set({ passkeyCredentials: updatedCredentials });
-      
+
       // Mark migration as complete
       setHasLegacyPasskey(false);
       setLegacyPasskeyId('');
       setLegacyMigrationName('');
-      
+
       setSuccess('Legacy passkey successfully migrated');
     } catch (err) {
       console.error('Error migrating legacy passkey:', err);
@@ -302,7 +306,52 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
       setMigrationLoading(false);
     }
   };
-  
+
+  useEffect(() => {
+    const loadLists = async () => {
+      try {
+        const { blacklist } = await storage.get('blacklist');
+        const { whitelist } = await storage.get('whitelist');
+
+        setBlacklist(Array.isArray(blacklist) ? blacklist : []);
+        setWhitelist(Array.isArray(whitelist) ? whitelist : []);
+      } catch {
+        setBlacklist([]);
+        setWhitelist([]);
+      }
+    };
+
+    loadLists();
+  }, []);
+
+  const addBlacklist = async () => {
+    if (!blacklistInput.trim() || blacklist.includes(blacklistInput.trim())) return;
+    const updated = [...blacklist, blacklistInput.trim()];
+    setBlacklist(updated);
+    setBlacklistInput('');
+    await storage.set({ blacklist: updated });
+  };
+
+  const removeBlacklist = async (entry: string) => {
+    const updated = blacklist.filter(e => e !== entry);
+    setBlacklist(updated);
+    await storage.set({ blacklist: updated });
+  };
+
+  const addWhitelist = async () => {
+    if (!whitelistInput.trim() || whitelist.includes(whitelistInput.trim())) return;
+    const updated = [...whitelist, whitelistInput.trim()];
+    setWhitelist(updated);
+    setWhitelistInput('');
+    await storage.set({ whitelist: updated });
+  };
+
+  const removeWhitelist = async (entry: string) => {
+    const updated = whitelist.filter(e => e !== entry);
+    setWhitelist(updated);
+    await storage.set({ whitelist: updated });
+  };
+
   return (
     <div className="h-full bg-cyber-black overflow-y-auto pb-20">
       {/* Header */}
@@ -318,7 +367,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
           GLOBAL SETTINGS
         </h1>
       </div>
-      
+
       <div className="p-4 space-y-4">
         {/* Success message */}
         {success && (
@@ -327,7 +376,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
             <span>{success}</span>
           </div>
         )}
-        
+
         {/* Error message */}
         {error && (
           <div className="bg-cyber-orange/10 border border-cyber-orange/50 p-3 rounded-sm text-cyber-orange font-terminal text-sm mb-4 flex items-start">
@@ -338,7 +387,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
 
         {/* Password Management Section */}
         <div className="border border-cyber-green/30 rounded-sm overflow-hidden">
-          <div 
+          <div
             className={`p-4 bg-gradient-to-r from-cyber-black to-cyber-black/80 ${activeSection === 'password' ? 'border-b border-cyber-green/30' : ''}`}
             onClick={() => activeSection !== 'password' ? setActiveSection('password') : null}
           >
@@ -355,7 +404,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
             </div>
             <p className="text-cyber-green/70 text-sm mt-1 ml-8">Update your wallet password</p>
           </div>
-          
+
           {activeSection === 'password' && (
             <div className="p-4 bg-cyber-black/50 animate-slide-down">
               <form onSubmit={handlePasswordChange} className="space-y-4">
@@ -369,7 +418,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
                     required
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-cyber-green/80 text-xs font-terminal mb-1">New Password</label>
                   <input
@@ -381,7 +430,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
                     minLength={8}
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-cyber-green/80 text-xs font-terminal mb-1">Confirm New Password</label>
                   <input
@@ -392,7 +441,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
                     required
                   />
                 </div>
-                
+
                 <div className="flex space-x-2 pt-2">
                   <button
                     type="submit"
@@ -420,7 +469,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
             </div>
           )}
         </div>
-        
+
         {/* Buy Button Feature Section */}
         <div className="border border-cyber-green/30 rounded-sm overflow-hidden">
           <div
@@ -461,7 +510,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
         </div>
         {/* Passkey Management Section */}
         <div className="border border-cyber-green/30 rounded-sm overflow-hidden">
-          <div 
+          <div
             className={`p-4 bg-gradient-to-r from-cyber-black to-cyber-black/80 ${activeSection === 'passkey' ? 'border-b border-cyber-green/30' : ''}`}
             onClick={() => activeSection !== 'passkey' ? setActiveSection('passkey') : null}
           >
@@ -478,7 +527,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
             </div>
             <p className="text-cyber-green/70 text-sm mt-1 ml-8">Set up passkeys for secure authentication</p>
           </div>
-          
+
           {activeSection === 'passkey' && (
             <div className="p-4 bg-cyber-black/50 animate-slide-down">
               {!isWebAuthnSupported ? (
@@ -502,7 +551,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
                           </p>
                         </div>
                       </div>
-                      
+
                       <div className="flex items-center space-x-2">
                         <input
                           type="text"
@@ -525,7 +574,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
                       </div>
                     </div>
                   )}
-                  
+
                   {/* Registered passkeys list */}
                   <div className="space-y-2">
                     <h3 className="text-cyber-green/90 text-sm font-terminal">Registered Passkeys</h3>
@@ -536,8 +585,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
                     ) : (
                       <div className="space-y-2">
                         {credentials.map((cred) => (
-                          <div 
-                            key={cred.id} 
+                          <div
+                            key={cred.id}
                             className="flex items-center justify-between p-2 border border-cyber-green/20 rounded-sm bg-cyber-green/5"
                           >
                             <div>
@@ -559,7 +608,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
                       </div>
                     )}
                   </div>
-                  
+
                   {/* Register new passkey form */}
                   <div className="pt-2 border-t border-cyber-green/20">
                     <h3 className="text-cyber-green/90 text-sm font-terminal mb-2">Register New Passkey</h3>
@@ -592,7 +641,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
                   </div>
                 </div>
               )}
-              
+
               <button
                 type="button"
                 onClick={handleCloseSection}
@@ -603,9 +652,115 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
             </div>
           )}
         </div>
-        
+
+        {/* Blacklist & Whitelist Section */}
+        <div className="border border-cyber-green/30 rounded-sm overflow-hidden">
+          <div
+            className={`p-4 bg-gradient-to-r from-cyber-black to-cyber-black/80 ${activeSection === 'blackwhite' ? 'border-b border-cyber-green/30' : ''}`}
+            onClick={() => activeSection !== 'blackwhite' ? setActiveSection('blackwhite') : null}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <Ban className="w-5 h-5 text-cyber-green" />
+                <h2 className="text-cyber-green font-terminal">Blacklist & Whitelist</h2>
+              </div>
+              {activeSection !== 'blackwhite' && (
+                <button className="text-cyber-green border border-cyber-green/50 px-2 py-1 rounded-sm text-xs font-terminal hover:bg-cyber-green/10 transition-colors">
+                  MANAGE
+                </button>
+              )}
+            </div>
+            <p className="text-cyber-green/70 text-sm mt-1 ml-8">Manage blacklist and whitelist entries</p>
+          </div>
+          {activeSection === 'blackwhite' && (
+            <div className="p-4 bg-cyber-black/50 animate-slide-down space-y-6">
+              <div>
+                <h3 className="text-cyber-orange font-terminal text-sm mb-2 flex items-center"><Ban className="w-4 h-4 mr-2" />Blacklist</h3>
+                <div className="flex space-x-2 mb-2">
+                  <input
+                    type="text"
+                    placeholder="Add to blacklist"
+                    value={blacklistInput}
+                    onChange={e => setBlacklistInput(e.target.value)}
+                    className="flex-1 bg-cyber-black border border-cyber-orange/30 rounded-sm p-2 text-cyber-orange focus:border-cyber-orange/70 focus:outline-none focus:ring-1 focus:ring-cyber-orange/30 text-sm"
+                  />
+                  <button
+                    onClick={addBlacklist}
+                    className="px-3 py-2 bg-cyber-orange/10 border border-cyber-orange/50 text-cyber-orange rounded-sm hover:bg-cyber-orange/20 transition-colors font-terminal text-sm flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={!blacklistInput.trim()}
+                  >
+                    <Plus className="w-4 h-4 mr-1" />ADD
+                  </button>
+                </div>
+                <div className="space-y-1">
+                  {!blacklist.length ? (
+                    <p className="text-cyber-orange/60 text-xs font-terminal">No blacklist entries.</p>
+                  ) : (
+                    blacklist.map(entry => (
+                      <div key={entry} className="flex items-center justify-between p-2 border border-cyber-orange/20 rounded-sm bg-cyber-orange/5">
+                        <span className="text-cyber-orange font-terminal text-sm break-all">{entry}</span>
+                        <button
+                          onClick={() => removeBlacklist(entry)}
+                          className="p-1.5 text-cyber-orange hover:bg-cyber-orange/10 rounded-sm transition-colors"
+                          title="Remove"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+              <div>
+                <h3 className="text-cyber-green font-terminal text-sm mb-2 flex items-center"><CheckCircle className="w-4 h-4 mr-2" />Whitelist</h3>
+                <div className="flex space-x-2 mb-2">
+                  <input
+                    type="text"
+                    placeholder="Add to whitelist"
+                    value={whitelistInput}
+                    onChange={e => setWhitelistInput(e.target.value)}
+                    className="flex-1 bg-cyber-black border border-cyber-green/30 rounded-sm p-2 text-cyber-green focus:border-cyber-green/70 focus:outline-none focus:ring-1 focus:ring-cyber-green/30 text-sm"
+                  />
+                  <button
+                    onClick={addWhitelist}
+                    className="px-3 py-2 bg-cyber-green/10 border border-cyber-green/50 text-cyber-green rounded-sm hover:bg-cyber-green/20 transition-colors font-terminal text-sm flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={!whitelistInput.trim()}
+                  >
+                    <Plus className="w-4 h-4 mr-1" />ADD
+                  </button>
+                </div>
+                <div className="space-y-1">
+                  {!whitelist.length ? (
+                    <p className="text-cyber-green/60 text-xs font-terminal">No whitelist entries.</p>
+                  ) : (
+                    whitelist.map(entry => (
+                      <div key={entry} className="flex items-center justify-between p-2 border border-cyber-green/20 rounded-sm bg-cyber-green/5">
+                        <span className="text-cyber-green font-terminal text-sm break-all">{entry}</span>
+                        <button
+                          onClick={() => removeWhitelist(entry)}
+                          className="p-1.5 text-cyber-green hover:bg-cyber-green/10 rounded-sm transition-colors"
+                          title="Remove"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleCloseSection}
+                className="w-full mt-4 border border-cyber-green/30 text-cyber-green p-2 rounded-sm hover:bg-cyber-green/10 transition-colors font-terminal text-sm"
+              >
+                CLOSE
+              </button>
+            </div>
+          )}
+        </div>
+
         {/* Additional settings sections can be added here */}
       </div>
     </div>
   );
-}; 
+};
