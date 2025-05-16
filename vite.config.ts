@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { crx } from '@crxjs/vite-plugin';
+import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import manifest from './manifest.json';
 import { resolve } from 'path';
 import fs from 'fs';
@@ -9,7 +10,13 @@ import pkg from './package.json';
 export default defineConfig({
   plugins: [
     react(),
-    crx({ 
+    nodePolyfills({
+      include: ['buffer'],
+      globals: {
+        Buffer: true,
+      },
+    }),
+    crx({
       manifest,
       contentScripts: {
         injectCss: true,
@@ -50,7 +57,6 @@ export default defineConfig({
   resolve: {
     alias: {
       'html2canvas': resolve(__dirname, 'node_modules/html2canvas/dist/html2canvas.esm.js'),
-      buffer: 'buffer',
     }
   },
   test: {
