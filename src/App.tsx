@@ -403,16 +403,44 @@ function App({ isSidebar = false }: AppProps = {}) {
 
     // Flash a glitch effect
     setGlitching(true);
+    
+    // Create more dramatic success effect with classes instead of direct DOM manipulation
     setTimeout(() => {
-      setGlitching(false);
-      // Transition to My Created Coins view
-      setActiveView('myCoins');
-      // Reset creation state after transition
+      // Set success state that will trigger CSS classes in render
+      setCreationSuccessState('glitch');
+      
+      // Add a success sound effect if desired
+      try {
+        const successSound = new Audio();
+        successSound.src = 'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA/+M4wAAAAAAAAAAAAEluZm8AAAAPAAAABQAAAkAAQEBAQEBAQEBAQEBAQEBQUFBQUFBQUFBQUFBQUFBQYGBgYGBgYGBgYGBgYGBgYHBwcHBwcHBwcHBwcHBwcHCAgICAgICAgICAgICAgICQkJCQkJCQkJCQkJCQkJCQoKCgoKCgoKCgoKCgoKCgsLCwsLCwsLCwsLCwsLCwwMDAwMDAwMDAwMDAwMDA0NDQ0NDQ0NDQ0NDQ0NDQ4ODg4ODg4ODg4ODg4ODg////////AAAAAExhdmM1OC4xMy4xMDAAAAAAAAAAAAAAAP/jOMAAAAAAAAAAAABJbmZvAAAADwAAAAUAAAJAAECAgICAgICAgICAgICAgJCQkJCQkJCQkJCQkJCQkJCQoKCgoKCgoKCgoKCgoKCgsLCwsLCwsLCwsLCwsLCwsMDAwMDAwMDAwMDAwMDAwNDQ0NDQ0NDQ0NDQ0NDQ0ODg4ODg4ODg4ODg4ODg4P///////wAAAABMYXZjNTguMTMuMTAwAAAAAAAAAAAAAAD/4zjQAAAAAAAAAAAASW5mbwAAAA8AAAAFAAACQABAgICAgICAgICAgICAgICQkJCQkJCQkJCQkJCQkJCQoKCgoKCgoKCgoKCgoKCgoLCwsLCwsLCwsLCwsLCwsLDAwMDAwMDAwMDAwMDAwMDA0NDQ0NDQ0NDQ0NDQ0NDQ4ODg4ODg4ODg4ODg4ODg////////AAAAAExhdmM1OC4xMy4xMDAAAAAAAAA=';
+        successSound.volume = 0.2;
+        successSound.play().catch(() => {});
+      } catch (e) {
+        console.log('Audio not supported');
+      }
+      
       setTimeout(() => {
-        setIsCreatingCoin(false);
-        // Keep the address for highlighting for a while
-        setTimeout(() => setNewCoinAddress(null), 10000);
-      }, 300);
+        setGlitching(false);
+        setCreationSuccessState('fade');
+        
+        // Add a brief congratulatory message
+        setNotification({ 
+          message: `Token successfully created at ${coinAddress.slice(0, 8)}...${coinAddress.slice(-8)}`, 
+          type: 'success' 
+        });
+        
+        // Transition to My Created Coins view with state
+        setTimeout(() => {
+          setActiveView('myCoins');
+          // Reset creation state after transition
+          setTimeout(() => {
+            setIsCreatingCoin(false);
+            setCreationSuccessState(null);
+            // Keep the address for highlighting for a while
+            setTimeout(() => setNewCoinAddress(null), 10000);
+          }, 300);
+        }, 400);
+      }, 500);
     }, 200);
   };
 
@@ -502,8 +530,80 @@ function App({ isSidebar = false }: AppProps = {}) {
     setTimeout(() => setGlitching(false), 200);
   };
 
+  // Add this style to your file, outside of any components
+  useEffect(() => {
+    // Add these styles for the success effects
+    const style = document.createElement('style');
+    style.innerHTML = `
+      @keyframes success-glitch {
+        0% {
+          clip-path: inset(40% 0 61% 0);
+          transform: skew(0.15deg);
+          filter: hue-rotate(0deg);
+        }
+        20% {
+          clip-path: inset(92% 0 1% 0);
+          transform: skew(-0.3deg);
+          filter: hue-rotate(20deg);
+        }
+        40% {
+          clip-path: inset(43% 0 1% 0);
+          transform: skew(0.4deg);
+          filter: hue-rotate(-10deg);
+        }
+        60% {
+          clip-path: inset(25% 0 58% 0);
+          transform: skew(-0.25deg);
+          filter: hue-rotate(5deg);
+        }
+        80% {
+          clip-path: inset(54% 0 7% 0);
+          transform: skew(0.2deg);
+          filter: hue-rotate(-20deg);
+        }
+        100% {
+          clip-path: inset(0% 0 0% 0);
+          transform: skew(0deg);
+          filter: hue-rotate(0deg);
+        }
+      }
+      
+      .success-glitch::after {
+        content: '';
+        position: fixed;
+        inset: 0;
+        background: linear-gradient(
+          rgba(0, 255, 65, 0.3),
+          transparent 3px,
+          transparent 9px,
+          rgba(0, 255, 65, 0.3) 9px
+        );
+        background-size: 100% 12px;
+        z-index: 9999;
+        pointer-events: none;
+        animation: success-glitch 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      }
+      
+      .view-transition {
+        opacity: 0;
+        transform: scale(1.05) translateY(-10px);
+        transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      }
+    `;
+    document.head.appendChild(style);
+
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
+
+  // Add this to your state declarations section
+  const [creationSuccessState, setCreationSuccessState] = useState<'glitch' | 'fade' | null>(null);
+
   return (
-    <div className={`${isSidebar ? 'w-full h-full ' : 'w-[400px] h-[650px] '}bg-cyber-black bg-binary-pattern binary-overlay`}>
+    <div className={`${isSidebar ? 'w-full h-full ' : 'w-[400px] h-[650px] '}bg-cyber-black bg-binary-pattern binary-overlay ${
+      creationSuccessState === 'glitch' ? 'success-glitch' : ''
+    } ${creationSuccessState === 'fade' ? 'view-transition' : ''}`}>
       {/* In-app notification */}
       {notification && (
         <div
