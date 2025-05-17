@@ -95,7 +95,18 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   }, []);
   
   
-  const { nativeSolBalance: balance, error: walletError, investmentAmount: defaultInvestment, createCoinRemote } = useStore();
+  // Wallet and store hooks
+  const { nativeSolBalance: balance, error: walletError, investmentAmount: defaultInvestment } = useStore(state => ({
+    nativeSolBalance: state.nativeSolBalance,
+    error: state.error,
+    investmentAmount: state.investmentAmount
+  }));
+  const previewData = useStore(state => state.previewData);
+  const previewCreateCoinRemote = useStore(state => state.previewCreateCoinRemote);
+  const confirmPreviewCreateCoin = useStore(state => state.confirmPreviewCreateCoin);
+  const clearPreviewCreateCoin = useStore(state => state.clearPreviewCreateCoin);
+  // const refreshPortfolioData = useStore(state => state.refreshPortfolioData); // duplicate, already declared above
+  const [isPreviewing, setIsPreviewing] = useState(false);
   const refreshPortfolioData = useStore(state => state.refreshPortfolioData);
   const [articleData, setArticleData] = useState<ArticleData>({
     title: '',
@@ -471,6 +482,35 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
       setIsCreating(false);
     }
   }
+  // Build parameters object from form state
+  const buildParams = () => {
+    const params: any = {
+      name: coinName,
+      ticker,
+      description,
+      websiteUrl,
+      twitter: xUrl,
+      telegram: telegramUrl,
+      investmentAmount
+    };
+    if (imageFile) params.imageFile = imageFile;
+    else params.imageUrl = imageUrl;
+    return params;
+  };
+  // Preview token creation (fee & amounts)
+  const handlePreview = async () => {
+    setIsPreviewing(true);
+    setError(null);
+    try {
+      const params = buildParams();
+      await previewCreateCoinRemote(params);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Unknown error';
+      setError(`Preview failed: ${msg}`);
+    } finally {
+      setIsPreviewing(false);
+    }
+  };
   const handleSubmit = async () => {
     // Refresh wallet balance before submitting
     await refreshPortfolioData();
@@ -481,12 +521,8 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
       return;
     }
 
-    // Notify parent component that creation is starting
-    if (onCreationStart) {
-      await onCreationStart(innerHandleSubmit);
-    } else {
-      await innerHandleSubmit();
-    }
+    // Trigger preview of token creation
+    await handlePreview();
   };
 
   const clearForm = () => {
@@ -901,31 +937,70 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
           </div>
         )}
 
-        {/* Final create button with special styling */}
-        <button
-          onClick={handleSubmit}
-          disabled={isCreating}
-          className={`w-full font-terminal text-lg uppercase tracking-wider border rounded-sm transition-all duration-300 relative overflow-hidden ${
-            isCreating 
-              ? 'bg-cyber-dark border-cyber-green/70 text-cyber-green py-2' 
-              : 'bg-cyber-black hover:bg-cyber-green/20 border-cyber-green text-cyber-green py-4 hover:shadow-neon-green'
-          }`}
-        >
-          {isCreating ? (
-            <div className="px-6 space-y-3">
-              <div className="flex items-center justify-between mb-1">
-                <span className="font-terminal text-sm">CREATING COIN...</span>
-                <Terminal className="w-4 h-4 animate-pulse" />
+        {/* Preview or Create button */}
+        {previewData ? (
+          <div className="crypto-card p-4 space-y-4 border border-cyber-purple">
+            <h3 className="text-lg font-terminal text-cyber-green uppercase">Preview</h3>
+            <div className="space-y-1 font-terminal text-sm text-white">
+              <p>Total Cost: {previewData.totalAmount.toFixed(4)} SOL</p>
+              <p>Fee (1%): {previewData.feeAmount.toFixed(4)} SOL</p>
+              <p>Net Invest: {previewData.netAmount.toFixed(4)} SOL</p>
+              <p>Est. Tokens: {previewData.netAmount.toFixed(4)} {ticker.toUpperCase()}</p>
+            </div>
+            <div className="flex space-x-2">
+              <button
+                onClick={async () => {
+                  setIsCreating(true);
+                  setError(null);
+                  try {
+                    const res = await confirmPreviewCreateCoin();
+                    setCreatedCoin(res);
+                    if (onCreationComplete) onCreationComplete(res.address);
+                  } catch (e) {
+                    const msg = e instanceof Error ? e.message : 'Execution failed';
+                    setError(`Creation failed: ${msg}`);
+                    if (onCreationError) onCreationError(msg);
+                  } finally {
+                    setIsCreating(false);
+                  }
+                }}
+                disabled={isCreating}
+                className="btn-primary flex-1 font-terminal"
+              >
+                {isCreating ? 'CREATING...' : 'CONFIRM'}
+              </button>
+              <button
+                onClick={() => clearPreviewCreateCoin()}
+                disabled={isPreviewing}
+                className="flex-1 font-terminal border border-cyber-pink text-cyber-pink py-2 rounded-sm hover:bg-cyber-pink/10"
+              >
+                CANCEL
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={handleSubmit}
+            disabled={isPreviewing || isCreating}
+            className={`w-full font-terminal text-lg uppercase tracking-wider border rounded-sm transition-all duration-300 relative overflow-hidden ${
+              isPreviewing
+                ? 'bg-cyber-dark border-cyber-green/70 text-cyber-green py-2'
+                : 'bg-cyber-black hover:bg-cyber-green/20 border-cyber-green text-cyber-green py-4 hover:shadow-neon-green'
+            }`}
+          >
+            {isPreviewing ? (
+              <div className="flex items-center justify-center space-x-2 w-full h-full">
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span>PREVIEWING...</span>
               </div>
-              <TerminalLoader text="Initializing transaction..." progress={loadingProgress} />
-            </div>
-          ) : (
-            <div className="flex items-center justify-center space-x-2 w-full h-full">
-              <Zap className="w-5 h-5" />
-              <span>CREATE COIN</span>
-            </div>
-          )}
-        </button>
+            ) : (
+              <div className="flex items-center justify-center space-x-2 w-full h-full">
+                <Zap className="w-5 h-5" />
+                <span>PREVIEW</span>
+              </div>
+            )}
+          </button>
+        )}
       </div>
     </div>
     {/* Modal */}
