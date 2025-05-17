@@ -950,41 +950,30 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
             <div className="flex space-x-2">
               <button
                 onClick={async () => {
-                  // Delegate creation UI to parent if provided
-                  if (onCreationStart) {
-                    try {
-                      await onCreationStart(async () => {
-                        // perform versioned transaction confirmation
-                        const res = await confirmPreviewCreateCoin();
-                        setCreatedCoin(res);
-                        if (onCreationComplete) onCreationComplete(res.address);
-                      });
-                    } catch (e) {
-                      const msg = e instanceof Error ? e.message : 'Execution failed';
-                      setError(`Creation failed: ${msg}`);
-                      if (onCreationError) onCreationError(msg);
-                    }
-                  } else {
-                    // fallback inline
-                    setIsCreating(true);
-                    setError(null);
+                  const performConfirm = async () => {
                     try {
                       const res = await confirmPreviewCreateCoin();
                       setCreatedCoin(res);
                       if (onCreationComplete) onCreationComplete(res.address);
-                    } catch (e) {
-                      const msg = e instanceof Error ? e.message : 'Execution failed';
+                    } catch (err) {
+                      const msg = err instanceof Error ? err.message : 'Execution failed';
                       setError(`Creation failed: ${msg}`);
                       if (onCreationError) onCreationError(msg);
-                    } finally {
-                      setIsCreating(false);
                     }
+                  };
+                  if (onCreationStart) {
+                    await onCreationStart(performConfirm);
+                  } else {
+                    setIsCreating(true);
+                    setError(null);
+                    await performConfirm();
+                    setIsCreating(false);
                   }
                 }}
-                disabled={isCreating || Boolean(onCreationStart)}
+                disabled={isCreating}
                 className="btn-primary flex-1 font-terminal"
               >
-                {isCreating && !onCreationStart ? 'CREATING...' : 'CONFIRM'}
+                {isCreating ? 'CREATING...' : 'CONFIRM'}
               </button>
               <button
                 onClick={() => clearPreviewCreateCoin()}
@@ -1021,8 +1010,17 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
       </div>
     </div>
     {/* Modal */}
-    {insufficientFunds && 
-      <InsufficientFundsModal onClose={handleCloseModal} tryAgain={handleSubmit}/> 
+    {insufficientFunds &&
+      <InsufficientFundsModal
+        onClose={handleCloseModal}
+        tryAgain={async () => {
+          if (onCreationStart) {
+            await onCreationStart(handleSubmit);
+          } else {
+            await handleSubmit();
+          }
+        }}
+      />
     }
   
 
