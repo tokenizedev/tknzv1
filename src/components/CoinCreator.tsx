@@ -279,7 +279,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
     };
   };
 
-  const requiredBalance = investmentAmount + 0.001;
+  const requiredBalance = investmentAmount + 0.03;
 
   // Progress animation effect for the terminal loading
   useEffect(() => {
