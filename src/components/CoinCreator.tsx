@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Image, Type, FileText, Send, Loader2, AlertCircle, Globe, Sparkles, DollarSign, Hand as BrandX, GitBranch as BrandTelegram, Terminal, Zap, Target, X, Upload, ChevronLeft, ChevronRight, CheckCircle, Copy, ExternalLink, Hash } from 'lucide-react';
 import { useStore } from '../store';
 import { TerminalLoader } from './TerminalLoader';
-import { VersionBadge, VersionBadgeProps } from './VersionBadge';
-import { Loader, LoaderProps } from './Loader';
+import { VersionBadge } from './VersionBadge';
+import { Loader } from './Loader';
 import { InsufficientFundsModal } from './InsufficientFundsModal';
 
 interface ArticleData {
@@ -716,7 +716,11 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
     else params.imageUrl = imageUrl;
     return params;
   };
-  // Preview token creation (fee & amounts)
+  // Add a ref for the preview container and deploy button
+  const previewContainerRef = useRef<HTMLDivElement>(null);
+  const deployButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Update handlePreview function to improve scrolling and button focus behavior
   const handlePreview = async () => {
     if (isPreviewing || isPreviewTransitioning) return;
     
@@ -730,8 +734,46 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
     try {
       const params = buildParams();
       await previewCreateCoinRemote(params);
+      
       setTimeout(() => {
         setIsPreviewTransitioning(false);
+        
+        // Use requestAnimationFrame to ensure the UI has updated before scrolling
+        requestAnimationFrame(() => {
+          // First ensure the outer container is scrolled to show the preview
+          if (mainContainerRef.current) {
+            mainContainerRef.current.scrollTo({
+              top: mainContainerRef.current.scrollHeight,
+              behavior: 'smooth'
+            });
+          }
+          
+          // Then scroll the preview into view for precise positioning
+          setTimeout(() => {
+            if (previewContainerRef.current) {
+              previewContainerRef.current.scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'center'
+              });
+              
+              // Focus the deploy button with certainty after animations complete
+              setTimeout(() => {
+                if (deployButtonRef.current) {
+                  // Add a slight visual effect to highlight the button
+                  deployButtonRef.current.classList.add('focus-highlight');
+                  deployButtonRef.current.focus();
+                  
+                  // Remove the highlight class after a short time
+                  setTimeout(() => {
+                    if (deployButtonRef.current) {
+                      deployButtonRef.current.classList.remove('focus-highlight');
+                    }
+                  }, 1000);
+                }
+              }, 400);
+            }
+          }, 100);
+        });
       }, 500);
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Unknown error';
@@ -852,448 +894,444 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isCarouselOpen, articleData.images, carouselIndex]);
 
+  // Add a ref for the main container
+  const mainContainerRef = useRef<HTMLDivElement>(null);
+
   if (isLoading) {
-    return (
-      <Loader 
-        isChild={true} 
-        isSidebar={isSidebar} 
-        className="absolute h-full" 
-      />
-    );
+    return <Loader isSidebar={isSidebar} isChild={true} />;
   }
 
   return (
-    <div className="relative min-h-screen">
-  {/* Overlay content (will blur when modal is open) */}  
-    <div className={insufficientFunds ? "blur-sm pointer-events-none select-none" : "py-2"}>
-      {/* Compact header with logo, address dropdown, and action buttons */}
-      <div className="flex items-center justify-between my-2">
-        <div className="inline-flex rounded-sm overflow-hidden">
-          <button
-            onClick={handleSelectContent}
-            title="Select content to tokenize"
-            className="bg-black border border-cyber-green/70 hover:bg-cyber-green/10 text-cyber-green px-3 py-1 font-terminal text-xs flex items-center border-r-0"
-          >
-            <Target className="w-3 h-3 mr-1" />
-            <span className="uppercase">Select</span>
-          </button>
-          <button
-            onClick={() => generateSuggestions(articleData)}
-            disabled={isGenerating || websiteUrl.includes('tknz.fun')}
-            title="Memier"
-            className="bg-black border border-cyber-green/70 hover:bg-cyber-green/10 text-cyber-green px-2 py-1 font-terminal text-xs flex items-center disabled:opacity-50 disabled:cursor-not-allowed border-r-0"
-          >
-            {isGenerating ? (
-              <Terminal className="w-3 h-3 animate-pulse" />
-            ) : (
-              <Sparkles className="w-3 h-3" />
-            )}
-            <span className="sr-only">MEMIER</span>
-          </button>
-          <button
-            onClick={clearForm}
-            title="Clear form and start fresh"
-            className="bg-black border border-cyber-green/70 hover:bg-cyber-green/10 text-cyber-green px-2 py-1 font-terminal text-xs flex items-center"
-          >
-            <X className="w-3 h-3" />
-            <span className="sr-only">Clear</span>
-          </button>
-        </div>
-        <VersionBadge 
-          version={version} 
-          className="ml-auto mt-1" 
-        />
-      </div>
-      
-      {(error || walletError) && (
-        <div className="terminal-window p-3 flex items-start space-x-2 mb-3">
-          <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-cyber-pink" />
-          <div>
-            <p className="text-xs text-cyber-pink font-terminal">ERROR_CODE: 0xE1A2</p>
-            <p className="text-xs text-left font-terminal text-cyber-pink">{error || walletError}</p>
+    <div className="relative h-full overflow-y-auto" ref={mainContainerRef}>
+      {/* Overlay content (will blur when modal is open) */}  
+      <div className={insufficientFunds ? "blur-sm pointer-events-none select-none" : "py-2 overflow-y-auto"}>
+        {/* Compact header with logo, address dropdown, and action buttons */}
+        <div className="flex items-center justify-between my-2">
+          <div className="inline-flex rounded-sm overflow-hidden">
+            <button
+              onClick={handleSelectContent}
+              title="Select content to tokenize"
+              className="bg-black border border-cyber-green/70 hover:bg-cyber-green/10 text-cyber-green px-3 py-1 font-terminal text-xs flex items-center border-r-0"
+            >
+              <Target className="w-3 h-3 mr-1" />
+              <span className="uppercase">Select</span>
+            </button>
+            <button
+              onClick={() => generateSuggestions(articleData)}
+              disabled={isGenerating || websiteUrl.includes('tknz.fun')}
+              title="Memier"
+              className="bg-black border border-cyber-green/70 hover:bg-cyber-green/10 text-cyber-green px-2 py-1 font-terminal text-xs flex items-center disabled:opacity-50 disabled:cursor-not-allowed border-r-0"
+            >
+              {isGenerating ? (
+                <Terminal className="w-3 h-3 animate-pulse" />
+              ) : (
+                <Sparkles className="w-3 h-3" />
+              )}
+              <span className="sr-only">MEMIER</span>
+            </button>
+            <button
+              onClick={clearForm}
+              title="Clear form and start fresh"
+              className="bg-black border border-cyber-green/70 hover:bg-cyber-green/10 text-cyber-green px-2 py-1 font-terminal text-xs flex items-center"
+            >
+              <X className="w-3 h-3" />
+              <span className="sr-only">Clear</span>
+            </button>
           </div>
+          <VersionBadge className="ml-auto mt-1" />
         </div>
-      )}
-
-      {/* Token details section - directly start form */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between border-b border-cyber-green/30 pb-1 mb-3">
-          <h3 className="font-terminal text-cyber-green text-base uppercase tracking-wide">Token Details</h3>
-        </div>
-
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <label className="flex items-center text-sm font-terminal text-cyber-pink">
-              <Type className="w-4 h-4 mr-2" />
-              Coin Name
-            </label>
-            <input
-              type="text"
-              value={coinName}
-              onChange={(e) => setCoinName(e.target.value)}
-              className="input-field font-terminal"
-              maxLength={32}
-              placeholder="Enter coin name"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="flex items-center text-sm font-terminal text-cyber-pink">
-              <Type className="w-4 h-4 mr-2" />
-              Ticker
-            </label>
-            <input
-              type="text"
-              value={ticker}
-              onChange={(e) => setTicker(e.target.value.toUpperCase())}
-              className="input-field font-terminal"
-              maxLength={10}
-              placeholder="Enter ticker (max 10 chars)"
-            />
-          </div>
         
-          <div className="space-y-2">
-            <label className="flex items-center text-sm font-terminal text-cyber-pink">
-              <Image className="w-4 h-4 mr-2" />
-              Image Upload / URL
-            </label>
-            <div className="flex flex-col space-y-2">
-              <div className="relative">
-                <input
-                  type="url"
-                  value={imageUrl}
-                  onChange={(e) => {
-                    setImageUrl(e.target.value);
-                    setImageFile(null);
-                  }}
-                  className="input-field font-terminal pr-10"
-                  placeholder="Enter image URL or upload file"
-                />
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 text-cyber-green hover:text-cyber-purple"
-                  title="Upload an image"
-                >
-                  <Upload className="w-4 h-4" />
-                </button>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  className="hidden"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      handleImageUpload(file);
-                    }
-                  }}
-                />
-              </div>
-              
-              {/* Image preview and upload progress */}
-              {imageUrl && (
-                <div className="mt-2 relative group">
-                  <div className="border border-cyber-green/30 rounded-sm overflow-hidden bg-black/20" style={{ maxHeight: '120px' }}>
-                    <img 
-                      src={imageUrl} 
-                      alt="Token preview" 
-                      className="object-contain w-full max-h-[120px]"
-                      onError={(e) => {
-                        e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0yNCAxaDtgTWFnZSBub3QgZm91bmQiIHN0eWxlPSJmaWxsOiMwMGZmNDE7Zm9udC1mYW1pbHk6bW9ub3NwYWNlO2ZvbnQtc2l6ZToxMHB4OyIvPjwvc3ZnPg==';
-                      }}
-                    />
-                  </div>
-                  
-                  {/* Hover overlay with actions */}
-                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-200">
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => copyImageUrl(imageUrl)}
-                        className="bg-black/70 hover:bg-cyber-green/20 text-cyber-green p-1.5 rounded transition-all duration-200"
-                        title="Copy image URL"
-                      >
-                        <Copy className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => {
-                          // Find current image index, or default to 0
-                          const currentIndex = articleData.images.findIndex(img => img === imageUrl);
-                          setCarouselIndex(currentIndex !== -1 ? currentIndex : 0);
-                          setIsCarouselOpen(true);
-                        }}
-                        className="bg-black/70 hover:bg-cyber-green/20 text-cyber-green p-1.5 rounded transition-all duration-200"
-                        title="Browse all images"
-                      >
-                        <Image className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                  
-                  {/* Upload progress overlay */}
-                  {isUploading && (
-                    <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
-                      <div className="w-full max-w-[80%] text-center">
-                        <div className="font-terminal text-xs text-cyber-green mb-1">Uploading: {uploadProgress}%</div>
-                        <div className="w-full bg-cyber-green/20 h-1 rounded-sm overflow-hidden">
-                          <div 
-                            className="bg-cyber-green h-full transition-all duration-200"
-                            style={{ width: `${uploadProgress}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Multiple images indicator */}
-                  {!isUploading && articleData.images.length > 1 && (
-                    <div className="absolute bottom-1 right-1 bg-black/70 text-cyber-green text-xs font-terminal px-1.5 py-0.5 rounded border border-cyber-green/40 flex items-center opacity-70 group-hover:opacity-0 transition-opacity duration-200">
-                      <Image className="w-3 h-3 mr-1" />
-                      {articleData.images.length} images
-                    </div>
-                  )}
-                </div>
-              )}
-              
-              {imageFile && !isUploading && (
-                <div className="text-xs text-cyber-green font-terminal">
-                  {imageFile.name} ({Math.round(imageFile.size / 1024)} KB)
-                </div>
-              )}
+        {(error || walletError) && (
+          <div className="terminal-window p-3 flex items-start space-x-2 mb-3">
+            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-cyber-pink" />
+            <div>
+              <p className="text-xs text-cyber-pink font-terminal">ERROR_CODE: 0xE1A2</p>
+              <p className="text-xs text-left font-terminal text-cyber-pink">{error || walletError}</p>
             </div>
           </div>
+        )}
 
-          <div className="space-y-2">
-            <label className="flex items-center text-sm font-terminal text-cyber-pink">
-              <FileText className="w-4 h-4 mr-2" />
-              Description
-            </label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="input-field font-terminal min-h-[100px]"
-              rows={3}
-              placeholder="Enter coin description"
-            />
+        {/* Token details section - directly start form */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between border-b border-cyber-green/30 pb-1 mb-3">
+            <h3 className="font-terminal text-cyber-green text-base uppercase tracking-wide">Token Details</h3>
           </div>
 
           <div className="space-y-4">
             <div className="space-y-2">
               <label className="flex items-center text-sm font-terminal text-cyber-pink">
-                <Globe className="w-4 h-4 mr-2" />
-                Website URL (Optional)
+                <Type className="w-4 h-4 mr-2" />
+                Coin Name
               </label>
               <input
-                type="url"
-                value={websiteUrl}
-                onChange={(e) => setWebsiteUrl(e.target.value)}
+                type="text"
+                value={coinName}
+                onChange={(e) => setCoinName(e.target.value)}
                 className="input-field font-terminal"
-                placeholder="Enter website URL"
+                maxLength={32}
+                placeholder="Enter coin name"
               />
             </div>
 
             <div className="space-y-2">
               <label className="flex items-center text-sm font-terminal text-cyber-pink">
-                <BrandX className="w-4 h-4 mr-2" />
-                X/Twitter URL (Optional)
+                <Type className="w-4 h-4 mr-2" />
+                Ticker
               </label>
               <input
-                type="url"
-                value={xUrl}
-                onChange={(e) => setXUrl(e.target.value)}
+                type="text"
+                value={ticker}
+                onChange={(e) => setTicker(e.target.value.toUpperCase())}
                 className="input-field font-terminal"
-                placeholder="Enter X/Twitter URL"
+                maxLength={10}
+                placeholder="Enter ticker (max 10 chars)"
               />
             </div>
-
-            <div className="space-y-2">
-              <label className="flex items-center text-sm font-terminal text-cyber-pink">
-                <BrandTelegram className="w-4 h-4 mr-2" />
-                Telegram URL (Optional)
-              </label>
-              <input
-                type="url"
-                value={telegramUrl}
-                onChange={(e) => setTelegramUrl(e.target.value)}
-                className="input-field font-terminal"
-                placeholder="Enter Telegram URL"
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="crypto-card p-4 space-y-2">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center space-x-2">
-              <DollarSign className="w-4 h-4 text-cyber-green" />
-              <span className="text-sm font-terminal text-cyber-pink">Investment Amount</span>
-            </div>
-            <span className="text-xs font-terminal text-cyber-purple">Pump.Fun Fee: 0.02 SOL</span>
-          </div>
           
-          <div className="flex items-center space-x-2">
-            <div className="relative flex-1">
-              <input
-                type="number"
-                min="0"
-                max="85"
-                step="0.01"
-                value={investmentAmount}
-                onChange={handleInvestmentChange}
-                className={`input-field w-full font-terminal ${investmentAmount > 85 ? 'border-cyber-pink' : ''}`}
-                placeholder="Enter SOL amount (max 85)"
-              />
-              {investmentAmount > 85 && (
-                <div className="absolute right-0 top-1/2 -translate-y-1/2 mr-2">
-                  <AlertCircle className="w-5 h-5 text-cyber-pink" />
+            <div className="space-y-2">
+              <label className="flex items-center text-sm font-terminal text-cyber-pink">
+                <Image className="w-4 h-4 mr-2" />
+                Image Upload / URL
+              </label>
+              <div className="flex flex-col space-y-2">
+                <div className="relative">
+                  <input
+                    type="url"
+                    value={imageUrl}
+                    onChange={(e) => {
+                      setImageUrl(e.target.value);
+                      setImageFile(null);
+                    }}
+                    className="input-field font-terminal pr-10"
+                    placeholder="Enter image URL or upload file"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 text-cyber-green hover:text-cyber-purple"
+                    title="Upload an image"
+                  >
+                    <Upload className="w-4 h-4" />
+                  </button>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    className="hidden"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        handleImageUpload(file);
+                      }
+                    }}
+                  />
                 </div>
-              )}
+                
+                {/* Image preview and upload progress */}
+                {imageUrl && (
+                  <div className="mt-2 relative group">
+                    <div className="border border-cyber-green/30 rounded-sm overflow-hidden bg-black/20" style={{ maxHeight: '120px' }}>
+                      <img 
+                        src={imageUrl} 
+                        alt="Token preview" 
+                        className="object-contain w-full max-h-[120px]"
+                        onError={(e) => {
+                          e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0yNCAxaDtgTWFnZSBub3QgZm91bmQiIHN0eWxlPSJmaWxsOiMwMGZmNDE7Zm9udC1mYW1pbHk6bW9ub3NwYWNlO2ZvbnQtc2l6ZToxMHB4OyIvPjwvc3ZnPg==';
+                        }}
+                      />
+                    </div>
+                    
+                    {/* Hover overlay with actions */}
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-200">
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => copyImageUrl(imageUrl)}
+                          className="bg-black/70 hover:bg-cyber-green/20 text-cyber-green p-1.5 rounded transition-all duration-200"
+                          title="Copy image URL"
+                        >
+                          <Copy className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            // Find current image index, or default to 0
+                            const currentIndex = articleData.images.findIndex(img => img === imageUrl);
+                            setCarouselIndex(currentIndex !== -1 ? currentIndex : 0);
+                            setIsCarouselOpen(true);
+                          }}
+                          className="bg-black/70 hover:bg-cyber-green/20 text-cyber-green p-1.5 rounded transition-all duration-200"
+                          title="Browse all images"
+                        >
+                          <Image className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                    
+                    {/* Upload progress overlay */}
+                    {isUploading && (
+                      <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
+                        <div className="w-full max-w-[80%] text-center">
+                          <div className="font-terminal text-xs text-cyber-green mb-1">Uploading: {uploadProgress}%</div>
+                          <div className="w-full bg-cyber-green/20 h-1 rounded-sm overflow-hidden">
+                            <div 
+                              className="bg-cyber-green h-full transition-all duration-200"
+                              style={{ width: `${uploadProgress}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Multiple images indicator */}
+                    {!isUploading && articleData.images.length > 1 && (
+                      <div className="absolute bottom-1 right-1 bg-black/70 text-cyber-green text-xs font-terminal px-1.5 py-0.5 rounded border border-cyber-green/40 flex items-center opacity-70 group-hover:opacity-0 transition-opacity duration-200">
+                        <Image className="w-3 h-3 mr-1" />
+                        {articleData.images.length} images
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {imageFile && !isUploading && (
+                  <div className="text-xs text-cyber-green font-terminal">
+                    {imageFile.name} ({Math.round(imageFile.size / 1024)} KB)
+                  </div>
+                )}
+              </div>
             </div>
-            <span className="text-sm font-terminal text-white">SOL</span>
+
+            <div className="space-y-2">
+              <label className="flex items-center text-sm font-terminal text-cyber-pink">
+                <FileText className="w-4 h-4 mr-2" />
+                Description
+              </label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="input-field font-terminal min-h-[100px]"
+                rows={3}
+                placeholder="Enter coin description"
+              />
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="flex items-center text-sm font-terminal text-cyber-pink">
+                  <Globe className="w-4 h-4 mr-2" />
+                  Website URL (Optional)
+                </label>
+                <input
+                  type="url"
+                  value={websiteUrl}
+                  onChange={(e) => setWebsiteUrl(e.target.value)}
+                  className="input-field font-terminal"
+                  placeholder="Enter website URL"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="flex items-center text-sm font-terminal text-cyber-pink">
+                  <BrandX className="w-4 h-4 mr-2" />
+                  X/Twitter URL (Optional)
+                </label>
+                <input
+                  type="url"
+                  value={xUrl}
+                  onChange={(e) => setXUrl(e.target.value)}
+                  className="input-field font-terminal"
+                  placeholder="Enter X/Twitter URL"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="flex items-center text-sm font-terminal text-cyber-pink">
+                  <BrandTelegram className="w-4 h-4 mr-2" />
+                  Telegram URL (Optional)
+                </label>
+                <input
+                  type="url"
+                  value={telegramUrl}
+                  onChange={(e) => setTelegramUrl(e.target.value)}
+                  className="input-field font-terminal"
+                  placeholder="Enter Telegram URL"
+                />
+              </div>
+            </div>
           </div>
 
-          {balance < requiredBalance && (
-            <div className="text-xs text-cyber-pink mt-1 font-terminal">
-              Add at least {requiredBalance.toFixed(2)} SOL to create a coin
+          <div className="crypto-card p-4 space-y-2">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center space-x-2">
+                <DollarSign className="w-4 h-4 text-cyber-green" />
+                <span className="text-sm font-terminal text-cyber-pink">Investment Amount</span>
+              </div>
+              <span className="text-xs font-terminal text-cyber-purple">Pump.Fun Fee: 0.02 SOL</span>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <div className="relative flex-1">
+                <input
+                  type="number"
+                  min="0"
+                  max="85"
+                  step="0.01"
+                  value={investmentAmount}
+                  onChange={handleInvestmentChange}
+                  className={`input-field w-full font-terminal ${investmentAmount > 85 ? 'border-cyber-pink' : ''}`}
+                  placeholder="Enter SOL amount (max 85)"
+                />
+                {investmentAmount > 85 && (
+                  <div className="absolute right-0 top-1/2 -translate-y-1/2 mr-2">
+                    <AlertCircle className="w-5 h-5 text-cyber-pink" />
+                  </div>
+                )}
+              </div>
+              <span className="text-sm font-terminal text-white">SOL</span>
+            </div>
+
+            {balance < requiredBalance && (
+              <div className="text-xs text-cyber-pink mt-1 font-terminal">
+                Add at least {requiredBalance.toFixed(2)} SOL to create a coin
+              </div>
+            )}
+          </div>
+
+          {createdCoin && (
+            <div className="crypto-card p-6 space-y-4 border-cyber-green">
+              <h3 className="text-lg font-terminal text-cyber-green uppercase tracking-wide">🎉 Coin Created Successfully!</h3>
+              <div className="space-y-2">
+                <p className="text-sm font-terminal text-white">Your coin is now live on Pump.fun!</p>
+                <a
+                  href={createdCoin.pumpUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-primary w-full flex items-center justify-center space-x-2 font-terminal"
+                >
+                  <Globe className="w-4 h-4" />
+                  <span>VIEW ON PUMP.FUN</span>
+                </a>
+              </div>
             </div>
           )}
+
+          {/* Preview or Create button */}
+          {previewData ? (
+            <div 
+              ref={previewContainerRef}
+              className={`crypto-card p-4 space-y-4 border ${isPreviewing && !isPreviewTransitioning ? 'border-cyber-purple' : 'border-transparent'} relative terminal-fade-in transition-all duration-300 terminal-bg ${isDeployTransitioning || isCancelTransitioning ? 'opacity-70 scale-95' : 'opacity-100 scale-100'}`}
+              style={{
+                transformOrigin: 'center',
+                transitionProperty: 'transform, opacity, border-color',
+                transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)'
+              }}
+            >
+              {/* Error overlay for RPC or creation errors */}
+              {error && (
+                <div className="absolute top-0 left-0 w-full px-2 py-1 bg-cyber-pink/20 border-b border-cyber-pink text-cyber-pink text-xs font-terminal text-center z-10 terminal-fade-in">
+                  {error}
+                </div>
+              )}
+              
+              {/* Scanline effect for terminal feel */}
+              <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-b from-cyber-green/5 to-transparent bg-repeat-y terminal-scanline" style={{backgroundSize: '100% 8px'}}></div>
+              </div>
+              
+              <h3 className="text-lg font-terminal text-cyber-green uppercase relative">
+                Preview
+                <span className="absolute top-1 -left-2 text-cyber-green/60 terminal-cursor">_</span>
+              </h3>
+              
+              <div className="space-y-1 font-terminal text-sm text-white">
+                <p className="flex justify-between">
+                  <span>Total Cost:</span> 
+                  <span className="text-cyber-green">{previewData.totalCost.toFixed(4)} SOL</span>
+                </p>
+                <p className="flex justify-between">
+                  <span>Pump Fee:</span> 
+                  <span>{previewData.pumpFeeAmount.toFixed(4)} SOL</span>
+                </p>
+                <p className="flex justify-between">
+                  <span>Platform Fee:</span> 
+                  <span>{previewData.feeAmount.toFixed(4)} SOL</span>
+                </p>
+                <p className="flex justify-between border-t border-cyber-green/30 pt-1 mt-1">
+                  <span>Investment:</span> 
+                  <span className="text-cyber-green">{previewData.totalAmount.toFixed(4)} SOL</span>
+                </p>
+              </div>
+              
+              <div className="flex space-x-2">
+                <button
+                  ref={deployButtonRef}
+                  onClick={handleConfirm}
+                  disabled={isCreating || isDeployTransitioning}
+                  className={`btn-primary flex-1 font-terminal relative overflow-hidden cyber-transition ${isDeployTransitioning ? 'active animate-pulse-border' : ''} focus:outline-none focus:ring-2 focus:ring-cyber-green/50 focus:ring-offset-1 focus:ring-offset-black`}
+                >
+                  {isCreating ? 'DEPLOYING...' : 'DEPLOY'}
+                  {isDeployTransitioning && (
+                    <div className="absolute inset-0 bg-cyber-green/10 pointer-events-none"></div>
+                  )}
+                </button>
+                <button
+                  onClick={handleCancelPreview}
+                  disabled={isPreviewing === false || isCancelTransitioning}
+                  className={`flex-1 font-terminal border border-cyber-pink text-cyber-pink py-2 rounded-sm hover:bg-cyber-pink/10 transition-all duration-300 ${isCancelTransitioning ? 'opacity-70' : 'opacity-100'}`}
+                >
+                  CANCEL
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={handleSubmit}
+              disabled={isPreviewing || isCreating || isPreviewTransitioning}
+              className={`w-full font-terminal text-lg uppercase tracking-wider border rounded-sm transition-all duration-300 relative overflow-hidden cyber-transition ${
+                isPreviewTransitioning
+                  ? 'active bg-cyber-dark border-cyber-green text-cyber-green py-2 opacity-90'
+                  : isPreviewing
+                    ? 'bg-cyber-dark border-cyber-green/70 text-cyber-green py-2'
+                    : 'bg-cyber-black hover:bg-cyber-green/20 border-cyber-green text-cyber-green py-4 hover:shadow-neon-green'
+              }`}
+            >
+              {isPreviewTransitioning || isPreviewing ? (
+                <div className="flex items-center justify-center space-x-2 w-full h-full">
+                  <Loader2 className={`w-5 h-5 ${isPreviewTransitioning ? 'animate-spin' : ''}`} />
+                  <span>PREPPING...</span>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center space-x-2 w-full h-full">
+                  <Zap className="w-5 h-5" />
+                  <span>COOK IT</span>
+                </div>
+              )}
+              
+              {/* Glitch line effect for transition */}
+              {isPreviewTransitioning && (
+                <>
+                  <div className="absolute top-0 left-0 w-full h-[1px] bg-cyber-green/50 terminal-fade-in"></div>
+                  <div className="absolute bottom-0 left-0 w-full h-[1px] bg-cyber-green/50 terminal-fade-in" style={{animationDelay: '0.1s'}}></div>
+                  <div className="absolute left-0 top-0 w-[1px] h-full bg-cyber-green/50 terminal-fade-in" style={{animationDelay: '0.2s'}}></div>
+                  <div className="absolute right-0 top-0 w-[1px] h-full bg-cyber-green/50 terminal-fade-in" style={{animationDelay: '0.3s'}}></div>
+                </>
+              )}
+            </button>
+          )}
         </div>
-
-        {createdCoin && (
-          <div className="crypto-card p-6 space-y-4 border-cyber-green">
-            <h3 className="text-lg font-terminal text-cyber-green uppercase tracking-wide">🎉 Coin Created Successfully!</h3>
-            <div className="space-y-2">
-              <p className="text-sm font-terminal text-white">Your coin is now live on Pump.fun!</p>
-              <a
-                href={createdCoin.pumpUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn-primary w-full flex items-center justify-center space-x-2 font-terminal"
-              >
-                <Globe className="w-4 h-4" />
-                <span>VIEW ON PUMP.FUN</span>
-              </a>
-            </div>
-          </div>
-        )}
-
-        {/* Preview or Create button */}
-        {previewData ? (
-          <div 
-            className={`crypto-card p-4 space-y-4 border ${isPreviewing && !isPreviewTransitioning ? 'border-cyber-purple' : 'border-transparent'} relative terminal-fade-in transition-all duration-300 terminal-bg ${isDeployTransitioning || isCancelTransitioning ? 'opacity-70 scale-95' : 'opacity-100 scale-100'}`}
-            style={{
-              transformOrigin: 'center',
-              transitionProperty: 'transform, opacity, border-color',
-              transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)'
-            }}
-          >
-            {/* Error overlay for RPC or creation errors */}
-            {error && (
-              <div className="absolute top-0 left-0 w-full px-2 py-1 bg-cyber-pink/20 border-b border-cyber-pink text-cyber-pink text-xs font-terminal text-center z-10 terminal-fade-in">
-                {error}
-              </div>
-            )}
-            
-            {/* Scanline effect for terminal feel */}
-            <div className="absolute inset-0 pointer-events-none overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-b from-cyber-green/5 to-transparent bg-repeat-y terminal-scanline" style={{backgroundSize: '100% 8px'}}></div>
-            </div>
-            
-            <h3 className="text-lg font-terminal text-cyber-green uppercase relative">
-              Preview
-              <span className="absolute top-1 -left-2 text-cyber-green/60 terminal-cursor">_</span>
-            </h3>
-            
-            <div className="space-y-1 font-terminal text-sm text-white">
-              <p className="flex justify-between">
-                <span>Total Cost:</span> 
-                <span className="text-cyber-green">{previewData.totalCost.toFixed(4)} SOL</span>
-              </p>
-              <p className="flex justify-between">
-                <span>Pump Fee:</span> 
-                <span>{previewData.pumpFeeAmount.toFixed(4)} SOL</span>
-              </p>
-              <p className="flex justify-between">
-                <span>Platform Fee:</span> 
-                <span>{previewData.feeAmount.toFixed(4)} SOL</span>
-              </p>
-              <p className="flex justify-between border-t border-cyber-green/30 pt-1 mt-1">
-                <span>Investment:</span> 
-                <span className="text-cyber-green">{previewData.totalAmount.toFixed(4)} SOL</span>
-              </p>
-            </div>
-            
-            <div className="flex space-x-2">
-              <button
-                onClick={handleConfirm}
-                disabled={isCreating || isDeployTransitioning}
-                className={`btn-primary flex-1 font-terminal relative overflow-hidden cyber-transition ${isDeployTransitioning ? 'active animate-pulse-border' : ''}`}
-              >
-                {isCreating ? 'DEPLOYING...' : 'DEPLOY'}
-                {isDeployTransitioning && (
-                  <div className="absolute inset-0 bg-cyber-green/10 pointer-events-none"></div>
-                )}
-              </button>
-              <button
-                onClick={handleCancelPreview}
-                disabled={isPreviewing === false || isCancelTransitioning}
-                className={`flex-1 font-terminal border border-cyber-pink text-cyber-pink py-2 rounded-sm hover:bg-cyber-pink/10 transition-all duration-300 ${isCancelTransitioning ? 'opacity-70' : 'opacity-100'}`}
-              >
-                CANCEL
-              </button>
-            </div>
-          </div>
-        ) : (
-          <button
-            onClick={handleSubmit}
-            disabled={isPreviewing || isCreating || isPreviewTransitioning}
-            className={`w-full font-terminal text-lg uppercase tracking-wider border rounded-sm transition-all duration-300 relative overflow-hidden cyber-transition ${
-              isPreviewTransitioning
-                ? 'active bg-cyber-dark border-cyber-green text-cyber-green py-2 opacity-90'
-                : isPreviewing
-                  ? 'bg-cyber-dark border-cyber-green/70 text-cyber-green py-2'
-                  : 'bg-cyber-black hover:bg-cyber-green/20 border-cyber-green text-cyber-green py-4 hover:shadow-neon-green'
-            }`}
-          >
-            {isPreviewTransitioning || isPreviewing ? (
-              <div className="flex items-center justify-center space-x-2 w-full h-full">
-                <Loader2 className={`w-5 h-5 ${isPreviewTransitioning ? 'animate-spin' : ''}`} />
-                <span>PREPPING...</span>
-              </div>
-            ) : (
-              <div className="flex items-center justify-center space-x-2 w-full h-full">
-                <Zap className="w-5 h-5" />
-                <span>COOK IT</span>
-              </div>
-            )}
-            
-            {/* Glitch line effect for transition */}
-            {isPreviewTransitioning && (
-              <>
-                <div className="absolute top-0 left-0 w-full h-[1px] bg-cyber-green/50 terminal-fade-in"></div>
-                <div className="absolute bottom-0 left-0 w-full h-[1px] bg-cyber-green/50 terminal-fade-in" style={{animationDelay: '0.1s'}}></div>
-                <div className="absolute left-0 top-0 w-[1px] h-full bg-cyber-green/50 terminal-fade-in" style={{animationDelay: '0.2s'}}></div>
-                <div className="absolute right-0 top-0 w-[1px] h-full bg-cyber-green/50 terminal-fade-in" style={{animationDelay: '0.3s'}}></div>
-              </>
-            )}
-          </button>
-        )}
       </div>
-    </div>
-    {/* Modal */}
-    {insufficientFunds &&
-      <InsufficientFundsModal
-        onClose={handleCloseModal}
-        tryAgain={async () => {
-          if (onCreationStart) {
-            await onCreationStart(handleSubmit);
-          } else {
-            await handleSubmit();
-          }
-        }}
-      />
-    }
-  
+      {/* Modal */}
+      {insufficientFunds &&
+        <InsufficientFundsModal
+          onClose={handleCloseModal}
+          tryAgain={async () => {
+            if (onCreationStart) {
+              await onCreationStart(handleSubmit);
+            } else {
+              await handleSubmit();
+            }
+          }}
+        />
+      }
+    
 
       {/* Image Carousel Modal */}
       {isCarouselOpen && articleData.images.length > 0 && (
