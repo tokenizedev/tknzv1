@@ -100,16 +100,30 @@ export interface WalletState {
     /**
      * Preview token creation: fetch unsigned transaction and fee/amount breakdown
      */
+    /**
+     * Preview data for token creation, including fees and totals
+     */
     previewData: {
       mintKeypair: Keypair;
       serializedTransaction: string;
-      feeAmount: number;
-      totalAmount: number;
-      netAmount: number;
+      feeAmount: number;       // Platform fee in SOL
+      pumpFeeAmount: number;   // Pump portal fee in SOL
+      totalAmount: number;     // Investment amount in SOL
+      netAmount: number;       // Net investment amount (equal to totalAmount)
+      totalCost: number;       // Total cost to user (totalAmount + pumpFeeAmount + feeAmount)
       name: string;
       ticker: string;
     } | null;
-    previewCreateCoinRemote: (params: CoinCreationParams) => Promise<{ feeAmount: number; totalAmount: number; netAmount: number }>;
+    /**
+     * Preview token creation: fetch unsigned tx and fee/amount breakdown
+     */
+    previewCreateCoinRemote: (params: CoinCreationParams) => Promise<{
+      feeAmount: number;
+      pumpFeeAmount: number;
+      totalAmount: number;
+      netAmount: number;
+      totalCost: number;
+    }>;
     /**
      * Confirm and execute a previously previewed token creation transaction
      */
