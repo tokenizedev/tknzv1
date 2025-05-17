@@ -1095,9 +1095,20 @@ export const useStore = create<WalletState>((set, get) => ({
     });
     if (!response.ok) throw new Error(`Preview request failed: ${response.statusText}`);
     const data = await response.json();
-    const { transaction, feeAmount, totalAmount, netAmount } = data;
-    set({ previewData: { mintKeypair, serializedTransaction: transaction, feeAmount, totalAmount, netAmount, name, ticker } });
-    return { feeAmount, totalAmount, netAmount };
+    const { transaction, feeAmount, pumpFeeAmount, totalAmount, netAmount, totalCost } = data;
+    // Store preview details including both fees and total cost
+    set({ previewData: {
+      mintKeypair,
+      serializedTransaction: transaction,
+      feeAmount,
+      pumpFeeAmount,
+      totalAmount,
+      netAmount,
+      totalCost,
+      name,
+      ticker
+    } });
+    return { feeAmount, pumpFeeAmount, totalAmount, netAmount, totalCost };
   },
   confirmPreviewCreateCoin: async () => {
     const { activeWallet, previewData } = get();
