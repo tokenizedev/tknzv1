@@ -224,7 +224,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
     };
   };
 
-  const requiredBalance = investmentAmount + 0.03;
+  const requiredBalance = investmentAmount + 0.001;
 
   // Progress animation effect for the terminal loading
   useEffect(() => {
@@ -1008,12 +1008,12 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
             {isPreviewing ? (
               <div className="flex items-center justify-center space-x-2 w-full h-full">
                 <Loader2 className="w-5 h-5 animate-spin" />
-                <span>PREVIEWING...</span>
+                <span>COOKING...</span>
               </div>
             ) : (
               <div className="flex items-center justify-center space-x-2 w-full h-full">
                 <Zap className="w-5 h-5" />
-                <span>PREVIEW</span>
+                <span>COOK IT</span>
               </div>
             )}
           </button>
