@@ -1,12 +1,10 @@
 import { useEffect, useState, useRef } from 'react';
 import { loadVerifiedTokens } from './services/tokenService';
 import { useStore } from './store';
-import { WalletSetup } from './components/WalletSetup';
 import { CoinCreator } from './components/CoinCreator';
 import { WalletPageCyber } from './components/WalletPageCyber';
 import { CreatedCoinsPage } from './components/CreatedCoinsPage';
 import { MyCreatedCoinsPage } from './components/MyCreatedCoinsPage';
-import { VersionCheck } from './components/VersionCheck';
 import { Loader } from './components/Loader';
 import { PasswordSetup } from './components/PasswordSetup';
 import { PasswordUnlock } from './components/PasswordUnlock';
@@ -16,7 +14,6 @@ import { WalletManagerPage } from './components/WalletManagerPage';
 import { Navigation } from './components/Navigation';
 import { BottomNavigation } from './components/BottomNavigation';
 import { SwapPage } from './components/SwapPage';
-import { VersionBadge } from './components/VersionBadge';
 import { WalletOverview } from './components/WalletOverview';
 import SendTokenModal from './components/SendTokenModal';
 import { SettingsPage } from './components/SettingsPage';
@@ -422,6 +419,7 @@ function App({ isSidebar = false }: AppProps = {}) {
   const handleCoinCreationError = (_errorMessage: string) => {
     setGlitching(false);
     setIsCreatingCoin(false);
+    setNotification({ message: _errorMessage, type: 'error' });
   };
 
   useEffect(() => {
