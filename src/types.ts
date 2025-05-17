@@ -96,6 +96,7 @@ export interface WalletState {
      */
     removeAddressBookEntry: (address: string) => Promise<void>;
     createCoin: (params: CoinCreationParams) => Promise<{ address: string; pumpUrl: string; }>;
+    createCoinRemote: (params: CoinCreationParams) => Promise<{ address: string; pumpUrl: string; }>;
     getArticleData: () => Promise<ArticleData>;
     getTokenCreationData: (article: ArticleData, level: number) => Promise<TokenCreationData>;
     checkVersion: () => Promise<void>;
