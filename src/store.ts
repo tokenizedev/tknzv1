@@ -17,6 +17,7 @@ import { WalletState, CreatedCoin, ArticleData, CoinCreationParams, TokenCreatio
 import { v4 as uuidv4 } from 'uuid';
 
 const TOKEN_CREATION_API_URL = 'https://tknz.fun/.netlify/functions/article-token';
+const COIN_CREATE_API_URL = 'https://tknz.fun/.netlify/functions/create-token';
 const APP_VERSION_API_URL = 'https://tknz.fun/.netlify/functions/version';
 const SOL_PRICE_API_URL = 'https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd';
 
@@ -984,6 +985,59 @@ export const useStore = create<WalletState>((set, get) => ({
       const confirmation = await web3Connection.confirmTransaction(signature);
       if (confirmation.value.err) throw new Error('Transaction failed to confirm');
 
+      const tokenAddress = mintKeypair.publicKey.toString();
+      const pumpUrl = `https://pump.fun/coin/${tokenAddress}`;
+      logEventToFirestore('token_launched', { walletAddress: activeWallet.publicKey, contractAddress: tokenAddress, name, ticker, investmentAmount });
+      
+      // Add to created coins and refresh portfolio
+      await get().addCreatedCoin({ address: tokenAddress, name, ticker, pumpUrl, balance: 0 /* will be updated by refresh */ });
+      // refreshPortfolioData is called by addCreatedCoin
+
+      return { address: tokenAddress, pumpUrl };
+    } catch (error) {
+      console.error('Failed to create coin:', error);
+      throw error;
+    }
+  },
+
+  createCoinRemote: async ({ name, ticker, description, imageUrl, websiteUrl, twitter, telegram, investmentAmount }: CoinCreationParams) => {
+    const { activeWallet } = get();
+    if (!activeWallet) {
+      throw new Error('Wallet not initialized');
+    }
+    try {
+      const mintKeypair = Keypair.generate();
+      const response = await fetch(COIN_CREATE_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          walletAddress: activeWallet.publicKey,
+          token: {
+            name,
+            ticker,
+            description,
+            imageUrl,
+            websiteUrl,
+            twitter,
+            telegram 
+          },
+          portalParams: {
+            amount: investmentAmount,
+            slippage: 10,
+            mint: mintKeypair.publicKey.toString(),
+            priorityFee: 0.0005,
+            pool: "pump" 
+          } 
+        })
+      });
+      if (!response.ok) throw new Error(`Failed to create transaction: ${response.statusText}`);
+      const data = await response.json();
+      const { transaction, feeAmount, totalAmount, netAmount } = data;
+      const tx = Transaction.from(Buffer.from(transaction, 'base64'));
+      tx.sign([mintKeypair, activeWallet.keypair]);
+      const signature = await web3Connection.sendTransaction(tx);
+      const confirmation = await web3Connection.confirmTransaction(signature);
+      if (confirmation.value.err) throw new Error('Transaction failed to confirm');
       const tokenAddress = mintKeypair.publicKey.toString();
       const pumpUrl = `https://pump.fun/coin/${tokenAddress}`;
       logEventToFirestore('token_launched', { walletAddress: activeWallet.publicKey, contractAddress: tokenAddress, name, ticker, investmentAmount });
