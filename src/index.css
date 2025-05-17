@@ -860,6 +860,28 @@ body.sidebar #root {
   .leaderboard-sort {
     @apply flex items-center space-x-2 text-cyber-green font-terminal px-3 py-1.5 border border-cyber-green/30 rounded-sm;
   }
+
+  /* Focus highlight for deploy button */
+  .focus-highlight {
+    animation: button-highlight 1s ease-in-out;
+    position: relative;
+    z-index: 1;
+  }
+  
+  @keyframes button-highlight {
+    0% {
+      box-shadow: 0 0 0 2px rgba(0, 255, 65, 0.3);
+      transform: scale(1);
+    }
+    50% {
+      box-shadow: 0 0 0 4px rgba(0, 255, 65, 0.6), 0 0 20px rgba(0, 255, 65, 0.3);
+      transform: scale(1.03);
+    }
+    100% {
+      box-shadow: 0 0 0 2px rgba(0, 255, 65, 0.3);
+      transform: scale(1);
+    }
+  }
 }
 
 /* Custom scrollbar styles */
