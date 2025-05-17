@@ -83,6 +83,70 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   onCreationComplete,
   onCreationError
 }) => {
+  /**
+   * Handles the Preview Confirm button click: invokes wrapper or local flow.
+   */
+  const handleConfirm = async () => {
+    // Clear existing errors
+    setError(null);
+    // Confirmation callback logic
+    const confirmCallback = async () => {
+      setIsCreating(true);
+      setError(null);
+      try {
+        console.log('Confirming preview create coin');
+        const res = await confirmPreviewCreateCoin();
+        setCreatedCoin(res);
+        if (onCreationComplete) {
+          console.log('Calling onCreationComplete', res.address);
+          onCreationComplete(res.address);
+        }
+      } catch (err) {
+        console.log('Error confirming preview create coin', err);
+        const msg = err instanceof Error ? err.message : 'Execution failed';
+        setError(`Creation failed: ${msg}`);
+        if (onCreationError) {
+          onCreationError(msg);
+        }
+      } finally {
+        console.log('Setting isCreating to false');
+        setIsCreating(false);
+      }
+    };
+
+    if (onCreationStart) {
+      try {
+        console.log('Calling onCreationStart');
+        await onCreationStart(confirmCallback);
+        console.log('onCreationStart returned');
+      } catch (err) {
+        console.log('Error in onCreationStart', err);
+        const msg = err instanceof Error ? err.message : 'Execution failed';
+        setError(`Creation failed: ${msg}`);
+        if (onCreationError) {
+          console.log('Calling onCreationError', msg);
+          onCreationError(msg);
+        }
+      }
+    } else {
+      console.log('Calling confirmCallback');
+      setIsCreating(true);
+      try {
+        console.log('Calling confirmCallback');
+        await confirmCallback();
+      } catch (err) {
+        console.log('Error in confirmCallback', err);
+        const msg = err instanceof Error ? err.message : 'Execution failed';
+        setError(`Creation failed: ${msg}`);
+        if (onCreationError) {
+          console.log('Calling onCreationError', msg);
+          onCreationError(msg);
+        }
+      } finally {
+        setIsCreating(false);
+      }
+    }
+  };
   useEffect(() => {
     // Add animation styles
     const styleEl = document.createElement('style');
@@ -939,37 +1003,22 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
 
         {/* Preview or Create button */}
         {previewData ? (
-          <div className="crypto-card p-4 space-y-4 border border-cyber-purple">
+          <div className="crypto-card p-4 space-y-4 border border-cyber-purple relative">
+            {/* Error overlay for RPC or creation errors */}
+            {error && (
+              <div className="absolute top-0 left-0 w-full px-2 py-1 bg-cyber-pink/20 border-b border-cyber-pink text-cyber-pink text-xs font-terminal text-center z-10">
+                {error}
+              </div>
+            )}
             <h3 className="text-lg font-terminal text-cyber-green uppercase">Preview</h3>
             <div className="space-y-1 font-terminal text-sm text-white">
               <p>Total Cost: {previewData.totalAmount.toFixed(4)} SOL</p>
               <p>Fee (1%): {previewData.feeAmount.toFixed(4)} SOL</p>
               <p>Net Invest: {previewData.netAmount.toFixed(4)} SOL</p>
-              <p>Est. Tokens: {previewData.netAmount.toFixed(4)} {ticker.toUpperCase()}</p>
             </div>
             <div className="flex space-x-2">
               <button
-                onClick={async () => {
-                  const performConfirm = async () => {
-                    try {
-                      const res = await confirmPreviewCreateCoin();
-                      setCreatedCoin(res);
-                      if (onCreationComplete) onCreationComplete(res.address);
-                    } catch (err) {
-                      const msg = err instanceof Error ? err.message : 'Execution failed';
-                      setError(`Creation failed: ${msg}`);
-                      if (onCreationError) onCreationError(msg);
-                    }
-                  };
-                  if (onCreationStart) {
-                    await onCreationStart(performConfirm);
-                  } else {
-                    setIsCreating(true);
-                    setError(null);
-                    await performConfirm();
-                    setIsCreating(false);
-                  }
-                }}
+                onClick={handleConfirm}
                 disabled={isCreating}
                 className="btn-primary flex-1 font-terminal"
               >
