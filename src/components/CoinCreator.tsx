@@ -1013,7 +1013,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
                 disabled={isCreating}
                 className="btn-primary flex-1 font-terminal"
               >
-                {isCreating ? 'CREATING...' : 'CONFIRM'}
+                {isCreating ? 'DEPLOYING...' : 'DEPLOY'}
               </button>
               <button
                 onClick={() => clearPreviewCreateCoin()}
@@ -1037,7 +1037,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
             {isPreviewing ? (
               <div className="flex items-center justify-center space-x-2 w-full h-full">
                 <Loader2 className="w-5 h-5 animate-spin" />
-                <span>COOKING...</span>
+                <span>PREPPING...</span>
               </div>
             ) : (
               <div className="flex items-center justify-center space-x-2 w-full h-full">
