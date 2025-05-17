@@ -46,6 +46,13 @@ function App({ isSidebar = false }: AppProps = {}) {
     }
   }, [isSidebar]);
 
+  // Persist UI mode for content script to detect sidePanel vs popup
+  useEffect(() => {
+    if (chrome?.storage?.local) {
+      chrome.storage.local.set({ isSidebarMode: !!isSidebar });
+    }
+  }, [isSidebar]);
+
   const {
     activeWallet,
     balance,
@@ -448,7 +455,47 @@ function App({ isSidebar = false }: AppProps = {}) {
     };
     init();
   }, [initializeWallet, checkVersion]);
+  
 
+    
+  // Handle token buy requests from content script or background
+  useEffect(() => {
+    const DEFAULT_INPUT_MINT = 'So11111111111111111111111111111111111111112';
+    // On initial load, check for stored buy token (popup context only)
+    if (!isSidebar && chrome?.storage?.local) {
+      chrome.storage.local.get(['lastBuyToken'], (result) => {
+        if (result.lastBuyToken) {
+          try {
+            const token = JSON.parse(result.lastBuyToken);
+            setSelectedSwapMint(DEFAULT_INPUT_MINT);
+            setSelectedSwapToMint(token.address || token.symbol || null);
+            setActiveView('swap');
+          } catch (_) {}
+          // Clear stored token
+          chrome.storage.local.remove(['lastBuyToken']);
+        }
+      });
+    }
+    // Listen for direct messages to show swap
+    const listener = (message: any) => {
+      if (message.type === 'SHOW_SWAP' && message.token) {
+        // Only handle in correct UI context
+        if (message.isSidebar !== isSidebar) return;
+        setSelectedSwapMint(DEFAULT_INPUT_MINT);
+        setSelectedSwapToMint(message.token.address || message.token.symbol || null);
+        setActiveView('swap');
+      }
+    };
+    if (chrome?.runtime && chrome.runtime.onMessage) {
+      chrome.runtime.onMessage.addListener(listener);
+    }
+    return () => {
+      if (chrome?.runtime && chrome.runtime.onMessage) {
+        chrome.runtime.onMessage.removeListener(listener);
+      }
+    };
+  }, []);
+  
   // Navigation to home/TKNZ button
   const navigateToHome = () => {
     setActiveView(null);
@@ -677,6 +724,7 @@ function App({ isSidebar = false }: AppProps = {}) {
               ) : (
                 /* Default token creator view */
                 <CoinCreator
+                  isSidebar={isSidebar}
                   /* Trigger the creation loader modal when starting */
                   onCreationStart={handleCoinCreationStart}
                   /* Navigate to My Created Coins on successful creation */

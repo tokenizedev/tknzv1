@@ -2,6 +2,56 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.13.2](https://tokenizedev///compare/v0.13.1...v0.13.2) (2025-05-15)
+
+
+### Features
+
+* **components:** Update WalletOverview component layout for better token display ([4672126](https://tokenizedev///commit/4672126b75665f710b862be943ce8aa4acf47bfa))
+
+
+### Bug Fixes
+
+* **components:** Adjust layout of VersionBadge in CoinCreator component ([a411ac0](https://tokenizedev///commit/a411ac0586cac9a3406aef7eab940486e004a158))
+
+## [0.13.1](https://tokenizedev///compare/v0.13.0...v0.13.1) (2025-05-15)
+
+
+### Features
+
+* **App:** Persist UI mode for content script to detect sidePanel vs popup ([53f9a17](https://tokenizedev///commit/53f9a17eab5cbd3b72bf434fc895331711106793))
+* **background:** Add support for tracking side panel visibility per window ([8d335cb](https://tokenizedev///commit/8d335cb7dc1abfa4f0f994eb7c6add96429d49c9))
+* **components:** add copy wallet address functionality ([b9343f1](https://tokenizedev///commit/b9343f1615204b3fc8d20648d139a7e3cab6f4b0))
+* **components:** add message about changes taking effect after page refresh ([a981e58](https://tokenizedev///commit/a981e58dd0f11d474ae811e3d38ea8b1668fa3de))
+* **components:** add retry shake animation effect ([1f3b96a](https://tokenizedev///commit/1f3b96abf2ba62647d6bac9dbc9ea8f19118575e))
+* **components:** log token swap event to Firestore ([077c1e9](https://tokenizedev///commit/077c1e912c6d600dda3a517c2c5f1a146552a21f))
+* **contentScript:** add 'marginRight' style to buy buttons ([0047c1e](https://tokenizedev///commit/0047c1e4e21a317cabccd37ffff2532dd31a4a54))
+* **contentScript:** add toggleable buy buttons feature ([7b1212c](https://tokenizedev///commit/7b1212c56ca89ac3f4db8da0bab7ad55cf815939))
+* **contentScript:** Notify background of selected content and UI context ([06d88f4](https://tokenizedev///commit/06d88f4139695f282c148f497bd41c6b24763fea))
+* **SettingsPage:** Add Buy Button Feature ([392b1c1](https://tokenizedev///commit/392b1c15b372c43c2611d68fc9fee038b734d9d2)), closes [#123](https://tokenizedev///issues/123)
+* **swap:** Add helper function to show truncated contract address ([5c95e18](https://tokenizedev///commit/5c95e182ed9317913796d67a77497dff3ec86071))
+* **SwapPage:** Add useMemo for uniqueTokens and uiTokens creation ([a30bfb0](https://tokenizedev///commit/a30bfb098353af9384f86f1a8f82374bcdf87c1b))
+
+## [0.13.0](https://tokenizedev///compare/v0.12.2...v0.13.0) (2025-05-14)
+
+
+### ⚠ BREAKING CHANGES
+
+* **components:** The behavior of selecting initialToMint token has been enhanced to handle both address and symbol lookup.
+
+### Features
+
+* Add functionality to handle token buy button clicks from content script ([610f3cc](https://tokenizedev///commit/610f3ccb79cb231a8d1c9d62a2a6655c4e5d2bc8))
+* Add functionality to handle token buy requests and show swap modal ([8c6ef3f](https://tokenizedev///commit/8c6ef3fec74ae3796aa3ea08d8c95fc0f054d651))
+* **ci:** update Node.js version to '23' and set cache to 'yarn' ([b3e90a0](https://tokenizedev///commit/b3e90a0ddd6fcfdec809af0f8b8657cc8a3436b6))
+* **components:** Add functionality to refresh portfolio data ([f3009b3](https://tokenizedev///commit/f3009b320aa92d0285c94c2641d14953425e8640))
+* **components:** add tryAgain functionality to InsufficientFundsModal component ([21754a5](https://tokenizedev///commit/21754a5a24c1d6e0450f54c2b01d63c1f0aa7d74))
+* **components:** improve initialToMint token selection logic ([e713dfe](https://tokenizedev///commit/e713dfe35e88dd321f2f2e09c5b59b3ea3bc1008))
+* **contentScript:** add periodic full DOM scan for Buy buttons every 5s ([25153cf](https://tokenizedev///commit/25153cfdc57361949c11af51618a10098bcc4cf9))
+* **contentScript:** Add state for tracking injected buttons and always scan for tokens ([f8bb85f](https://tokenizedev///commit/f8bb85fdabb88c3769fa0ffabb9d5a6b8c6ba432))
+* **contentScript:** introduce Token Buy Feature ([d2b7391](https://tokenizedev///commit/d2b7391149f9a8420c8969de3113c773fdcb1dbb))
+* **contentScript:** observe dynamic content and inject buy buttons ([f2fa671](https://tokenizedev///commit/f2fa671afbf6acc77b308b88b1abadf1c30294aa))
+
 ## [0.12.2](https://tokenizedev///compare/v0.12.1...v0.12.2) (2025-05-14)
 
 

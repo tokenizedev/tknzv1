@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { VersionedTransaction } from '@solana/web3.js';
 import { useStore } from '../store';
 import { web3Connection } from '../utils/connection';
+import { logEventToFirestore } from '../firebase';
 import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 import {
   getUltraBalances,
@@ -54,13 +55,36 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, 
   const [loadingTokens, setLoadingTokens] = useState(false);
   const [tokenError, setTokenError] = useState<string | null>(null);
   // UI tokens array for TokenList component
-  const uiTokens = tokenList.map(t => ({
-    id: t.address,
-    symbol: t.symbol,
-    name: t.name,
-    logoURI: t.logoURI,
-    decimals: t.decimals,
-  }));
+  // Group tokens by symbol (ticker); if duplicates exist, select token with earliest creation date,
+  // and if creation dates are equal, select token with higher daily_volume.
+  const uniqueTokens = useMemo(() => {
+    const symbolMap = new Map<string, TokenInfoAPI>();
+    tokenList.forEach(t => {
+      const key = t.symbol.toLowerCase();
+      if (!symbolMap.has(key)) {
+        symbolMap.set(key, t);
+      } else {
+        const existing = symbolMap.get(key)!;
+        const existingDate = new Date(existing.created_at).getTime();
+        const tDate = new Date(t.created_at).getTime();
+        // select earliest creation date; if equal, select higher daily_volume
+        if (tDate < existingDate || (tDate === existingDate && t.daily_volume > existing.daily_volume)) {
+          symbolMap.set(key, t);
+        }
+      }
+    });
+    return Array.from(symbolMap.values());
+  }, [tokenList]);
+
+  const uiTokens = useMemo(() => {
+    return uniqueTokens.map(t => ({
+      id: t.address,
+      symbol: t.symbol,
+      name: t.name,
+      logoURI: t.logoURI,
+      decimals: t.decimals,
+    }));
+  }, [uniqueTokens]);
   
   
   // Fetch user balances via Jupiter Ultra API
@@ -124,17 +148,22 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, 
   // If an initialToMint was provided, auto-select it as output token
   useEffect(() => {
     if (!initialToMint || tokenList.length === 0) return;
-    const t = tokenList.find(tok => tok.address === initialToMint);
-    if (t) {
+    // Attempt to find token by mint address
+    let found = tokenList.find(tok => tok.address === initialToMint);
+    // If not found by address, try symbol (case-insensitive)
+    if (!found) {
+      found = tokenList.find(tok => tok.symbol.toLowerCase() === initialToMint.toLowerCase());
+    }
+    if (found) {
       setToToken({
-        id: t.address,
-        symbol: t.symbol,
-        name: t.name,
-        logoURI: t.logoURI,
-        decimals: t.decimals,
+        id: found.address,
+        symbol: found.symbol,
+        name: found.name,
+        logoURI: found.logoURI,
+        decimals: found.decimals,
       });
-    } else {
-      // fallback: fetch token info
+    } else if (initialToMint.length >= 32) {
+      // Fallback: treat initialToMint as mint address and fetch token info
       getTokenInfo(initialToMint)
         .then(data => {
           setToToken({
@@ -146,6 +175,8 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, 
           });
         })
         .catch(err => console.error('Initial to-token lookup failed:', err));
+    } else {
+      console.error(`Token ${initialToMint} not found as address or symbol`);
     }
   }, [initialToMint, tokenList]);
   // Jupiter order preview state, includes overall fee and platform (referral) fee in bps
@@ -385,6 +416,15 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, 
       // Execute order
       const exec = await executeOrder({ signedTransaction: signedBase64, requestId: order.requestId });
       if (exec.status === 'Success') {
+        // Log token swap event to Firestore
+        await logEventToFirestore('token_swapped', {
+          walletAddress: activeWallet.publicKey,
+          fromMint: inputMint,
+          toMint: outputMint,
+          fromAmount: parseFloat(fromAmount),
+          toAmount: parseFloat(toAmount),
+          transactionHash: exec.signature
+        });
         setSwapStatus({ show: true, status: 'success', hash: exec.signature });
       } else {
         throw new Error(exec.error || `Swap failed: ${exec.status}`);

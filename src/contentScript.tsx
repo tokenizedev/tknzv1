@@ -251,11 +251,9 @@ function startSelectionMode(isSidebar: boolean) {
     cleanup();
     
     extractContent(el).then(async content => {
-      if (!isSidebar) {
-        chrome.runtime.sendMessage({ type: 'SIDE_PANEL_CLOSED' });
-      }
-      chrome.runtime.sendMessage({ type: 'CONTENT_SELECTED', content });
-    });    
+      // Notify background of selected content and UI context
+      chrome.runtime.sendMessage({ type: 'CONTENT_SELECTED', content, isSidebar });
+    });
   };
 
   const cleanup = () => {
@@ -521,3 +519,154 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
     }
   }).observe(document, { subtree: true, childList: true });
 }
+
+
+
+// Token Buy Feature: observe dynamic content and inject buy buttons (toggleable)
+// Note: live toggling requires a page reload to apply changes
+(() => {
+  // Ensure chrome.storage API is available before proceeding
+  if (typeof chrome === 'undefined' || !chrome.storage?.local?.get) {
+    return;
+  }
+  // Check user setting for buy buttons
+  chrome.storage.local.get(['buyModeEnabled'], ({ buyModeEnabled }) => {
+    // Default to enabled
+    if (buyModeEnabled === false) return;
+  type TokenMsg = { cashtag?: string; symbol?: string; address?: string };
+  const STATE = {
+    buttonsAdded: new Set<string>(),
+  };
+
+  // Create and append the Buy button
+  function addBuyButton(el: HTMLElement, token: TokenMsg) {
+    const btn = document.createElement('span');
+    btn.className = 'tknz-buy-button';
+    Object.assign(btn.style, {
+      display: 'inline-block',
+      background: '#00ff9d',
+      color: 'black',
+      padding: '3px 8px',
+      marginLeft: '5px',
+      marginRight: '5px',
+      borderRadius: '4px',
+      fontSize: '11px',
+      fontWeight: 'bold',
+      cursor: 'pointer',
+      verticalAlign: 'middle',
+      transition: 'opacity 0.2s',
+    } as Partial<CSSStyleDeclaration>);
+    btn.textContent = 'Buy with TKNZ';
+    btn.onmouseover = () => (btn.style.opacity = '0.8');
+    btn.onmouseout = () => (btn.style.opacity = '1');
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      // Determine UI context (sidebar vs popup) persisted by extension UI
+      chrome.storage.local.get(['isSidebarMode'], ({ isSidebarMode }) => {
+        chrome.runtime.sendMessage({ type: 'TKNZ_TOKEN_CLICKED', token, isSidebar: !!isSidebarMode });
+      });
+      btn.textContent = 'Opening...';
+      setTimeout(() => (btn.textContent = 'Buy with TKNZ'), 2000);
+    };
+    el.appendChild(btn);
+  }
+
+  // Process a single text node for token mentions
+  function handleTextNode(node: Node) {
+    const text = node.textContent;
+    console.log('handleTextNode', text);
+    if (!text || !text.trim()) return;
+    const parent = (node as Node & { parentElement?: HTMLElement }).parentElement;
+    if (!parent || parent.querySelector('.tknz-buy-button')) return;
+    
+    // Cashtags like $ABC
+    const cashtags = text.match(/\$[A-Za-z][A-Za-z0-9]{1,9}\b/g) || [];
+    cashtags.forEach(tag => {
+      const symbol = tag.slice(1);
+      const key = parent.innerText.slice(0, 50) + '-' + tag;
+      if (!STATE.buttonsAdded.has(key)) {
+        addBuyButton(parent, { cashtag: tag, symbol });
+        STATE.buttonsAdded.add(key);
+      }
+    });
+
+    // Potential token addresses
+    const words = text.split(/\s+/);
+    words.forEach(word => {
+      if (
+        word.length >= 32 && word.length <= 44 && /^[A-Za-z0-9]+$/.test(word) &&
+        /[A-Z]/.test(word) && /[a-z]/.test(word) && /[0-9]/.test(word)
+      ) {
+        const key = parent.innerText.slice(0, 50) + '-' + word;
+        if (!STATE.buttonsAdded.has(key)) {
+          addBuyButton(parent, { address: word });
+          STATE.buttonsAdded.add(key);
+        }
+      }
+    });
+  }
+
+  // Scan a subtree for text nodes
+  function scanElement(root: Node) {
+    const walker = document.createTreeWalker(
+      root,
+      NodeFilter.SHOW_TEXT,
+      {
+        acceptNode(node) {
+          const text = node.textContent;
+          if (!text || !text.trim()) return NodeFilter.FILTER_REJECT;
+          const parent = (node as Node & { parentElement?: HTMLElement }).parentElement;
+          if (!parent) return NodeFilter.FILTER_REJECT;
+          const tag = parent.tagName.toLowerCase();
+          if (tag === 'script' || tag === 'style') return NodeFilter.FILTER_REJECT;
+          return NodeFilter.FILTER_ACCEPT;
+        }
+      },
+      false
+    );
+    let node: Node | null;
+    while ((node = walker.nextNode())) {
+      handleTextNode(node);
+    }
+  }
+
+  // Initial scan of the whole document
+  scanElement(document.body);
+
+  // Observe dynamic content changes
+  const observer = new MutationObserver(mutations => {
+    mutations.forEach(mutation => {
+      if (mutation.type === 'childList') {
+        mutation.addedNodes.forEach(n => {
+          if (n.nodeType === Node.TEXT_NODE) {
+            handleTextNode(n);
+          } else if (n.nodeType === Node.ELEMENT_NODE) {
+            scanElement(n);
+          }
+        });
+      } else if (mutation.type === 'characterData') {
+        handleTextNode(mutation.target);
+      }
+    });
+  });
+  observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+
+  // Handle SPA navigation (pushState/replaceState/popstate)
+  window.addEventListener('popstate', () => scanElement(document.body));
+  const origPush = history.pushState;
+  history.pushState = function (...args) {
+    const ret = origPush.apply(this, args as any);
+    scanElement(document.body);
+    return ret;
+  };
+  const origReplace = history.replaceState;
+  history.replaceState = function (...args) {
+    const ret = origReplace.apply(this, args as any);
+    scanElement(document.body);
+    return ret;
+  };
+  // Periodic full DOM scan for Buy buttons (every 5s)
+  setInterval(() => scanElement(document.body), 5000);
+  });
+})();
