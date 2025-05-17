@@ -97,6 +97,27 @@ export interface WalletState {
     removeAddressBookEntry: (address: string) => Promise<void>;
     createCoin: (params: CoinCreationParams) => Promise<{ address: string; pumpUrl: string; }>;
     createCoinRemote: (params: CoinCreationParams) => Promise<{ address: string; pumpUrl: string; }>;
+    /**
+     * Preview token creation: fetch unsigned transaction and fee/amount breakdown
+     */
+    previewData: {
+      mintKeypair: Keypair;
+      serializedTransaction: string;
+      feeAmount: number;
+      totalAmount: number;
+      netAmount: number;
+      name: string;
+      ticker: string;
+    } | null;
+    previewCreateCoinRemote: (params: CoinCreationParams) => Promise<{ feeAmount: number; totalAmount: number; netAmount: number }>;
+    /**
+     * Confirm and execute a previously previewed token creation transaction
+     */
+    confirmPreviewCreateCoin: () => Promise<{ address: string; pumpUrl: string }>;
+    /**
+     * Clear any preview transaction data without executing
+     */
+    clearPreviewCreateCoin: () => void;
     getArticleData: () => Promise<ArticleData>;
     getTokenCreationData: (article: ArticleData, level: number) => Promise<TokenCreationData>;
     checkVersion: () => Promise<void>;
