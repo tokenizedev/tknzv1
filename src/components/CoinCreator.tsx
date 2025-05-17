@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Image, Type, FileText, Send, Loader2, AlertCircle, Globe, Sparkles, DollarSign, Hand as BrandX, GitBranch as BrandTelegram, Terminal, Zap, Target, X, Upload, ChevronLeft, ChevronRight, CheckCircle, Copy, ExternalLink, Hash } from 'lucide-react';
 import { useStore } from '../store';
 import { TerminalLoader } from './TerminalLoader';
-import { VersionBadge } from './VersionBadge';
-import { Loader } from './Loader';
+import { VersionBadge, VersionBadgeProps } from './VersionBadge';
+import { Loader, LoaderProps } from './Loader';
 import { InsufficientFundsModal } from './InsufficientFundsModal';
 
 interface ArticleData {
@@ -64,6 +64,62 @@ const carouselAnimationStyles = `
     100% { opacity: 0; }
   }
   
+  @keyframes glitchIn {
+    0% {
+      opacity: 0;
+      clip-path: inset(40% 0 61% 0);
+      transform: translate(-2px, 0);
+    }
+    20% {
+      clip-path: inset(92% 0 1% 0);
+      transform: translate(3px, 0);
+    }
+    40% {
+      clip-path: inset(43% 0 1% 0);
+      transform: translate(-3px, 0);
+    }
+    60% {
+      clip-path: inset(25% 0 58% 0);
+      transform: translate(2px, 0);
+    }
+    80% {
+      clip-path: inset(54% 0 7% 0);
+      transform: translate(-2px, 0);
+    }
+    100% {
+      opacity: 1;
+      clip-path: inset(0 0 0 0);
+      transform: translate(0, 0);
+    }
+  }
+  
+  @keyframes scanline {
+    0% {
+      transform: translateY(-100%);
+    }
+    100% {
+      transform: translateY(100%);
+    }
+  }
+  
+  @keyframes blink {
+    0% { opacity: 1; }
+    5% { opacity: 0.3; }
+    10% { opacity: 1; }
+    15% { opacity: 0.5; }
+    20% { opacity: 1; }
+    100% { opacity: 1; }
+  }
+
+  @keyframes pulse {
+    0%, 100% { 
+      box-shadow: 0 0 4px 1px rgba(0, 255, 65, 0.2); 
+    }
+    50% { 
+      box-shadow: 0 0 10px 2px rgba(0, 255, 65, 0.4); 
+    }
+  }
+  
   .animate-fadeIn {
     animation: fadeIn 0.2s ease-out forwards;
   }
@@ -74,6 +130,71 @@ const carouselAnimationStyles = `
   
   .animate-fadeInOut {
     animation: fadeInOut 2s ease-out forwards;
+  }
+  
+  .animate-glitchIn {
+    animation: glitchIn 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  }
+  
+  .animate-scanline {
+    animation: scanline 2s linear infinite;
+  }
+  
+  .animate-blink {
+    animation: blink 1.5s step-end infinite;
+  }
+  
+  .animate-pulse-border {
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+  
+  .cyber-transition {
+    position: relative;
+    overflow: hidden;
+    transform: translateZ(0);
+  }
+  
+  .cyber-transition::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: rgba(0, 255, 65, 0.5);
+    transform: translateX(-100%);
+    transition: transform 0.3s ease-out;
+    z-index: 1;
+  }
+  
+  .cyber-transition.active::before {
+    transform: translateX(100%);
+    transition: transform 0.6s ease-in;
+  }
+  
+  .terminal-appear {
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .terminal-appear::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+      to bottom,
+      rgba(0, 255, 65, 0.15),
+      transparent 3px,
+      transparent 5px,
+      rgba(0, 255, 65, 0.05) 5px
+    );
+    background-size: 100% 8px;
+    animation: scanline 3s linear infinite;
+    opacity: 0.3;
+    pointer-events: none;
   }
 `;
 
@@ -88,20 +209,35 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
    */
   const handleConfirm = async () => {
     console.log('handleConfirm called');
-    // Reset error and start spinner
+    if (isCreating || isDeployTransitioning) return;
+    
+    setIsDeployTransitioning(true);
+    // Reset error and prep for transition
     setError(null);
-    setIsCreating(true);
+    
+    setTimeout(() => {
+      setIsCreating(true);
+      setIsDeployTransitioning(false);
+    }, 300);
     
     // core confirmation logic
     const confirmCallback = async () => {
       console.log('confirmCallback called');
-      const res = await confirmPreviewCreateCoin();
-      setCreatedCoin(res);
-      if (onCreationComplete) {
-        console.log('Calling onCreationComplete', res.address);
-        onCreationComplete(res.address);
+      try {
+        const res = await confirmPreviewCreateCoin();
+        setCreatedCoin(res);
+        if (onCreationComplete) {
+          console.log('Calling onCreationComplete', res.address);
+          onCreationComplete(res.address);
+        }
+      } catch (err) {
+        handleError(err);
+      } finally {
+        console.log('Setting isCreating to false');
+        setIsCreating(false);
       }
     };
+    
     try {
       if (onCreationStart) {
         console.log('Calling onCreationStart');
@@ -111,33 +247,56 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
         await confirmCallback();
       }
     } catch (err: any) {
-      // extract detailed logs if available
-      console.log('Error in handleConfirm', err);
-      let msg = err instanceof Error ? err.message : String(err);
-      try {
-        if (typeof err.getLogs === 'function') {
-          console.log('err.getLogs is a function');
-          const logs: string[] = await err.getLogs();
-          msg += '\n' + logs.join('\n');
-        } else if (Array.isArray(err.logs)) {
-          console.log('err.logs', err.logs);
-          msg += '\n' + err.logs.join('\n');
-        }
-      } catch {}
-      setError(msg);
-      if (onCreationError) {
-        console.error('Calling onCreationError', msg);
-        if (msg.includes('Transfer: insufficient lamports')) {
-          onCreationError('Insufficient SOL balance');
-        } else {
-          onCreationError(msg.slice(0, 100));
-        }
-      }
-    } finally {
-      console.log('Setting isCreating to false');
-      setIsCreating(false);
+      handleError(err);
     }
   };
+
+  // New helper function to handle errors consistently
+  const handleError = (err: any) => {
+    // extract detailed logs if available
+    console.log('Error in handleConfirm', err);
+    let msg = err instanceof Error ? err.message : String(err);
+    try {
+      if (typeof err.getLogs === 'function') {
+        console.log('err.getLogs is a function');
+        const logs: string[] = err.getLogs();
+        msg += '\n' + logs.join('\n');
+      } else if (Array.isArray(err.logs)) {
+        console.log('err.logs', err.logs);
+        msg += '\n' + err.logs.join('\n');
+      }
+    } catch {}
+    
+    setError(msg);
+    if (onCreationError) {
+      console.error('Calling onCreationError', msg);
+      if (msg.includes('Transfer: insufficient lamports')) {
+        onCreationError('Insufficient SOL balance');
+      } else {
+        onCreationError(msg.slice(0, 100));
+      }
+    }
+    
+    setIsCreating(false);
+    setIsDeployTransitioning(false);
+  };
+
+  // Add function to handle cancellation with transition
+  const handleCancelPreview = () => {
+    if (isCancelTransitioning) return;
+    
+    setIsCancelTransitioning(true);
+    
+    setTimeout(() => {
+      clearPreviewCreateCoin();
+      
+      setTimeout(() => {
+        setIsCancelTransitioning(false);
+        setIsPreviewing(false);
+      }, 300);
+    }, 150);
+  };
+
   useEffect(() => {
     // Add animation styles
     const styleEl = document.createElement('style');
@@ -203,6 +362,11 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
 
   // State for insufficient funds notice
   const [insufficientFunds, setInsufficientFunds] = useState(false)
+
+  // Add state for smooth transitions between form, preview, and creation
+  const [isPreviewTransitioning, setIsPreviewTransitioning] = useState(false);
+  const [isDeployTransitioning, setIsDeployTransitioning] = useState(false);
+  const [isCancelTransitioning, setIsCancelTransitioning] = useState(false);
 
   // Handle close insufficient funds modal
   const handleCloseModal = () => {
@@ -518,7 +682,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
       }
 
       // Create the coin and add it to the store (createCoin already persists it)
-      const response = await createCoinRemote(params);
+      const response = await useStore.getState().createCoinRemote(params);
 
       setCreatedCoin(response);
 
@@ -554,16 +718,28 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   };
   // Preview token creation (fee & amounts)
   const handlePreview = async () => {
-    setIsPreviewing(true);
+    if (isPreviewing || isPreviewTransitioning) return;
+    
+    setIsPreviewTransitioning(true);
     setError(null);
+    
+    setTimeout(() => {
+      setIsPreviewing(true);
+    }, 50);
+    
     try {
       const params = buildParams();
       await previewCreateCoinRemote(params);
+      setTimeout(() => {
+        setIsPreviewTransitioning(false);
+      }, 500);
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Unknown error';
       setError(`Preview failed: ${msg}`);
-    } finally {
-      setIsPreviewing(false);
+      setTimeout(() => {
+        setIsPreviewing(false);
+        setIsPreviewTransitioning(false);
+      }, 300);
     }
   };
   const handleSubmit = async () => {
@@ -677,7 +853,13 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   }, [isCarouselOpen, articleData.images, carouselIndex]);
 
   if (isLoading) {
-    return <Loader className="absolute h-full" isChild={true} isSidebar={isSidebar} />;
+    return (
+      <Loader 
+        isChild={true} 
+        isSidebar={isSidebar} 
+        className="absolute h-full" 
+      />
+    );
   }
 
   return (
@@ -717,7 +899,10 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
             <span className="sr-only">Clear</span>
           </button>
         </div>
-        <VersionBadge version={version} className="ml-auto mt-1" />
+        <VersionBadge 
+          version={version} 
+          className="ml-auto mt-1" 
+        />
       </div>
       
       {(error || walletError) && (
@@ -994,32 +1179,65 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
 
         {/* Preview or Create button */}
         {previewData ? (
-          <div className="crypto-card p-4 space-y-4 border border-cyber-purple relative">
+          <div 
+            className={`crypto-card p-4 space-y-4 border ${isPreviewing && !isPreviewTransitioning ? 'border-cyber-purple' : 'border-transparent'} relative terminal-fade-in transition-all duration-300 terminal-bg ${isDeployTransitioning || isCancelTransitioning ? 'opacity-70 scale-95' : 'opacity-100 scale-100'}`}
+            style={{
+              transformOrigin: 'center',
+              transitionProperty: 'transform, opacity, border-color',
+              transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)'
+            }}
+          >
             {/* Error overlay for RPC or creation errors */}
             {error && (
-              <div className="absolute top-0 left-0 w-full px-2 py-1 bg-cyber-pink/20 border-b border-cyber-pink text-cyber-pink text-xs font-terminal text-center z-10">
+              <div className="absolute top-0 left-0 w-full px-2 py-1 bg-cyber-pink/20 border-b border-cyber-pink text-cyber-pink text-xs font-terminal text-center z-10 terminal-fade-in">
                 {error}
               </div>
             )}
-            <h3 className="text-lg font-terminal text-cyber-green uppercase">Preview</h3>
-            <div className="space-y-1 font-terminal text-sm text-white">
-              <p>Total Cost: {previewData.totalCost.toFixed(4)} SOL</p>
-              <p>Pump Fee: {previewData.pumpFeeAmount.toFixed(4)} SOL</p>
-              <p>Platform Fee: {previewData.feeAmount.toFixed(4)} SOL</p>
-              <p>Investment: {previewData.totalAmount.toFixed(4)} SOL</p>
+            
+            {/* Scanline effect for terminal feel */}
+            <div className="absolute inset-0 pointer-events-none overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-b from-cyber-green/5 to-transparent bg-repeat-y terminal-scanline" style={{backgroundSize: '100% 8px'}}></div>
             </div>
+            
+            <h3 className="text-lg font-terminal text-cyber-green uppercase relative">
+              Preview
+              <span className="absolute top-1 -left-2 text-cyber-green/60 terminal-cursor">_</span>
+            </h3>
+            
+            <div className="space-y-1 font-terminal text-sm text-white">
+              <p className="flex justify-between">
+                <span>Total Cost:</span> 
+                <span className="text-cyber-green">{previewData.totalCost.toFixed(4)} SOL</span>
+              </p>
+              <p className="flex justify-between">
+                <span>Pump Fee:</span> 
+                <span>{previewData.pumpFeeAmount.toFixed(4)} SOL</span>
+              </p>
+              <p className="flex justify-between">
+                <span>Platform Fee:</span> 
+                <span>{previewData.feeAmount.toFixed(4)} SOL</span>
+              </p>
+              <p className="flex justify-between border-t border-cyber-green/30 pt-1 mt-1">
+                <span>Investment:</span> 
+                <span className="text-cyber-green">{previewData.totalAmount.toFixed(4)} SOL</span>
+              </p>
+            </div>
+            
             <div className="flex space-x-2">
               <button
                 onClick={handleConfirm}
-                disabled={isCreating}
-                className="btn-primary flex-1 font-terminal"
+                disabled={isCreating || isDeployTransitioning}
+                className={`btn-primary flex-1 font-terminal relative overflow-hidden cyber-transition ${isDeployTransitioning ? 'active animate-pulse-border' : ''}`}
               >
                 {isCreating ? 'DEPLOYING...' : 'DEPLOY'}
+                {isDeployTransitioning && (
+                  <div className="absolute inset-0 bg-cyber-green/10 pointer-events-none"></div>
+                )}
               </button>
               <button
-                onClick={() => clearPreviewCreateCoin()}
-                disabled={isPreviewing}
-                className="flex-1 font-terminal border border-cyber-pink text-cyber-pink py-2 rounded-sm hover:bg-cyber-pink/10"
+                onClick={handleCancelPreview}
+                disabled={isPreviewing === false || isCancelTransitioning}
+                className={`flex-1 font-terminal border border-cyber-pink text-cyber-pink py-2 rounded-sm hover:bg-cyber-pink/10 transition-all duration-300 ${isCancelTransitioning ? 'opacity-70' : 'opacity-100'}`}
               >
                 CANCEL
               </button>
@@ -1028,16 +1246,18 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
         ) : (
           <button
             onClick={handleSubmit}
-            disabled={isPreviewing || isCreating}
-            className={`w-full font-terminal text-lg uppercase tracking-wider border rounded-sm transition-all duration-300 relative overflow-hidden ${
-              isPreviewing
-                ? 'bg-cyber-dark border-cyber-green/70 text-cyber-green py-2'
-                : 'bg-cyber-black hover:bg-cyber-green/20 border-cyber-green text-cyber-green py-4 hover:shadow-neon-green'
+            disabled={isPreviewing || isCreating || isPreviewTransitioning}
+            className={`w-full font-terminal text-lg uppercase tracking-wider border rounded-sm transition-all duration-300 relative overflow-hidden cyber-transition ${
+              isPreviewTransitioning
+                ? 'active bg-cyber-dark border-cyber-green text-cyber-green py-2 opacity-90'
+                : isPreviewing
+                  ? 'bg-cyber-dark border-cyber-green/70 text-cyber-green py-2'
+                  : 'bg-cyber-black hover:bg-cyber-green/20 border-cyber-green text-cyber-green py-4 hover:shadow-neon-green'
             }`}
           >
-            {isPreviewing ? (
+            {isPreviewTransitioning || isPreviewing ? (
               <div className="flex items-center justify-center space-x-2 w-full h-full">
-                <Loader2 className="w-5 h-5 animate-spin" />
+                <Loader2 className={`w-5 h-5 ${isPreviewTransitioning ? 'animate-spin' : ''}`} />
                 <span>PREPPING...</span>
               </div>
             ) : (
@@ -1045,6 +1265,16 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
                 <Zap className="w-5 h-5" />
                 <span>COOK IT</span>
               </div>
+            )}
+            
+            {/* Glitch line effect for transition */}
+            {isPreviewTransitioning && (
+              <>
+                <div className="absolute top-0 left-0 w-full h-[1px] bg-cyber-green/50 terminal-fade-in"></div>
+                <div className="absolute bottom-0 left-0 w-full h-[1px] bg-cyber-green/50 terminal-fade-in" style={{animationDelay: '0.1s'}}></div>
+                <div className="absolute left-0 top-0 w-[1px] h-full bg-cyber-green/50 terminal-fade-in" style={{animationDelay: '0.2s'}}></div>
+                <div className="absolute right-0 top-0 w-[1px] h-full bg-cyber-green/50 terminal-fade-in" style={{animationDelay: '0.3s'}}></div>
+              </>
             )}
           </button>
         )}
