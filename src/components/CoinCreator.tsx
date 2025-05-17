@@ -87,64 +87,55 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
    * Handles the Preview Confirm button click: invokes wrapper or local flow.
    */
   const handleConfirm = async () => {
-    // Clear existing errors
+    console.log('handleConfirm called');
+    // Reset error and start spinner
     setError(null);
-    // Confirmation callback logic
+    setIsCreating(true);
+    
+    // core confirmation logic
     const confirmCallback = async () => {
-      setIsCreating(true);
-      setError(null);
-      try {
-        console.log('Confirming preview create coin');
-        const res = await confirmPreviewCreateCoin();
-        setCreatedCoin(res);
-        if (onCreationComplete) {
-          console.log('Calling onCreationComplete', res.address);
-          onCreationComplete(res.address);
-        }
-      } catch (err) {
-        console.log('Error confirming preview create coin', err);
-        const msg = err instanceof Error ? err.message : 'Execution failed';
-        setError(`Creation failed: ${msg}`);
-        if (onCreationError) {
-          onCreationError(msg);
-        }
-      } finally {
-        console.log('Setting isCreating to false');
-        setIsCreating(false);
+      console.log('confirmCallback called');
+      const res = await confirmPreviewCreateCoin();
+      setCreatedCoin(res);
+      if (onCreationComplete) {
+        console.log('Calling onCreationComplete', res.address);
+        onCreationComplete(res.address);
       }
     };
-
-    if (onCreationStart) {
-      try {
+    try {
+      if (onCreationStart) {
         console.log('Calling onCreationStart');
         await onCreationStart(confirmCallback);
-        console.log('onCreationStart returned');
-      } catch (err) {
-        console.log('Error in onCreationStart', err);
-        const msg = err instanceof Error ? err.message : 'Execution failed';
-        setError(`Creation failed: ${msg}`);
-        if (onCreationError) {
-          console.log('Calling onCreationError', msg);
-          onCreationError(msg);
-        }
-      }
-    } else {
-      console.log('Calling confirmCallback');
-      setIsCreating(true);
-      try {
-        console.log('Calling confirmCallback');
+      } else {
+        console.log('Calling confirmCallback directly');
         await confirmCallback();
-      } catch (err) {
-        console.log('Error in confirmCallback', err);
-        const msg = err instanceof Error ? err.message : 'Execution failed';
-        setError(`Creation failed: ${msg}`);
-        if (onCreationError) {
-          console.log('Calling onCreationError', msg);
-          onCreationError(msg);
-        }
-      } finally {
-        setIsCreating(false);
       }
+    } catch (err: any) {
+      // extract detailed logs if available
+      console.log('Error in handleConfirm', err);
+      let msg = err instanceof Error ? err.message : String(err);
+      try {
+        if (typeof err.getLogs === 'function') {
+          console.log('err.getLogs is a function');
+          const logs: string[] = await err.getLogs();
+          msg += '\n' + logs.join('\n');
+        } else if (Array.isArray(err.logs)) {
+          console.log('err.logs', err.logs);
+          msg += '\n' + err.logs.join('\n');
+        }
+      } catch {}
+      setError(msg);
+      if (onCreationError) {
+        console.error('Calling onCreationError', msg);
+        if (msg.includes('Transfer: insufficient lamports')) {
+          onCreationError('Insufficient SOL balance');
+        } else {
+          onCreationError(msg.slice(0, 100));
+        }
+      }
+    } finally {
+      console.log('Setting isCreating to false');
+      setIsCreating(false);
     }
   };
   useEffect(() => {
@@ -1013,7 +1004,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
             <h3 className="text-lg font-terminal text-cyber-green uppercase">Preview</h3>
             <div className="space-y-1 font-terminal text-sm text-white">
               <p>Total Cost: {previewData.totalAmount.toFixed(4)} SOL</p>
-              <p>Fee (1%): {previewData.feeAmount.toFixed(4)} SOL</p>
+              <p>Fee (1%): {previewData.feeAmount.toFixed(10)} SOL</p>
               <p>Net Invest: {previewData.netAmount.toFixed(4)} SOL</p>
             </div>
             <div className="flex space-x-2">
