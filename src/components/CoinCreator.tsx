@@ -1004,7 +1004,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
             <h3 className="text-lg font-terminal text-cyber-green uppercase">Preview</h3>
             <div className="space-y-1 font-terminal text-sm text-white">
               <p>Total Cost: {previewData.totalAmount.toFixed(4)} SOL</p>
-              <p>Fee (1%): {previewData.feeAmount.toFixed(10)} SOL</p>
+              <p>Fee: {previewData.feeAmount.toFixed(4)} SOL</p>
               <p>Net Invest: {previewData.netAmount.toFixed(4)} SOL</p>
             </div>
             <div className="flex space-x-2">
