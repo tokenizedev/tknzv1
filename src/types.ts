@@ -140,6 +140,18 @@ export interface WalletState {
      * Update the avatar for a given wallet
      */
     updateWalletAvatar: (walletId: string, avatar: string) => Promise<void>;
+    /**
+     * Selected exchange domain (e.g., 'pump.fun')
+     */
+    selectedExchange: string;
+    /**
+     * Full URL of the selected exchange (e.g., 'https://pump.fun')
+     */
+    exchangeUrl: string;
+    /**
+     * Update the selected exchange
+     */
+    setSelectedExchange: (exchange: string) => Promise<void>;
 }
   
 export interface ArticleData {
