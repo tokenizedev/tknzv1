@@ -1,3 +1,5 @@
+import { CoinCreationParams } from './types';
+
 // Background service worker
 chrome.runtime.onInstalled.addListener(() => {
   console.log('Extension installed');
@@ -98,9 +100,39 @@ chrome.runtime.onMessage.addListener((message: any, sender, sendResponse) => {
     }
     sendResponse({ success: true });
     return;
+  } else if (message.type === 'INIT_TOKEN_CREATE') {
+    try {
+      chrome.storage.local.set({ coinData: JSON.stringify(message.payload) });
+    } catch (e) {
+      console.error('Failed to populate token:', e);
+    }
+
+    if (message.isSidebar) {
+      (chrome as any).sidePanel?.open({ tabId: targetTabId }).catch((err: any) => console.error('Failed to open side panel:', err));
+      (chrome as any).sidePanel?.setOptions({ tabId: targetTabId, path: 'sidebar.html', enabled: true });
+    } else {
+      chrome.action.openPopup().catch((err: any) => console.error('Failed to open popup:', err));
+    }
+    sendResponse({ success: true });
+    return;
   }
-  
   return true;
+});
+
+chrome.runtime.onMessage.addListener((message, sender) => {
+  if (message.type === 'INJECT_SDK' && sender.tab?.id) {
+    chrome.scripting.executeScript({
+      target: { tabId: sender.tab.id },
+      world: 'MAIN',
+      func: () => {
+        (window as any).tknz = {
+          initTokenCreate: (coin: CoinCreationParams) => {
+            window.postMessage({ source: 'tknz', type: 'INIT_TOKEN_CREATE', payload: coin });
+          }
+        }
+      }
+    });
+  }
 });
 
 // Clean up when tabs are closed

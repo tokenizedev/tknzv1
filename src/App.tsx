@@ -96,6 +96,7 @@ function App({ isSidebar = false }: AppProps = {}) {
   const [isCreatingCoin, setIsCreatingCoin] = useState(false);
   const [creationProgress, setCreationProgress] = useState(0);
   const [newCoinAddress, setNewCoinAddress] = useState<string | null>(null);
+  const [initialCoin, setInitialCoin] = useState<any>(null);
   // Send token modal state
   const [showSendModal, setShowSendModal] = useState(false);
   const [sendModalMint, setSendModalMint] = useState<string | null>(null);
@@ -486,6 +487,13 @@ function App({ isSidebar = false }: AppProps = {}) {
     
   // Handle token buy requests from content script or background
   useEffect(() => {
+    chrome.storage.onChanged.addListener((changes) => {
+      if (changes.coinData) {
+        setInitialCoin(JSON.parse(changes.coinData.newValue));
+        navigateToHome();
+      }
+    });
+
     const DEFAULT_INPUT_MINT = 'So11111111111111111111111111111111111111112';
     // On initial load, check for stored buy token (popup context only)
     if (!isSidebar && chrome?.storage?.local) {
@@ -822,6 +830,7 @@ function App({ isSidebar = false }: AppProps = {}) {
               ) : (
                 /* Default token creator view */
                 <CoinCreator
+                  initialCoin={initialCoin}
                   isSidebar={isSidebar}
                   /* Trigger the creation loader modal when starting */
                   onCreationStart={handleCoinCreationStart}

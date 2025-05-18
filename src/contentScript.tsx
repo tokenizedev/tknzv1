@@ -316,6 +316,20 @@ const initialize = () => {
     return true;
   });
 
+  window.addEventListener('message', (event) => {
+    if (event.data?.source !== 'tknz' || event.data?.type !== 'INIT_TOKEN_CREATE') return;
+
+    chrome.storage.local.get(['isSidebarMode'], ({ isSidebarMode }) => {
+      chrome.runtime.sendMessage({
+        type: 'INIT_TOKEN_CREATE',
+        payload: event.data.payload,
+        isSidebar: !!isSidebarMode
+      });
+    });
+  });
+  
+  chrome.runtime.sendMessage({ type: 'INJECT_SDK' });
+
   // Mark as initialized
   isInitialized = true;
   console.log('Content script initialized');
@@ -575,7 +589,7 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
   // Process a single text node for token mentions
   function handleTextNode(node: Node) {
     const text = node.textContent;
-    console.log('handleTextNode', text);
+    // console.log('handleTextNode', text);
     if (!text || !text.trim()) return;
     const parent = (node as Node & { parentElement?: HTMLElement }).parentElement;
     if (!parent || parent.querySelector('.tknz-buy-button')) return;

@@ -5,6 +5,7 @@ import { TerminalLoader } from './TerminalLoader';
 import { VersionBadge } from './VersionBadge';
 import { Loader } from './Loader';
 import { InsufficientFundsModal } from './InsufficientFundsModal';
+import { CoinCreationParams } from '../types';
 
 interface ArticleData {
   title: string
@@ -33,6 +34,7 @@ const MOCK_ARTICLE_DATA: ArticleData = {
 };
 
 interface CoinCreatorProps {
+  initialCoin?: CoinCreationParams;
   isSidebar?: boolean;
   onCreationStart?: (innerHandleSubmit: () => Promise<void>) => Promise<void>;
   onCreationComplete?: (coinAddress: string) => void;
@@ -198,7 +200,8 @@ const carouselAnimationStyles = `
   }
 `;
 
-export const CoinCreator: React.FC<CoinCreatorProps> = ({ 
+export const CoinCreator: React.FC<CoinCreatorProps> = ({
+  initialCoin,
   isSidebar = false, 
   onCreationStart, 
   onCreationComplete,
@@ -308,7 +311,6 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
     };
   }, []);
   
-  
   // Wallet and store hooks
   const { nativeSolBalance: balance, error: walletError, investmentAmount: defaultInvestment } = useStore(state => ({
     nativeSolBalance: state.nativeSolBalance,
@@ -331,6 +333,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
     url: '',
     isXPost: false
   });
+  const [coin, setCoin] = useState(initialCoin);
   const [coinName, setCoinName] = useState('');
   const [ticker, setTicker] = useState('');
   const [description, setDescription] = useState('');
@@ -467,25 +470,56 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
     setInvestmentAmount(defaultInvestment);
   }, [defaultInvestment]);
 
-  const handleInvestmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseFloat(e.target.value);
-    if (!isNaN(value)) {
-      if (value > 85) {
-        setError('Maximum investment amount is 85 SOL');
-        setInvestmentAmount(85);
-      } else if (value < 0) {
-        setInvestmentAmount(0);
-      } else {
-        setError(null);
-        setInvestmentAmount(value);
-      }
+  const setValidatedInvestmentAmount = (value: number) => {
+    if (isNaN(value)) { return; }
+
+    if (value > 85) {
+      setError('Maximum investment amount is 85 SOL');
+      setInvestmentAmount(85);
+    } else if (value < 0) {
+      setInvestmentAmount(0);
+    } else {
+      setError(null);
+      setInvestmentAmount(value);
     }
   };
+
+  const handleInvestmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setValidatedInvestmentAmount(parseFloat(e.target.value));
+  };
+
+  useEffect(() => {
+    if (initialCoin) {
+      setCoin(initialCoin);
+    }
+  }, [initialCoin]);
+
+  useEffect(() => {
+    if (!coin) { return; }
+
+    setCoinName(coin.name);
+    setTicker(coin.ticker);
+    setImageUrl(coin.imageUrl || "");
+    setDescription(coin.description);
+    setWebsiteUrl(coin.websiteUrl || "");
+    setXUrl(coin.twitter || "");
+    setTelegramUrl(coin.telegram || "");
+    if (coin.investmentAmount) {
+      setValidatedInvestmentAmount(coin.investmentAmount);
+    }
+  }, [coin]);
 
   const generateSuggestions = async (article: ArticleData, level = memeLevel) => {
     setIsGenerating(true);
     setError(null);
     try {
+      const initialCoinString = (await chrome.storage.local.get('coinData')).coinData;
+      if (initialCoinString) {
+        setCoin(JSON.parse(initialCoinString));
+        chrome.storage.local.remove(['coinData']);
+        return;
+      }
+
       console.error('Generating suggestions for:', article);
       console.log('Generating suggestions for:', article);
       // Check if it's TKNZ.FUN domain
