@@ -324,10 +324,19 @@ const initialize = () => {
         type: 'INIT_TOKEN_CREATE',
         payload: event.data.payload,
         isSidebar: !!isSidebarMode
+      }).then((response) => {
+        if (chrome.runtime.lastError) {
+          console.error('Messaging error:', chrome.runtime.lastError.message);
+          return;
+        }
+
+        if (!response?.success) {
+          console.error('Failed: ', response.error);
+        }
       });
     });
   });
-  
+
   chrome.runtime.sendMessage({ type: 'INJECT_SDK' });
 
   // Mark as initialized
@@ -589,7 +598,7 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
   // Process a single text node for token mentions
   function handleTextNode(node: Node) {
     const text = node.textContent;
-    // console.log('handleTextNode', text);
+    console.log('handleTextNode', text);
     if (!text || !text.trim()) return;
     const parent = (node as Node & { parentElement?: HTMLElement }).parentElement;
     if (!parent || parent.querySelector('.tknz-buy-button')) return;

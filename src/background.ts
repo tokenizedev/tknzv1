@@ -37,6 +37,16 @@ chrome.windows.onRemoved.addListener(windowId => {
   sidePanelOpenWindows.delete(windowId);
 });
 
+function isValidCoinCreationPayload(obj: Record<string, any>): boolean {
+  return (
+    obj &&
+    typeof obj.name === 'string' &&
+    typeof obj.ticker === 'string' &&
+    typeof obj.imageUrl === 'string' &&
+    typeof obj.description === 'string'
+  );
+}
+
 let lastMessage: any = null;
 // Handle messages from content script
 chrome.runtime.onMessage.addListener((message: any, sender, sendResponse) => {
@@ -101,6 +111,11 @@ chrome.runtime.onMessage.addListener((message: any, sender, sendResponse) => {
     sendResponse({ success: true });
     return;
   } else if (message.type === 'INIT_TOKEN_CREATE') {
+    if (!isValidCoinCreationPayload(message.payload)) {
+      sendResponse({ success: false, error: 'Missing or invalid required fields' });
+      return;
+    }
+
     try {
       chrome.storage.local.set({ coinData: JSON.stringify(message.payload) });
     } catch (e) {
@@ -113,9 +128,11 @@ chrome.runtime.onMessage.addListener((message: any, sender, sendResponse) => {
     } else {
       chrome.action.openPopup().catch((err: any) => console.error('Failed to open popup:', err));
     }
+
     sendResponse({ success: true });
     return;
   }
+
   return true;
 });
 
