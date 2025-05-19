@@ -1,5 +1,5 @@
 import { getTokenInfo } from './jupiterService';
-import { getTokensData } from './heliusService';
+import { getAsset } from './heliusService';
 import { storage } from '../utils/storage';
 
 import type { CreatedCoin } from '../types';
@@ -32,15 +32,9 @@ export async function filterCreatedCoins<C extends CreatedCoin>(
   const whitelistSet = new Set(Array.isArray(whitelist) ? whitelist : []);
   const blacklistSet = new Set(Array.isArray(blacklist) ? blacklist : []);
 
-  const mintAddresses = coins.map(coin => coin.address);
-
-  const tokenInfoPromises = await Promise.allSettled(coins.map(coin => getTokenInfo(coin.address)));
-  const tokensData = await getTokensData(mintAddresses);
-
   const filtered: C[] = [];
   for (const coin of coins) {
     const address = coin.address;
-    const token = tokensData.find(t => t.address === address);
 
     if (blacklistSet.has(address)) continue;
     if (whitelistSet.has(address)) {
@@ -48,20 +42,34 @@ export async function filterCreatedCoins<C extends CreatedCoin>(
       continue;
     }
 
-    const info = tokenInfoPromises.filter(p => p.status === "fulfilled").find(t => t.value.address === address);
+    const duplicates = coins.filter(c => c.name === coin.name && c.ticker === coin.ticker);
 
-    if (!info?.value) {
+    if (duplicates.length < 2) {
+      filtered.push(coin);
+      continue;
+    }
+
+    const original = duplicates.sort((a, b) => new Date(`${a.createdAt}`).getTime() - new Date(`${b.createdAt}`).getTime())[0];
+    if (original.address === address) {
+      filtered.push(coin);
+      continue;
+    }
+
+    const info = await getTokenInfo(address);
+    if (!info) {
       filtered.push(coin);
       continue;
     };
 
     // 1. Tag check
-    if (!info.value.tags.every(tag => ALLOWED_TAGS.includes(tag))) continue;
+    if (!info.tags.every(tag => ALLOWED_TAGS.includes(tag))) continue;
     // 2. Age check
-    const mintedAt = info.value.minted_at || info.value.created_at;
+    const mintedAt = info.minted_at || info.created_at;
     if (!(new Date(mintedAt).getTime() >= now - minAgeMs)) continue;
     // 3. 24h volume
-    if (info.value.daily_volume < minVolume) continue;
+    if (info.daily_volume < minVolume) continue;
+
+    const token = await getAsset(address);
 
     if (!token) {
       filtered.push(coin);
@@ -69,11 +77,9 @@ export async function filterCreatedCoins<C extends CreatedCoin>(
     }
 
     // 4. Market cap
-    const marketCap = token?.marketCap || 0;
-    if (marketCap < minMarketCap) continue;
+    if (token.marketCap < minMarketCap) continue;
     // 5. Holders
-    const holders = token?.holders || 0;
-    if (holders < minHolders) continue;
+    if (token.holders < minHolders) continue;
     // 6. Liquidity
     // const liquidity = info.extensions?.liquidity;
     // if (liquidity < minLiquidity) continue;
