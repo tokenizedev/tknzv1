@@ -4,7 +4,6 @@ import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/
 import { v4 as uuidv4 } from "uuid";
 import type { CreatedCoin } from './types'; // Assuming CreatedCoin type is exported from store
 import { Timestamp } from 'firebase/firestore';
-import { filterCreatedCoins } from './services/validationService';
 
 // Replace these with your own Firebase config values
 const firebaseConfig = {
@@ -77,7 +76,7 @@ export async function getAllCreatedCoins(): Promise<CreatedCoin[]> {
   try {
     const coinsRef = collection(db, 'createdCoins');
     const querySnapshot = await getDocs(coinsRef);
-    let coins: CreatedCoin[] = [];
+    const coins: CreatedCoin[] = [];
     querySnapshot.forEach((doc) => {
       const data = doc.data();
       const createdAt = data.createdAt instanceof Timestamp
@@ -88,8 +87,6 @@ export async function getAllCreatedCoins(): Promise<CreatedCoin[]> {
         createdAt,
       });
     });
-
-    coins = await filterCreatedCoins(coins);
 
     // Sort by creation time descending
     coins.sort((a, b) => {
