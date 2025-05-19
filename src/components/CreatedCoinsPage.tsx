@@ -4,7 +4,6 @@ import { getAllCreatedCoins } from '../firebase';
 import { CreatedCoin } from '../types';
 import { Loader } from './Loader';
 import { Coins, ExternalLink, ArrowLeft, Repeat } from 'lucide-react';
-import { filterCreatedCoins } from '../services/validationService';
 
 interface CreatedCoinsPageProps {
   onBack: () => void;
@@ -18,7 +17,7 @@ export const CreatedCoinsPage: React.FC<CreatedCoinsPageProps> = ({ onBack, onSw
 
   useEffect(() => {
     (async () => {
-      const allCoins = await getAllCreatedCoins().then(filterCreatedCoins);
+      const allCoins = await getAllCreatedCoins();
       setCoins(allCoins);
       setLoading(false);
     })();
