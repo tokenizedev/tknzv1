@@ -37,8 +37,22 @@ export default defineConfig({
         background: resolve(__dirname, 'src/background.ts')
       },
       external: [],
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('react')) {
+              return 'react-vendor';
+            }
+            if (id.includes('@solana') || id.includes('helius-sdk')) {
+              return 'solana-vendor';
+            }
+            return 'vendor';
+          }
+        }
+      },
     },
     modulePreload: false,
+    cssCodeSplit: true,
     sourcemap: true,
     chunkSizeWarningLimit: 1000
   },
