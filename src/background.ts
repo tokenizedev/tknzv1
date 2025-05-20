@@ -1,3 +1,4 @@
+import { getTokenInfo } from './services/jupiterService';
 // Background service worker
 chrome.runtime.onInstalled.addListener(() => {
   console.log('Extension installed');
@@ -79,25 +80,70 @@ chrome.runtime.onMessage.addListener((message: any, sender, sendResponse) => {
   // Handle token buy button clicks from content script
   else if (message.type === 'TKNZ_TOKEN_CLICKED') {
     const token = message.token;
-    // Store the last buy token for UI
-    try {
-      chrome.storage.local.set({ lastBuyToken: JSON.stringify(token) });
-    } catch (e) {
-      console.error('Failed to store buy token:', e);
-    }
-    // Use mode flag from content script to decide where to open
-    const isSidebarMsg = message.isSidebar === true;
-    // Notify UI to show swap page in correct context
-    chrome.runtime.sendMessage({ type: 'SHOW_SWAP', token, isSidebar: isSidebarMsg });
-    // Open side panel or popup exclusively
-    if (isSidebarMsg) {
-      (chrome as any).sidePanel?.open({ tabId: targetTabId }).catch((err: any) => console.error('Failed to open side panel:', err));
-      (chrome as any).sidePanel?.setOptions({ tabId: targetTabId, path: 'sidebar.html', enabled: true });
-    } else {
-      chrome.action.openPopup().catch((err: any) => console.error('Failed to open popup:', err));
-    }
-    sendResponse({ success: true });
-    return;
+
+    // Handle click asynchronously: blocklist check and token validation
+    (async () => {
+      try {
+        // Retrieve blocklist from storage
+        const items: any = await new Promise(resolve =>
+          chrome.storage.local.get(['blocklist'], resolve)
+        );
+        const blocklist: string[] = Array.isArray(items.blocklist) ? items.blocklist : [];
+        const tokenId = token.address || token.symbol;
+        if (blocklist.includes(tokenId)) {
+          console.log('Token is blocklisted:', tokenId);
+          sendResponse({ success: false, reason: 'blocked' });
+          return;
+        }
+
+        // Validate token exists on Jupiter (address-based only)
+        if (!token.address) {
+          console.warn('Unsupported token format (cashtag only):', token.symbol);
+          sendResponse({ success: false, reason: 'unsupported' });
+          return;
+        }
+        try {
+          await getTokenInfo(token.address);
+        } catch (err) {
+          console.error('Token validation failed (unsupported):', token.address, err);
+          sendResponse({ success: false, reason: 'unsupported' });
+          return;
+        }
+
+        // Store the last buy token for UI
+        chrome.storage.local.set({ lastBuyToken: JSON.stringify(token) });
+        // Notify UI to show swap page in correct context
+        const isSidebarMsg = message.isSidebar === true;
+        chrome.runtime.sendMessage({ type: 'SHOW_SWAP', token, isSidebar: isSidebarMsg });
+
+        // Open side panel or popup exclusively
+        if (isSidebarMsg) {
+          try {
+            await (chrome as any).sidePanel.open({ tabId: targetTabId });
+            await (chrome as any).sidePanel.setOptions({ tabId: targetTabId, path: 'sidebar.html', enabled: true });
+          } catch (err) {
+            console.error('Failed to open side panel:', err);
+            sendResponse({ success: false, reason: 'sidePanel' });
+            return;
+          }
+        } else {
+          try {
+            await chrome.action.openPopup();
+          } catch (err) {
+            console.error('Failed to open popup:', err);
+            sendResponse({ success: false, reason: 'popup' });
+            return;
+          }
+        }
+
+        // Everything succeeded
+        sendResponse({ success: true });
+      } catch (err) {
+        console.error('Error in token click handler:', err);
+        sendResponse({ success: false, reason: 'unknown' });
+      }
+    })();
+    return true;
   }
   
   return true;
