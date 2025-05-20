@@ -89,9 +89,12 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
   useEffect(() => {
     (async () => {
       try {
-        const res = await storage.get(['buyModeEnabled', 'floatingScanButtonEnabled']);
+        // Get settings from storage
+        const res = await storage.get('buyModeEnabled');
+        const resScan = await storage.get('floatingScanButtonEnabled');
         const buyEnabled = res.buyModeEnabled;
-        const floatingEnabled = res.floatingScanButtonEnabled;
+        const floatingEnabled = resScan.floatingScanButtonEnabled;
+        
         setBuyEnabled(buyEnabled === undefined ? true : buyEnabled);
         setFloatingScanButtonEnabled(floatingEnabled === undefined ? true : floatingEnabled);
       } catch (err) {
