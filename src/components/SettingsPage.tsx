@@ -317,7 +317,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
         setBlocklist(Array.isArray(blocklist) ? blocklist : []);
         setAllowlist(Array.isArray(allowlist) ? allowlist : []);
       } catch {
-        setblocklist([]);
+        setBlocklist([]);
         setAllowlist([]);
       }
     };
@@ -693,7 +693,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
                     <Plus className="w-4 h-4 mr-1" />ADD
                   </button>
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-1 max-h-[200px] overflow-y-auto pr-1">
                   {!blocklist.length ? (
                     <p className="text-cyber-orange/60 text-xs font-terminal">No blocklist entries.</p>
                   ) : (
@@ -730,7 +730,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
                     <Plus className="w-4 h-4 mr-1" />ADD
                   </button>
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-1 max-h-[200px] overflow-y-auto pr-1">
                   {!allowlist.length ? (
                     <p className="text-cyber-green/60 text-xs font-terminal">No allowlist entries.</p>
                   ) : (
