@@ -4,6 +4,7 @@ import { useStore } from '../store';
 import { web3Connection } from '../utils/connection';
 import { logEventToFirestore } from '../firebase';
 import { LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { Buffer } from 'buffer';
 import {
   getUltraBalances,
   getOrder,
