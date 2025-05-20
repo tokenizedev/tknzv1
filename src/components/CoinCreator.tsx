@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Image, Type, FileText, Send, Loader2, AlertCircle, Globe, Sparkles, DollarSign, Hand as BrandX, GitBranch as BrandTelegram, Terminal, Zap, Target, X, Upload, ChevronLeft, ChevronRight, CheckCircle, Copy, ExternalLink, Hash } from 'lucide-react';
 import { useStore } from '../store';
-import { TerminalLoader } from './TerminalLoader';
 import { VersionBadge } from './VersionBadge';
 import { Loader } from './Loader';
 import { InsufficientFundsModal } from './InsufficientFundsModal';
@@ -19,7 +18,6 @@ interface ArticleData {
 }
 
 const DEV_MODE = process.env.NODE_ENV === 'development' && !chrome?.tabs;
-const version = import.meta.env.VITE_APP_VERSION || '0.0.0';
 
 const MOCK_ARTICLE_DATA: ArticleData = {
   title: "Bitcoin Reaches New All-Time High",
