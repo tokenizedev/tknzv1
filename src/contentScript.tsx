@@ -537,6 +537,42 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
   const STATE = {
     buttonsAdded: new Set<string>(),
   };
+  // Network idle detection to wait for content load
+  let activeRequests = 0;
+  let idleTimer: number | undefined;
+  const scheduleNetworkIdleScan = () => {
+    if (activeRequests === 0) {
+      if (idleTimer) clearTimeout(idleTimer);
+      idleTimer = window.setTimeout(() => {
+        STATE.buttonsAdded.clear();
+        document.querySelectorAll('.tknz-buy-button').forEach(btn => btn.remove());
+        scanElement(document.body);
+      }, 500);
+    }
+  };
+  // Wrap fetch to track network requests
+  const originalFetch = window.fetch;
+  window.fetch = (...args: any[]) => {
+    activeRequests++;
+    return originalFetch.apply(this, args).finally(() => {
+      activeRequests--;
+      scheduleNetworkIdleScan();
+    });
+  };
+  // Wrap XMLHttpRequest to track network requests
+  const originalXhrSend = XMLHttpRequest.prototype.send;
+  XMLHttpRequest.prototype.send = function (...args: any[]) {
+    activeRequests++;
+    this.addEventListener('readystatechange', function() {
+      if (this.readyState === 4) {
+        activeRequests--;
+        scheduleNetworkIdleScan();
+      }
+    });
+    return originalXhrSend.apply(this, args as any);
+  };
+  // Schedule initial network idle scan
+  scheduleNetworkIdleScan();
 
   // Create and append the Buy button
   function addBuyButton(el: HTMLElement, token: TokenMsg) {
@@ -652,18 +688,24 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
   });
   observer.observe(document.body, { childList: true, subtree: true, characterData: true });
 
-  // Handle SPA navigation (pushState/replaceState/popstate)
-  window.addEventListener('popstate', () => scanElement(document.body));
+  // Handle SPA navigation: clear previous state and re-scan tokens
+  const handleRouteChange = () => {
+    STATE.buttonsAdded.clear();
+    document.querySelectorAll('.tknz-buy-button').forEach(btn => btn.remove());
+    scanElement(document.body);
+  };
+  window.addEventListener('popstate', handleRouteChange);
+  window.addEventListener('hashchange', handleRouteChange);
   const origPush = history.pushState;
   history.pushState = function (...args) {
     const ret = origPush.apply(this, args as any);
-    scanElement(document.body);
+    handleRouteChange();
     return ret;
   };
   const origReplace = history.replaceState;
   history.replaceState = function (...args) {
     const ret = origReplace.apply(this, args as any);
-    scanElement(document.body);
+    handleRouteChange();
     return ret;
   };
   // Periodic full DOM scan for Buy buttons (every 5s)
