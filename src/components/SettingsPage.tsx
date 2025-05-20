@@ -328,28 +328,28 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
   const addblocklist = async () => {
     if (!blocklistInput.trim() || blocklist.includes(blocklistInput.trim())) return;
     const updated = [...blocklist, blocklistInput.trim()];
-    setblocklist(updated);
-    setblocklistInput('');
+    setBlocklist(updated);
+    setBlocklistInput('');
     await storage.set({ blocklist: updated });
   };
 
   const removeblocklist = async (entry: string) => {
     const updated = blocklist.filter(e => e !== entry);
-    setblocklist(updated);
+    setBlocklist(updated);
     await storage.set({ blocklist: updated });
   };
 
   const addallowlist = async () => {
     if (!allowlistInput.trim() || allowlist.includes(allowlistInput.trim())) return;
     const updated = [...allowlist, allowlistInput.trim()];
-    setallowlist(updated);
-    setallowlistInput('');
+    setAllowlist(updated);
+    setAllowlistInput('');
     await storage.set({ allowlist: updated });
   };
 
   const removeallowlist = async (entry: string) => {
     const updated = allowlist.filter(e => e !== entry);
-    setallowlist(updated);
+    setAllowlist(updated);
     await storage.set({ allowlist: updated });
   };
 
@@ -671,18 +671,18 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
                 </button>
               )}
             </div>
-            <p className="text-cyber-green/70 text-sm mt-1 ml-8">Manage blocklist and allowlist entries</p>
+            <p className="text-cyber-green/70 text-sm mt-1 ml-8">Manage blocklist and allowlist CA entries</p>
           </div>
           {activeSection === 'blackwhite' && (
             <div className="p-4 bg-cyber-black/50 animate-slide-down space-y-6">
               <div>
-                <h3 className="text-cyber-orange font-terminal text-sm mb-2 flex items-center"><Ban className="w-4 h-4 mr-2" />blocklist</h3>
+                <h3 className="text-cyber-orange font-terminal text-sm mb-2 flex items-center"><Ban className="w-4 h-4 mr-2" />blocklist CAs </h3>
                 <div className="flex space-x-2 mb-2">
                   <input
                     type="text"
                     placeholder="Add to blocklist"
                     value={blocklistInput}
-                    onChange={e => setblocklistInput(e.target.value)}
+                    onChange={e => setBlocklistInput(e.target.value)}
                     className="flex-1 bg-cyber-black border border-cyber-orange/30 rounded-sm p-2 text-cyber-orange focus:border-cyber-orange/70 focus:outline-none focus:ring-1 focus:ring-cyber-orange/30 text-sm"
                   />
                   <button
@@ -713,13 +713,13 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
                 </div>
               </div>
               <div>
-                <h3 className="text-cyber-green font-terminal text-sm mb-2 flex items-center"><CheckCircle className="w-4 h-4 mr-2" />allowlist</h3>
+                <h3 className="text-cyber-green font-terminal text-sm mb-2 flex items-center"><CheckCircle className="w-4 h-4 mr-2" />allowlist CAs</h3>
                 <div className="flex space-x-2 mb-2">
                   <input
                     type="text"
                     placeholder="Add to allowlist"
                     value={allowlistInput}
-                    onChange={e => setallowlistInput(e.target.value)}
+                    onChange={e => setAllowlistInput(e.target.value)}
                     className="flex-1 bg-cyber-black border border-cyber-green/30 rounded-sm p-2 text-cyber-green focus:border-cyber-green/70 focus:outline-none focus:ring-1 focus:ring-cyber-green/30 text-sm"
                   />
                   <button
