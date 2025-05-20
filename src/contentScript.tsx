@@ -520,8 +520,6 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
   }).observe(document, { subtree: true, childList: true });
 }
 
-
-
 // Token Buy Feature: observe dynamic content and inject buy buttons (toggleable)
 // Note: live toggling requires a page reload to apply changes
 (() => {
@@ -530,7 +528,7 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
     return;
   }
   // Check user setting for buy buttons
-  chrome.storage.local.get(['buyModeEnabled'], ({ buyModeEnabled }) => {
+  chrome.storage.local.get(['buyModeEnabled', 'floatingScanButtonEnabled'], ({ buyModeEnabled, floatingScanButtonEnabled = true }) => {
     // Default to enabled
     if (buyModeEnabled === false) return;
   type TokenMsg = { cashtag?: string; symbol?: string; address?: string };
@@ -546,6 +544,196 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
       scanElement(document.body);
     }
   });
+  
+  // Create a floating scan button if enabled in settings
+  if (floatingScanButtonEnabled !== false) {
+    // Check if there's already a floating button
+    if (!document.querySelector('#tknz-floating-scan-btn')) {
+      createFloatingScanButton();
+    }
+  }
+
+  function createFloatingScanButton() {
+    // Create the floating button
+    const button = document.createElement('div');
+    button.id = 'tknz-floating-scan-btn';
+    button.setAttribute('title', 'Scan for tokens with TKNZ');
+    button.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M23 4v6h-6"></path>
+        <path d="M1 20v-6h6"></path>
+        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"></path>
+        <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"></path>
+      </svg>
+    `;
+    
+    // Create a tooltip element
+    const tooltip = document.createElement('div');
+    tooltip.id = 'tknz-floating-btn-tooltip';
+    tooltip.innerText = 'Scan page for tokens';
+    Object.assign(tooltip.style, {
+      position: 'absolute',
+      backgroundColor: 'rgba(0, 0, 0, 0.8)',
+      color: '#00ff9d',
+      padding: '5px 10px',
+      borderRadius: '4px',
+      fontSize: '12px',
+      whiteSpace: 'nowrap',
+      opacity: '0',
+      transition: 'opacity 0.2s',
+      pointerEvents: 'none',
+      bottom: '50px',
+      left: '50%',
+      transform: 'translateX(-50%)',
+      zIndex: '10000'
+    });
+    button.appendChild(tooltip);
+    
+    // Show/hide tooltip on hover
+    button.addEventListener('mouseenter', () => {
+      tooltip.style.opacity = '1';
+    });
+    button.addEventListener('mouseleave', () => {
+      tooltip.style.opacity = '0';
+    });
+
+    // Style the button
+    Object.assign(button.style, {
+      position: 'fixed',
+      bottom: '100px',
+      right: '20px',
+      width: '40px',
+      height: '40px',
+      borderRadius: '50%',
+      backgroundColor: '#00ff9d',
+      color: 'black',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      cursor: 'pointer',
+      zIndex: '9999',
+      boxShadow: '0 2px 10px rgba(0, 0, 0, 0.2)',
+      transition: 'transform 0.2s, opacity 0.2s',
+      userSelect: 'none',
+      touchAction: 'none'
+    });
+
+    // Add hover effects
+    button.onmouseover = () => {
+      button.style.transform = 'scale(1.1)';
+      button.style.opacity = '0.9';
+    };
+    button.onmouseout = () => {
+      button.style.transform = 'scale(1)';
+      button.style.opacity = '1';
+    };
+
+    // Add click handler to trigger scan
+    button.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      // Show a brief animation to indicate scanning
+      button.style.transform = 'scale(0.9)';
+      setTimeout(() => {
+        button.style.transform = 'scale(1)';
+      }, 200);
+      
+      // Clear existing buttons and state, then re-scan
+      STATE.buttonsAdded.clear();
+      document.querySelectorAll('.tknz-buy-button').forEach(btn => btn.remove());
+      scanElement(document.body);
+    };
+
+    // Make the button draggable
+    let isDragging = false;
+    let offsetX = 0;
+    let offsetY = 0;
+    
+    button.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      offsetX = e.clientX - button.getBoundingClientRect().left;
+      offsetY = e.clientY - button.getBoundingClientRect().top;
+      button.style.cursor = 'grabbing';
+      e.preventDefault();
+    });
+    
+    document.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      
+      const x = e.clientX - offsetX;
+      const y = e.clientY - offsetY;
+      
+      // Keep button within viewport bounds
+      const maxX = window.innerWidth - button.offsetWidth;
+      const maxY = window.innerHeight - button.offsetHeight;
+      
+      const boundedX = Math.max(0, Math.min(x, maxX));
+      const boundedY = Math.max(0, Math.min(y, maxY));
+      
+      button.style.right = 'auto';
+      button.style.bottom = 'auto';
+      button.style.left = `${boundedX}px`;
+      button.style.top = `${boundedY}px`;
+    });
+    
+    document.addEventListener('mouseup', () => {
+      if (isDragging) {
+        isDragging = false;
+        button.style.cursor = 'pointer';
+        
+        // Save position to storage for persistence
+        chrome.storage.local.set({
+          tknzScanButtonPosition: {
+            left: button.style.left,
+            top: button.style.top
+          }
+        });
+      }
+    });
+    
+    // Restore previous position if available
+    chrome.storage.local.get(['tknzScanButtonPosition'], (result) => {
+      if (result.tknzScanButtonPosition) {
+        button.style.right = 'auto';
+        button.style.bottom = 'auto';
+        button.style.left = result.tknzScanButtonPosition.left;
+        button.style.top = result.tknzScanButtonPosition.top;
+      }
+    });
+
+    // Position intelligently to avoid the Grok button and other elements
+    function positionButton() {
+      // Check for Grok button
+      const grokButton = document.querySelector('[aria-label="Ask Grok"]');
+      if (grokButton) {
+        const grokRect = grokButton.getBoundingClientRect();
+        // If our button would overlap with Grok, move it up
+        if (
+          parseInt(button.style.right || '20px') < window.innerWidth - grokRect.left &&
+          parseInt(button.style.bottom || '100px') < window.innerHeight - grokRect.top
+        ) {
+          button.style.bottom = `${window.innerHeight - grokRect.top + 20}px`;
+        }
+      }
+    }
+    
+    // Position after a short delay to ensure page is loaded
+    setTimeout(positionButton, 1000);
+
+    // Add to document
+    document.body.appendChild(button);
+    
+    // Observe changes to reposition if needed
+    const observer = new MutationObserver(() => {
+      if (!document.body.contains(button)) {
+        document.body.appendChild(button);
+      }
+    });
+    
+    observer.observe(document.body, { childList: true });
+  }
+  
   // Network idle detection to wait for content load
   let activeRequests = 0;
   let idleTimer: number | undefined;
