@@ -440,7 +440,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
       isXPost: data.isXPost || false
     };
   };
-  const PUMP_FEE = 0.03;
+  const PUMP_FEE = 0.001;
   const requiredBalance = investmentAmount + PUMP_FEE;
 
   // Progress animation effect for the terminal loading
