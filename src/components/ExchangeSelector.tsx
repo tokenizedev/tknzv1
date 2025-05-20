@@ -10,7 +10,7 @@ interface ExchangeSelectorProps {
 
 export const ExchangeSelector: React.FC<ExchangeSelectorProps> = ({
   defaultExchange = 'pump.fun',
-  options = [defaultExchange, 'dexscreener', 'birdeye', 'solscan', 'GMGN'],
+  options = [defaultExchange, 'birdeye', 'solscan', 'GMGN'],
   onSelect
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -26,7 +26,7 @@ export const ExchangeSelector: React.FC<ExchangeSelectorProps> = ({
   };
   
   return (
-    <div className="border border-cyber-green/30 rounded-sm overflow-vi">
+    <div className="border border-cyber-green/30 rounded-sm overflow-visible">
       <div className="p-4 bg-gradient-to-r from-cyber-black to-cyber-black/80">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
