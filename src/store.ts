@@ -100,11 +100,51 @@ export const useStore = create<WalletState>((set, get) => ({
   addressBook: {},
   // Default exchange domain and URL
   selectedExchange: 'pump.fun',
-  exchangeUrl: 'https://pump.fun',  
+  exchangeUrl: 'https://pump.fun',
+  /**
+   * Update the selected exchange and persist across sessions
+   */
+  setSelectedExchange: async (exchange: string) => {
+    // Build URL based on selected exchange
+    let url: string;
+    switch (exchange) {
+      case 'birdeye':
+      case 'birdeye.so':
+        url = 'https://birdeye.so/token/';
+        break;
+      case 'solscan':
+      case 'solscan.io':
+        url = 'https://solscan.io/token/';
+        break;
+      case 'gmgn':
+      case 'GMGN':
+        url = 'https://gmgn.ai/sol/token/solscan_';
+        break;
+      default:
+        url = 'https://pump.fun';
+    }
+    // Persist selection
+    try {
+      await storage.set({ selectedExchange: exchange });
+    } catch (err) {
+      console.error('Failed to persist selected exchange:', err);
+    }
+    // Update store
+    set({ selectedExchange: exchange, exchangeUrl: url });
+  },
 
   initializeWallet: async () => {
     try {
       set({ error: null });
+      // Load persisted exchange selection
+      try {
+        const storedExch = await storage.get('selectedExchange');
+        const exch = storedExch.selectedExchange || get().selectedExchange;
+        
+        await get().setSelectedExchange(exch);
+      } catch (e) {
+        console.error('Failed to load persisted exchange:', e);
+      }
       const storedWallets = await storage.get('wallets');
       const storedActiveWalletId = await storage.get('activeWalletId');
       const storedInvestment = await storage.get('investmentAmount');
@@ -1167,36 +1207,5 @@ export const useStore = create<WalletState>((set, get) => ({
       throw error;
     }
   },
-
-  /**
-   * Update the selected exchange and persist
-   */
-  setSelectedExchange: async (exchange: string) => {
-    let url = '';
-    switch (exchange) {
-      case 'dexscreener':
-        url = 'https://dexscreener.com/solana/';
-        break;
-      case 'birdeye':
-        url = 'https://birdeye.so/token/';
-        break;
-      case 'solscan':
-        url = 'https://solscan.io/token/';
-        break;
-      case 'GMGN':
-        url = 'https://gmgn.ai/sol/token/solscan_';
-        break;
-      default:
-        url = 'pump.fun';
-        break;
-    }
-    try {
-      await storage.set({ selectedExchange: exchange });
-    } catch (err) {
-      console.error('Failed to persist selected exchange:', err);
-    }
-    set({ selectedExchange: exchange, exchangeUrl: url });
-  },
   
-
 }));
