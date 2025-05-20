@@ -23,7 +23,7 @@ import { SwitchButton } from './swap/SwitchButton';
 import { TokenList } from './swap/TokenList';
 import { SwapConfirmation } from './swap/SwapConfirmation';
 import { SwapStatus, SwapStatusType } from './swap/SwapStatus';
-import { FaInfoCircle, FaSync } from 'react-icons/fa';
+import { FaInfoCircle } from 'react-icons/fa';
 const SYSTEM_TOKEN = 'AfyDiEptGHEDgD69y56XjNSbTs23LaF1YHANVKnWpump'
 // Native SOL mint address
 const NATIVE_MINT = 'So11111111111111111111111111111111111111112';
@@ -625,14 +625,6 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, 
 
       {/* Main swap container */}
       <div className="w-full max-w-md z-10 relative">
-        {/* Manual scan button */}
-        <button
-          onClick={manualScan}
-          title="Scan Page"
-          className="absolute top-2 right-2 p-2 rounded hover:bg-cyber-green/10 z-20"
-        >
-          <FaSync className="w-5 h-5 text-cyber-green" />
-        </button>
         <h2
           className="text-cyber-green font-terminal text-3xl mb-6 text-center font-bold tracking-wider"
           style={{
