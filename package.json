@@ -2,6 +2,7 @@
   "name": "tokenize",
   "private": true,
   "type": "module",
+  "sideEffects": ["**/*.css"],
   "version": "0.14.0",
   "scripts": {
     "dev": "vite",
