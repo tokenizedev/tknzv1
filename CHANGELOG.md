@@ -2,6 +2,62 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.14.0](https://tokenizedev///compare/v0.13.2...v0.14.0) (2025-05-20)
+
+
+### ⚠ BREAKING CHANGES
+
+* **components:** This update changes the behavior of initial token selection in the SwapPage component to provide more flexibility
+* **swap:** This change affects the behavior of initial token selection and warning messages in the SwapPage component. Unsupported tokens will no longer be automatically selected, and users will be notified of blocked or unsupported tokens with warning messages.
+* **components:** CSS classes for blocklist and allowlist containers have been updated.
+* **components:** The TokenCreationProgress component now includes a new TypewriterText component and logic for displaying simulated log entries to enhance the user experience.
+* **components:** Removed duplicate declaration of refreshPortfolioData
+This change adds a new feature to the CoinCreator component, introducing breaking changes by removing duplicate code.
+
+### Features
+
+* Add focus highlight animation for deploy button in index.css ([4fc8e98](https://tokenizedev///commit/4fc8e9886aece872bc5d1ae52b7636ef6af340b4))
+* Add visual effects and enhancements to TerminalLoader component ([e8a94bb](https://tokenizedev///commit/e8a94bb1688c8b2fde31e4bc0a5aff4be02ec8df))
+* **App:** Add error notification on coin creation failure ([4e89e7e](https://tokenizedev///commit/4e89e7eebab853cb323fc48384f5debe27ddea60))
+* **App:** introduce new dramatic success effect with creation success states 'glitch' and 'fade' ([7b96b16](https://tokenizedev///commit/7b96b160deb1bfbad79ef48cc3b6c2ca463c9a64))
+* **CoinCreator:** Add ref for preview container and deploy button, update handlePreview function for improved scrolling and button focus behavior ([76a81da](https://tokenizedev///commit/76a81da7b8ba39a8a0540d3fcd979388001a1e15))
+* **components:** Add ability to handle confirmation process in CoinCreator ([7f08034](https://tokenizedev///commit/7f08034a81b8fbaefa6b2ad8b41986d7bf4737c2))
+* **components:** Add blacklist and whitelist management to SettingsPage ([2127d57](https://tokenizedev///commit/2127d5786603b78c9ac8c3edf8518778a963990f))
+* **components:** Add constant for pump fee in CoinCreator ([e653c8c](https://tokenizedev///commit/e653c8c61434a1a68978163128f3da0cdb2a0f0e))
+* **components:** Add detailed error handling and log extraction in handleConfirm ([be4bbc8](https://tokenizedev///commit/be4bbc82cd725a2aaa67add0f57711b4702b8b1b))
+* **components:** Add functionality to handle the Preview Confirm button click ([d0aa47c](https://tokenizedev///commit/d0aa47cdfd728481b5c771e2d8f487493e8233bf))
+* **components:** Add functionality to manage blocklist and allowlist CA entries ([6c18207](https://tokenizedev///commit/6c1820756730bca8a7f93d300166a8a7444b39ea))
+* **components:** Add preview token creation functionality ([c917f4b](https://tokenizedev///commit/c917f4bcc7289da9b8eae9015b824e65a4b357bd))
+* **components:** Add VersionBadgeProps and LoaderProps to CoinCreator component ([94825f9](https://tokenizedev///commit/94825f9ea21cac0b36680296589289fca95f3579))
+* **components:** allow address or symbol selection for initial tokens ([c3b652c](https://tokenizedev///commit/c3b652c37b46597a48e1dfeaf36d578fe7d7dc8d))
+* **components:** enhance TokenCreationProgress component with typewriter effect and simulated log entries ([8a5093e](https://tokenizedev///commit/8a5093eb62add77934c903c201708f4bacf696a8))
+* **components:** improve scrolling behavior in SettingsPage ([f6c5d2f](https://tokenizedev///commit/f6c5d2fe7071c1d27266b1e302a5deb8442f0348))
+* **components:** Improve user experience with updated text and balance calculation ([80ea259](https://tokenizedev///commit/80ea25928d351565c37fe508952e10d13f5f91ff))
+* **components:** update button and loader text in CoinCreator component ([4aed451](https://tokenizedev///commit/4aed45154db6c2a0ab240a5790a6f10be13d679f))
+* **components:** Update CoinCreator preview display fields ([9a2d56c](https://tokenizedev///commit/9a2d56c29579a9f3c41c27d8df89868d0e7fde30))
+* **components:** update createCoin method to createCoinRemote ([1beb5b4](https://tokenizedev///commit/1beb5b4bea98d16cdbfa8daee4f2db9dcb9fe754))
+* **components:** Update fee display format in CoinCreator component ([472dd0f](https://tokenizedev///commit/472dd0f1c447cd07deb1429d71dca5f8ad09aa48))
+* Improve coin creation process by allowing parent component to handle creation start; fallback to default behavior if no parent handler provided ([84b7ba6](https://tokenizedev///commit/84b7ba63cec080a485918a0ee6bdfa73e317e7f0))
+* **services:** Add validation service for filtering created coins based on various criteria ([d22694e](https://tokenizedev///commit/d22694ecb15d8dd4277d687aea4729c7dc4fe1df))
+* **services:** Implement Helius service for fetching token data ([3ca59ec](https://tokenizedev///commit/3ca59ec0915faf78b5a3b88868012df195b3ef8d))
+* **settings:** update naming convention for blacklist and whitelist ([77cd66f](https://tokenizedev///commit/77cd66f72d980b863b46232f34a051c9ccf59671))
+* **src:** Add terminal-specific animations for token creation ([b2228c8](https://tokenizedev///commit/b2228c8502b5c124a3d5900f028daef8ddeced0f))
+* **store:** add remote coin creation feature ([8e96b14](https://tokenizedev///commit/8e96b146ecdb364e99ec8281ca5a8f53db022d43))
+* **store:** implement token creation with raw signed versioned transaction ([3f8b48d](https://tokenizedev///commit/3f8b48d9f990f5ef5707f8d397d25326a8fc0dd9))
+* **store:** store additional preview details including pumpFeeAmount and totalCost ([b7e5da1](https://tokenizedev///commit/b7e5da1347f94eb7baa36fe47f9d950931301d35))
+* **swap:** Implement initial token selection handling ([881b534](https://tokenizedev///commit/881b534a61fbee32b92bd8de0a84f05535347972))
+* **types:** add detailed previewData for token creation ([479746b](https://tokenizedev///commit/479746bf1ee9d6f40630d80dcb8048b10085bd29))
+* **wallet:** add createCoinRemote method for creating coins remotely ([110930f](https://tokenizedev///commit/110930fb0d150ae4db8e6e885fb4f82d6511ed94))
+* **wallet:** add token creation preview functionality ([9544a02](https://tokenizedev///commit/9544a0274ccb7ee5e5189be9297b5495578fd475))
+
+
+### Bug Fixes
+
+* add check for chrome.storage API availability ([a952317](https://tokenizedev///commit/a9523174f12c2a0d7cdcc44582f8fa336e48bcdb))
+* add missing avatar field when initializing wallets ([53f3291](https://tokenizedev///commit/53f32915b0eefef6be2b01c54e6f03270a6bca5a))
+* **components:** Update required balance calculation in CoinCreator ([dcbf088](https://tokenizedev///commit/dcbf08833032cef56e370cfd9d9258f9c5f4c49f))
+* Rename parameters 'whitelist' and 'blacklist' to 'allowlist' and 'blocklist' in validateToken function ([01fe746](https://tokenizedev///commit/01fe7462064aae678b3f20bc94837a3a34505f68))
+
 ## [0.13.2](https://tokenizedev///compare/v0.13.1...v0.13.2) (2025-05-15)
 
 
