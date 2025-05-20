@@ -442,8 +442,8 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
       isXPost: data.isXPost || false
     };
   };
-
-  const requiredBalance = investmentAmount + 0.03;
+  const PUMP_FEE = 0;
+  const requiredBalance = investmentAmount + PUMP_FEE;
 
   // Progress animation effect for the terminal loading
   useEffect(() => {
