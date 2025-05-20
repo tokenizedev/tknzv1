@@ -1,4 +1,5 @@
 import { getTokenInfo } from './services/jupiterService';
+import { loadAllTokens } from './services/tokenService';
 // Background service worker
 chrome.runtime.onInstalled.addListener(() => {
   console.log('Extension installed');
@@ -96,16 +97,31 @@ chrome.runtime.onMessage.addListener((message: any, sender, sendResponse) => {
           return;
         }
 
-        // Validate token exists on Jupiter (address-based only)
-        if (!token.address) {
-          console.warn('Unsupported token format (cashtag only):', token.symbol);
+        // Resolve token address by symbol if missing, then validate exists on Jupiter
+        let tokenAddress = token.address;
+        if (!tokenAddress) {
+          try {
+            const verified = await loadAllTokens([]);
+            
+            const match = verified.find(t => t.symbol.toUpperCase() === token.symbol.toUpperCase());
+            
+            if (match?.address) {
+              tokenAddress = match.address;
+              token.address = tokenAddress;
+            }
+          } catch (e) {
+            console.error('Failed to lookup token by symbol:', token.symbol, e);
+          }
+        }
+        if (!tokenAddress) {
+          console.warn('Unsupported token format (symbol lookup failed):', token.symbol);
           sendResponse({ success: false, reason: 'unsupported' });
           return;
         }
         try {
-          await getTokenInfo(token.address);
+          await getTokenInfo(tokenAddress);
         } catch (err) {
-          console.error('Token validation failed (unsupported):', token.address, err);
+          console.error('Token validation failed (unsupported):', tokenAddress, err);
           sendResponse({ success: false, reason: 'unsupported' });
           return;
         }
