@@ -98,6 +98,9 @@ export const useStore = create<WalletState>((set, get) => ({
   migrationStatus: 'idle',
   // Address book entries (address -> label)
   addressBook: {},
+  // Default exchange domain and URL
+  selectedExchange: 'pump.fun',
+  exchangeUrl: 'https://pump.fun',  
 
   initializeWallet: async () => {
     try {
@@ -1163,5 +1166,37 @@ export const useStore = create<WalletState>((set, get) => ({
       console.error('sendToken error:', error);
       throw error;
     }
-  }
+  },
+
+  /**
+   * Update the selected exchange and persist
+   */
+  setSelectedExchange: async (exchange: string) => {
+    let url = '';
+    switch (exchange) {
+      case 'dexscreener':
+        url = 'https://dexscreener.com/solana/';
+        break;
+      case 'birdeye':
+        url = 'https://birdeye.so/token/';
+        break;
+      case 'solscan':
+        url = 'https://solscan.io/token/';
+        break;
+      case 'GMGN':
+        url = 'https://gmgn.ai/sol/token/solscan_';
+        break;
+      default:
+        url = 'pump.fun';
+        break;
+    }
+    try {
+      await storage.set({ selectedExchange: exchange });
+    } catch (err) {
+      console.error('Failed to persist selected exchange:', err);
+    }
+    set({ selectedExchange: exchange, exchangeUrl: url });
+  },
+  
+
 }));

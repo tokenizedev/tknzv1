@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Lock, Key, Shield, RefreshCw, Check, X, Plus, Trash2, LogIn, ShoppingCart, Ban, CheckCircle } from 'lucide-react';
 import { storage } from '../utils/storage';
+import { ExchangeSelector } from './ExchangeSelector'
 
 interface PasskeyCredential {
   id: string;
@@ -759,6 +760,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
           )}
         </div>
 
+        {/* Exchange Selector Settings*/}
+        <ExchangeSelector />
+        
         {/* Additional settings sections can be added here */}
       </div>
     </div>

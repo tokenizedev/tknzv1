@@ -16,7 +16,7 @@ export const MyCreatedCoinsPage: React.FC<MyCreatedCoinsPageProps> = ({
   highlightCoin: highlightCoinAddress,
   onSwapToken
 }) => {
-  const { wallets } = useStore();
+  const { wallets, selectedExchange, exchangeUrl } = useStore();
   const [coins, setCoins] = useState<CreatedCoin[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -102,14 +102,25 @@ export const MyCreatedCoinsPage: React.FC<MyCreatedCoinsPageProps> = ({
                   </div>
                   <div className="text-xs text-white/70 font-terminal">Wallet: {label}</div>
                   <div className="flex items-center space-x-2">
-                    <a
-                      href={coin.pumpUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex-1 px-3 py-2 bg-cyber-black border border-cyber-purple/50 text-cyber-purple rounded-sm hover:bg-cyber-purple/10 transition-all duration-200 text-sm font-terminal text-center uppercase tracking-wide"
-                    >
-                      View on Pump.fun
-                    </a>
+                  {selectedExchange !== "pump.fun" ? (
+                      <a
+                        href={`${exchangeUrl}${coin.address}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 px-3 py-2 bg-cyber-black border border-cyber-purple/50 text-cyber-purple rounded-sm hover:bg-cyber-purple/10 transition-all duration-200 text-sm font-terminal text-center uppercase tracking-wide"
+                      >
+                        View on {selectedExchange}
+                      </a>
+                    ) : (
+                      <a
+                        href={coin.pumpUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 px-3 py-2 bg-cyber-black border border-cyber-purple/50 text-cyber-purple rounded-sm hover:bg-cyber-purple/10 transition-all duration-200 text-sm font-terminal text-center uppercase tracking-wide"
+                      >
+                        View on Pump.fun
+                      </a>
+                    )}
                     <a
                       href={`https://solscan.io/token/${coin.address}`}
                       target="_blank"
