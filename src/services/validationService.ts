@@ -55,10 +55,16 @@ async function validateToken<T extends Token>(token: T, tokens: T[], allowlist: 
 export async function getValidatedTokens<T extends Token>(
   tokens: T[],
 ): Promise<T[]> {
-  const [{ allowlist }, { blocklist }] = await Promise.all([
+  // Retrieve allowlist, blocklist, and validation switch setting
+  const [{ allowlist }, { blocklist }, { validationEnabled }] = await Promise.all([
     storage.get('allowlist'),
     storage.get('blocklist'),
+    storage.get('validationEnabled'),
   ]);
+  // If validation is explicitly disabled, return all tokens unfiltered
+  if (validationEnabled === false) {
+    return tokens;
+  }
 
   const validatedTokens = await Promise.all(
     tokens.map(token => validateToken(token, tokens, allowlist ?? [], blocklist ?? []))
