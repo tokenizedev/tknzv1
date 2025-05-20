@@ -31,10 +31,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
   const [migrationLoading, setMigrationLoading] = useState(false);
   // Buy button feature toggle
   const [buyEnabled, setBuyEnabled] = useState<boolean>(true);
-  const [blacklist, setBlacklist] = useState<string[]>([]);
-  const [whitelist, setWhitelist] = useState<string[]>([]);
-  const [blacklistInput, setBlacklistInput] = useState('');
-  const [whitelistInput, setWhitelistInput] = useState('');
+  const [blocklist, setBlocklist] = useState<string[]>([]);
+  const [allowlist, setAllowlist] = useState<string[]>([]);
+  const [blocklistInput, setBlocklistInput] = useState('');
+  const [allowlistInput, setAllowlistInput] = useState('');
 
   // Check if WebAuthn is supported on this device/browser
   useEffect(() => {
@@ -311,46 +311,46 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
   useEffect(() => {
     const loadLists = async () => {
       try {
-        const { blacklist } = await storage.get('blacklist');
-        const { whitelist } = await storage.get('whitelist');
+        const { blocklist } = await storage.get('blocklist');
+        const { allowlist } = await storage.get('allowlist');
 
-        setBlacklist(Array.isArray(blacklist) ? blacklist : []);
-        setWhitelist(Array.isArray(whitelist) ? whitelist : []);
+        setBlocklist(Array.isArray(blocklist) ? blocklist : []);
+        setAllowlist(Array.isArray(allowlist) ? allowlist : []);
       } catch {
-        setBlacklist([]);
-        setWhitelist([]);
+        setblocklist([]);
+        setAllowlist([]);
       }
     };
 
     loadLists();
   }, []);
 
-  const addBlacklist = async () => {
-    if (!blacklistInput.trim() || blacklist.includes(blacklistInput.trim())) return;
-    const updated = [...blacklist, blacklistInput.trim()];
-    setBlacklist(updated);
-    setBlacklistInput('');
-    await storage.set({ blacklist: updated });
+  const addblocklist = async () => {
+    if (!blocklistInput.trim() || blocklist.includes(blocklistInput.trim())) return;
+    const updated = [...blocklist, blocklistInput.trim()];
+    setblocklist(updated);
+    setblocklistInput('');
+    await storage.set({ blocklist: updated });
   };
 
-  const removeBlacklist = async (entry: string) => {
-    const updated = blacklist.filter(e => e !== entry);
-    setBlacklist(updated);
-    await storage.set({ blacklist: updated });
+  const removeblocklist = async (entry: string) => {
+    const updated = blocklist.filter(e => e !== entry);
+    setblocklist(updated);
+    await storage.set({ blocklist: updated });
   };
 
-  const addWhitelist = async () => {
-    if (!whitelistInput.trim() || whitelist.includes(whitelistInput.trim())) return;
-    const updated = [...whitelist, whitelistInput.trim()];
-    setWhitelist(updated);
-    setWhitelistInput('');
-    await storage.set({ whitelist: updated });
+  const addallowlist = async () => {
+    if (!allowlistInput.trim() || allowlist.includes(allowlistInput.trim())) return;
+    const updated = [...allowlist, allowlistInput.trim()];
+    setallowlist(updated);
+    setallowlistInput('');
+    await storage.set({ allowlist: updated });
   };
 
-  const removeWhitelist = async (entry: string) => {
-    const updated = whitelist.filter(e => e !== entry);
-    setWhitelist(updated);
-    await storage.set({ whitelist: updated });
+  const removeallowlist = async (entry: string) => {
+    const updated = allowlist.filter(e => e !== entry);
+    setallowlist(updated);
+    await storage.set({ allowlist: updated });
   };
 
   return (
@@ -654,7 +654,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
           )}
         </div>
 
-        {/* Blacklist & Whitelist Section */}
+        {/* blocklist & allowlist Section */}
         <div className="border border-cyber-green/30 rounded-sm overflow-hidden">
           <div
             className={`p-4 bg-gradient-to-r from-cyber-black to-cyber-black/80 ${activeSection === 'blackwhite' ? 'border-b border-cyber-green/30' : ''}`}
@@ -663,7 +663,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <Ban className="w-5 h-5 text-cyber-green" />
-                <h2 className="text-cyber-green font-terminal">Blacklist & Whitelist</h2>
+                <h2 className="text-cyber-green font-terminal">Token list management</h2>
               </div>
               {activeSection !== 'blackwhite' && (
                 <button className="text-cyber-green border border-cyber-green/50 px-2 py-1 rounded-sm text-xs font-terminal hover:bg-cyber-green/10 transition-colors">
@@ -671,37 +671,37 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
                 </button>
               )}
             </div>
-            <p className="text-cyber-green/70 text-sm mt-1 ml-8">Manage blacklist and whitelist entries</p>
+            <p className="text-cyber-green/70 text-sm mt-1 ml-8">Manage blocklist and allowlist entries</p>
           </div>
           {activeSection === 'blackwhite' && (
             <div className="p-4 bg-cyber-black/50 animate-slide-down space-y-6">
               <div>
-                <h3 className="text-cyber-orange font-terminal text-sm mb-2 flex items-center"><Ban className="w-4 h-4 mr-2" />Blacklist</h3>
+                <h3 className="text-cyber-orange font-terminal text-sm mb-2 flex items-center"><Ban className="w-4 h-4 mr-2" />blocklist</h3>
                 <div className="flex space-x-2 mb-2">
                   <input
                     type="text"
-                    placeholder="Add to blacklist"
-                    value={blacklistInput}
-                    onChange={e => setBlacklistInput(e.target.value)}
+                    placeholder="Add to blocklist"
+                    value={blocklistInput}
+                    onChange={e => setblocklistInput(e.target.value)}
                     className="flex-1 bg-cyber-black border border-cyber-orange/30 rounded-sm p-2 text-cyber-orange focus:border-cyber-orange/70 focus:outline-none focus:ring-1 focus:ring-cyber-orange/30 text-sm"
                   />
                   <button
-                    onClick={addBlacklist}
+                    onClick={addblocklist}
                     className="px-3 py-2 bg-cyber-orange/10 border border-cyber-orange/50 text-cyber-orange rounded-sm hover:bg-cyber-orange/20 transition-colors font-terminal text-sm flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled={!blacklistInput.trim()}
+                    disabled={!blocklistInput.trim()}
                   >
                     <Plus className="w-4 h-4 mr-1" />ADD
                   </button>
                 </div>
                 <div className="space-y-1">
-                  {!blacklist.length ? (
-                    <p className="text-cyber-orange/60 text-xs font-terminal">No blacklist entries.</p>
+                  {!blocklist.length ? (
+                    <p className="text-cyber-orange/60 text-xs font-terminal">No blocklist entries.</p>
                   ) : (
-                    blacklist.map(entry => (
+                    blocklist.map(entry => (
                       <div key={entry} className="flex items-center justify-between p-2 border border-cyber-orange/20 rounded-sm bg-cyber-orange/5">
                         <span className="text-cyber-orange font-terminal text-sm break-all">{entry}</span>
                         <button
-                          onClick={() => removeBlacklist(entry)}
+                          onClick={() => removeblocklist(entry)}
                           className="p-1.5 text-cyber-orange hover:bg-cyber-orange/10 rounded-sm transition-colors"
                           title="Remove"
                         >
@@ -713,32 +713,32 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
                 </div>
               </div>
               <div>
-                <h3 className="text-cyber-green font-terminal text-sm mb-2 flex items-center"><CheckCircle className="w-4 h-4 mr-2" />Whitelist</h3>
+                <h3 className="text-cyber-green font-terminal text-sm mb-2 flex items-center"><CheckCircle className="w-4 h-4 mr-2" />allowlist</h3>
                 <div className="flex space-x-2 mb-2">
                   <input
                     type="text"
-                    placeholder="Add to whitelist"
-                    value={whitelistInput}
-                    onChange={e => setWhitelistInput(e.target.value)}
+                    placeholder="Add to allowlist"
+                    value={allowlistInput}
+                    onChange={e => setallowlistInput(e.target.value)}
                     className="flex-1 bg-cyber-black border border-cyber-green/30 rounded-sm p-2 text-cyber-green focus:border-cyber-green/70 focus:outline-none focus:ring-1 focus:ring-cyber-green/30 text-sm"
                   />
                   <button
-                    onClick={addWhitelist}
+                    onClick={addallowlist}
                     className="px-3 py-2 bg-cyber-green/10 border border-cyber-green/50 text-cyber-green rounded-sm hover:bg-cyber-green/20 transition-colors font-terminal text-sm flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled={!whitelistInput.trim()}
+                    disabled={!allowlistInput.trim()}
                   >
                     <Plus className="w-4 h-4 mr-1" />ADD
                   </button>
                 </div>
                 <div className="space-y-1">
-                  {!whitelist.length ? (
-                    <p className="text-cyber-green/60 text-xs font-terminal">No whitelist entries.</p>
+                  {!allowlist.length ? (
+                    <p className="text-cyber-green/60 text-xs font-terminal">No allowlist entries.</p>
                   ) : (
-                    whitelist.map(entry => (
+                    allowlist.map(entry => (
                       <div key={entry} className="flex items-center justify-between p-2 border border-cyber-green/20 rounded-sm bg-cyber-green/5">
                         <span className="text-cyber-green font-terminal text-sm break-all">{entry}</span>
                         <button
-                          onClick={() => removeWhitelist(entry)}
+                          onClick={() => removeallowlist(entry)}
                           className="p-1.5 text-cyber-green hover:bg-cyber-green/10 rounded-sm transition-colors"
                           title="Remove"
                         >
