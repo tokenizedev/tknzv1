@@ -685,20 +685,45 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
         // Save position to storage for persistence
         chrome.storage.local.set({
           tknzScanButtonPosition: {
-            left: button.style.left,
-            top: button.style.top
+            left: button.style.left || null,
+            top: button.style.top || null,
+            right: button.style.right || null,
+            bottom: button.style.bottom || null
           }
         });
+        
+        // Check if button is still in viewport after drag
+        ensureButtonVisible();
       }
     });
     
     // Restore previous position if available
     chrome.storage.local.get(['tknzScanButtonPosition'], (result) => {
       if (result.tknzScanButtonPosition) {
-        button.style.right = 'auto';
-        button.style.bottom = 'auto';
-        button.style.left = result.tknzScanButtonPosition.left;
-        button.style.top = result.tknzScanButtonPosition.top;
+        const pos = result.tknzScanButtonPosition;
+        
+        // If we have right/bottom values, use those
+        if (pos.right) {
+          button.style.right = pos.right;
+          button.style.left = 'auto';
+        } 
+        // Otherwise use left if available
+        else if (pos.left) {
+          button.style.left = pos.left;
+          button.style.right = 'auto';
+        }
+        
+        // Handle vertical position
+        if (pos.top) {
+          button.style.top = pos.top;
+          button.style.bottom = 'auto';
+        } else if (pos.bottom) {
+          button.style.bottom = pos.bottom;
+          button.style.top = 'auto';
+        }
+        
+        // Do a quick check after a short delay to make sure it's on screen
+        setTimeout(ensureButtonVisible, 100);
       }
     });
 
@@ -718,20 +743,83 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
       }
     }
     
+    // Function to check if button is offscreen and reposition it if needed
+    function ensureButtonVisible() {
+      // Get button's position
+      const rect = button.getBoundingClientRect();
+      
+      // Check if button is offscreen horizontally
+      if (rect.right > window.innerWidth || rect.left < 0) {
+        // Keep the same y-coordinate but move to right edge
+        const currentTop = rect.top;
+        
+        // Reset position to right edge
+        button.style.left = 'auto';
+        button.style.right = '20px';
+        
+        // Maintain vertical position if it was set
+        if (currentTop > 0 && currentTop < window.innerHeight - rect.height) {
+          button.style.top = `${currentTop}px`;
+          button.style.bottom = 'auto';
+        } else {
+          // Default vertical position if y-coordinate was invalid
+          button.style.top = 'auto';
+          button.style.bottom = '100px';
+        }
+        
+        // Save new position to storage
+        chrome.storage.local.set({
+          tknzScanButtonPosition: {
+            right: button.style.right,
+            top: button.style.top,
+            bottom: button.style.bottom
+          }
+        });
+      }
+    }
+    
+    // Check for visibility periodically and on viewport changes
+    const checkVisibilityInterval = setInterval(ensureButtonVisible, 2000);
+    
+    // Listen for window resize events
+    window.addEventListener('resize', ensureButtonVisible);
+    
+    // Create a resize observer to detect size changes that might not trigger resize events
+    const resizeObserver = new ResizeObserver(() => {
+      ensureButtonVisible();
+    });
+    resizeObserver.observe(document.body);
+    
     // Position after a short delay to ensure page is loaded
-    setTimeout(positionButton, 1000);
+    setTimeout(() => {
+      positionButton();
+      ensureButtonVisible();
+    }, 1000);
 
     // Add to document
     document.body.appendChild(button);
     
-    // Observe changes to reposition if needed
+    // Observe DOM changes to reposition if needed
     const observer = new MutationObserver(() => {
       if (!document.body.contains(button)) {
         document.body.appendChild(button);
+        ensureButtonVisible();
       }
     });
     
     observer.observe(document.body, { childList: true });
+    
+    // Clean up event listeners and observers when necessary
+    function cleanupFloatingButton() {
+      clearInterval(checkVisibilityInterval);
+      window.removeEventListener('resize', ensureButtonVisible);
+      resizeObserver.disconnect();
+      observer.disconnect();
+      button.remove();
+    }
+    
+    // Add cleanup handler to window unload event
+    window.addEventListener('beforeunload', cleanupFloatingButton);
   }
   
   // Network idle detection to wait for content load
