@@ -1,22 +1,23 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, lazy, Suspense } from 'react';
 import { loadVerifiedTokens } from './services/tokenService';
 import { useStore } from './store';
-import { CoinCreator } from './components/CoinCreator';
-import { WalletPageCyber } from './components/WalletPageCyber';
-import { CreatedCoinsPage } from './components/CreatedCoinsPage';
-import { MyCreatedCoinsPage } from './components/MyCreatedCoinsPage';
 import { Loader } from './components/Loader';
-import { PasswordSetup } from './components/PasswordSetup';
-import { PasswordUnlock } from './components/PasswordUnlock';
 import { storage } from './utils/storage';
-import { TokenCreationProgress } from './components/TokenCreationProgress';
-import { WalletManagerPage } from './components/WalletManagerPage';
+// Lazy-loaded components for code-splitting
+const CoinCreator = lazy(() => import('./components/CoinCreator'));
+const WalletPageCyber = lazy(() => import('./components/WalletPageCyber'));
+const CreatedCoinsPage = lazy(() => import('./components/CreatedCoinsPage'));
+const MyCreatedCoinsPage = lazy(() => import('./components/MyCreatedCoinsPage'));
+const PasswordSetup = lazy(() => import('./components/PasswordSetup'));
+const PasswordUnlock = lazy(() => import('./components/PasswordUnlock'));
+const TokenCreationProgress = lazy(() => import('./components/TokenCreationProgress'));
+const WalletManagerPage = lazy(() => import('./components/WalletManagerPage'));
+const SwapPage = lazy(() => import('./components/SwapPage'));
+const WalletOverview = lazy(() => import('./components/WalletOverview'));
+const SettingsPage = lazy(() => import('./components/SettingsPage'));
 import { Navigation } from './components/Navigation';
 import { BottomNavigation } from './components/BottomNavigation';
-import { SwapPage } from './components/SwapPage';
-import { WalletOverview } from './components/WalletOverview';
 import SendTokenModal from './components/SendTokenModal';
-import { SettingsPage } from './components/SettingsPage';
 import { ExternalLink } from 'lucide-react';
 import { web3Connection } from './utils/connection';
 
@@ -601,6 +602,7 @@ function App({ isSidebar = false }: AppProps = {}) {
   const [creationSuccessState, setCreationSuccessState] = useState<'glitch' | 'fade' | null>(null);
 
   return (
+    <Suspense fallback={<Loader isSidebar={isSidebar} />}>
     <div className={`${isSidebar ? 'w-full h-full ' : 'w-[400px] h-[650px] '}bg-cyber-black bg-binary-pattern binary-overlay ${
       creationSuccessState === 'glitch' ? 'success-glitch' : ''
     } ${creationSuccessState === 'fade' ? 'view-transition' : ''}`}>
@@ -870,6 +872,7 @@ function App({ isSidebar = false }: AppProps = {}) {
         </>
       )}
     </div>
+    </Suspense>
   );
 }
 
