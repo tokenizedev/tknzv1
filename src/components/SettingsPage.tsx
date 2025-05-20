@@ -34,6 +34,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
   const [buyEnabled, setBuyEnabled] = useState<boolean>(true);
   // Token validation feature toggle
   const [validationEnabled, setValidationEnabled] = useState<boolean>(true);
+  // Floating scan button toggle
+  const [floatingScanButtonEnabled, setFloatingScanButtonEnabled] = useState<boolean>(true);
   const [blocklist, setBlocklist] = useState<string[]>([]);
   const [allowlist, setAllowlist] = useState<string[]>([]);
   const [blocklistInput, setBlocklistInput] = useState('');
@@ -87,12 +89,15 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
   useEffect(() => {
     (async () => {
       try {
-        const res = await storage.get('buyModeEnabled');
-        const enabled = res.buyModeEnabled;
-        setBuyEnabled(enabled === undefined ? true : enabled);
+        const res = await storage.get(['buyModeEnabled', 'floatingScanButtonEnabled']);
+        const buyEnabled = res.buyModeEnabled;
+        const floatingEnabled = res.floatingScanButtonEnabled;
+        setBuyEnabled(buyEnabled === undefined ? true : buyEnabled);
+        setFloatingScanButtonEnabled(floatingEnabled === undefined ? true : floatingEnabled);
       } catch (err) {
-        console.error('Failed to load buy mode setting:', err);
+        console.error('Failed to load button settings:', err);
         setBuyEnabled(true);
+        setFloatingScanButtonEnabled(true);
       }
     })();
   }, []);
@@ -865,7 +870,26 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
                 SCAN CURRENT PAGE
               </button>
               
-              <p className="text-cyber-green/50 text-xs font-terminal mt-2">
+              <div className="mt-4 border-t border-cyber-green/20 pt-4">
+                <label className="flex items-center space-x-2 mb-2">
+                  <input
+                    type="checkbox"
+                    className="form-checkbox h-4 w-4 text-cyber-green bg-cyber-black border border-cyber-green/50 rounded"
+                    checked={floatingScanButtonEnabled}
+                    onChange={e => {
+                      const enabled = e.target.checked;
+                      setFloatingScanButtonEnabled(enabled);
+                      storage.set({ floatingScanButtonEnabled: enabled });
+                    }}
+                  />
+                  <span className="text-cyber-green text-sm font-terminal">Show floating scan button on webpages</span>
+                </label>
+                <p className="text-cyber-green/50 text-xs font-terminal mt-1 ml-6">
+                  Adds a draggable scan button to webpages for quick access. Changes take effect on page refresh.
+                </p>
+              </div>
+              
+              <p className="text-cyber-green/50 text-xs font-terminal mt-4">
                 Note: This feature requires the buy button functionality to be enabled.
               </p>
             </div>
