@@ -11,6 +11,7 @@ import {
   getPrices,
   getTokenInfo,
 } from '../services/jupiterService';
+import { storage } from '../utils/storage';
 import type { TokenInfoAPI, BalanceInfo } from '../services/jupiterService';
 import { loadAllTokens } from '../services/tokenService';
 import { getValidatedTokens } from '../services/validationService';
@@ -54,6 +55,10 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, 
   // Token list fetched from Jupiter
   const [tokenList, setTokenList] = useState<TokenInfoAPI[]>([]);
   const [filteredTokens, setFilteredTokens] = useState<typeof uiTokens>([]);
+  // Initial selection and warning states
+  const [initialMintHandled, setInitialMintHandled] = useState(false);
+  const [initialToMintHandled, setInitialToMintHandled] = useState(false);
+  const [warningMessage, setWarningMessage] = useState<string | null>(null);
 
   const [loadingTokens, setLoadingTokens] = useState(false);
   const [tokenError, setTokenError] = useState<string | null>(null);
@@ -120,12 +125,96 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, 
     getValidatedTokens(uiTokens)
       .then(tokens => setFilteredTokens(tokens))
       .catch(err => setTokenError(err instanceof Error ? err.message : String(err)))
-      .finally(() => setLoadingTokens(false));
+      .finally(() => {
+        setLoadingTokens(false);
+      });
   }, [uiTokens]);
 
   // Token states
   const [fromToken, setFromToken] = useState<TokenOption | null>(null);
   const [toToken, setToToken] = useState<TokenOption | null>(null);
+  // Handle initial selection: allow contract-based tokens if not blocklisted
+  useEffect(() => {
+    // Input token override
+    if (initialMint && !initialMintHandled) {
+      setInitialMintHandled(true);
+      (async () => {
+        const { blocklist = [] } = await storage.get('blocklist');
+        if (blocklist.includes(initialMint)) {
+          setWarningMessage('The selected token is blocked.');
+          setTimeout(() => setWarningMessage(null), 5000);
+          return;
+        }
+        // Try full token list
+        const rawFrom = tokenList.find(tok => tok.address === initialMint);
+        if (rawFrom) {
+          setFromToken({
+            id: rawFrom.address,
+            symbol: rawFrom.symbol,
+            name: rawFrom.name,
+            logoURI: rawFrom.logoURI,
+            decimals: rawFrom.decimals,
+          });
+          return;
+        }
+        // Fallback: fetch token info
+        if (initialMint.length >= 32) {
+          try {
+            const data = await getTokenInfo(initialMint);
+            setFromToken({
+              id: data.address,
+              symbol: data.symbol,
+              name: data.name,
+              logoURI: data.logoURI,
+              decimals: data.decimals,
+            });
+          } catch {
+            setWarningMessage('The selected token is currently unsupported.');
+            setTimeout(() => setWarningMessage(null), 5000);
+          }
+        }
+      })();
+    }
+    // Output token override
+    if (initialToMint && !initialToMintHandled) {
+      setInitialToMintHandled(true);
+      (async () => {
+        const { blocklist = [] } = await storage.get('blocklist');
+        if (blocklist.includes(initialToMint)) {
+          setWarningMessage('The selected token is blocked.');
+          setTimeout(() => setWarningMessage(null), 5000);
+          return;
+        }
+        const rawTo = tokenList.find(tok => tok.address === initialToMint)
+          || tokenList.find(tok => tok.symbol.toLowerCase() === initialToMint.toLowerCase());
+        if (rawTo) {
+          setToToken({
+            id: rawTo.address,
+            symbol: rawTo.symbol,
+            name: rawTo.name,
+            logoURI: rawTo.logoURI,
+            decimals: rawTo.decimals,
+          });
+          return;
+        }
+        if (initialToMint.length >= 32) {
+          try {
+            const data = await getTokenInfo(initialToMint);
+            setToToken({
+              id: data.address,
+              symbol: data.symbol,
+              name: data.name,
+              logoURI: data.logoURI,
+              decimals: data.decimals,
+            });
+          } catch {
+            setWarningMessage('The selected token is currently unsupported.');
+            setTimeout(() => setWarningMessage(null), 5000);
+          }
+        }
+      })();
+    }
+  }, [initialMint, initialToMint, initialMintHandled, initialToMintHandled, tokenList]);
 
   // Amount states
   const [fromAmount, setFromAmount] = useState('');
@@ -147,55 +236,7 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, 
     show: false,
     status: 'pending',
   });
-  // If an initialMint was provided, auto-select it as input token (fallback to Jupiter lookup)
-  useEffect(() => {
-    if (!initialMint || tokenList.length === 0) return;
-    const t = tokenList.find(tok => tok.address === initialMint);
-    if (t) {
-      setFromToken({ id: t.address, symbol: t.symbol, name: t.name, logoURI: t.logoURI, decimals: t.decimals });
-    } else {
-      // fallback: fetch token info from Jupiter Token API
-      getTokenInfo(initialMint)
-        .then(data => {
-          setFromToken({ id: data.address, symbol: data.symbol, name: data.name, logoURI: data.logoURI, decimals: data.decimals });
-        })
-        .catch(err => console.error('Initial token lookup failed:', err));
-    }
-  }, [initialMint, tokenList]);
-  // If an initialToMint was provided, auto-select it as output token
-  useEffect(() => {
-    if (!initialToMint || tokenList.length === 0) return;
-    // Attempt to find token by mint address
-    let found = tokenList.find(tok => tok.address === initialToMint);
-    // If not found by address, try symbol (case-insensitive)
-    if (!found) {
-      found = tokenList.find(tok => tok.symbol.toLowerCase() === initialToMint.toLowerCase());
-    }
-    if (found) {
-      setToToken({
-        id: found.address,
-        symbol: found.symbol,
-        name: found.name,
-        logoURI: found.logoURI,
-        decimals: found.decimals,
-      });
-    } else if (initialToMint.length >= 32) {
-      // Fallback: treat initialToMint as mint address and fetch token info
-      getTokenInfo(initialToMint)
-        .then(data => {
-          setToToken({
-            id: data.address,
-            symbol: data.symbol,
-            name: data.name,
-            logoURI: data.logoURI,
-            decimals: data.decimals,
-          });
-        })
-        .catch(err => console.error('Initial to-token lookup failed:', err));
-    } else {
-      console.error(`Token ${initialToMint} not found as address or symbol`);
-    }
-  }, [initialToMint, tokenList]);
+  /* Initial token selection is handled after validation to prevent unsupported tokens */
   // Jupiter order preview state, includes overall fee and platform (referral) fee in bps
   const [previewData, setPreviewData] = useState<{
     inputAmount: number;
@@ -525,6 +566,11 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, 
 
   return (
     <div className="flex flex-col items-center justify-start h-full p-4 relative">
+      {warningMessage && (
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-red-500 text-white text-sm px-3 py-1 rounded z-20">
+          {warningMessage}
+        </div>
+      )}
       {/* Custom animations */}
       <style>{customStyles}</style>
 
