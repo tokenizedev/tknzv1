@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Lock, Key, Shield, RefreshCw, Check, X, Plus, Trash2, LogIn, ShoppingCart, Ban, CheckCircle, Filter } from 'lucide-react';
+import { ArrowLeft, Lock, Key, Shield, RefreshCw, Check, X, Plus, Trash2, LogIn, ShoppingCart, Ban, CheckCircle, Filter, Eye } from 'lucide-react';
 import { FaSync } from 'react-icons/fa';
 import { storage } from '../utils/storage';
 import { ExchangeSelector } from './ExchangeSelector'
@@ -15,7 +15,7 @@ interface SettingsPageProps {
 }
 
 export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
-  const [activeSection, setActiveSection] = useState<'password' | 'buy' | 'passkey' | 'blackwhite' | 'validation' | 'scan' | null>(null);
+  const [activeSection, setActiveSection] = useState<'password' | 'tokenDetection' | 'passkey' | 'blackwhite' | 'validation' | null>(null);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -30,12 +30,11 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
   const [legacyPasskeyId, setLegacyPasskeyId] = useState<string>('');
   const [legacyMigrationName, setLegacyMigrationName] = useState('Primary Passkey');
   const [migrationLoading, setMigrationLoading] = useState(false);
-  // Buy button feature toggle
+  // Token detection feature toggles
   const [buyEnabled, setBuyEnabled] = useState<boolean>(true);
+  const [floatingScanButtonEnabled, setFloatingScanButtonEnabled] = useState<boolean>(true);
   // Token validation feature toggle
   const [validationEnabled, setValidationEnabled] = useState<boolean>(true);
-  // Floating scan button toggle
-  const [floatingScanButtonEnabled, setFloatingScanButtonEnabled] = useState<boolean>(true);
   const [blocklist, setBlocklist] = useState<string[]>([]);
   const [allowlist, setAllowlist] = useState<string[]>([]);
   const [blocklistInput, setBlocklistInput] = useState('');
@@ -85,7 +84,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
       }
     })();
   }, []);
-  // Load buy button setting
+  // Load token detection settings
   useEffect(() => {
     (async () => {
       try {
@@ -512,44 +511,130 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
           )}
         </div>
 
-        {/* Buy Button Feature Section */}
+        {/* Token Detection Feature Section (Combined) */}
         <div className="border border-cyber-green/30 rounded-sm overflow-hidden">
           <div
-            className={`p-4 bg-gradient-to-r from-cyber-black to-cyber-black/80 ${activeSection === 'buy' ? 'border-b border-cyber-green/30' : ''}`}
-            onClick={() => activeSection !== 'buy' ? setActiveSection('buy') : null}
+            className={`p-4 bg-gradient-to-r from-cyber-black to-cyber-black/80 ${activeSection === 'tokenDetection' ? 'border-b border-cyber-green/30' : ''}`}
+            onClick={() => activeSection !== 'tokenDetection' ? setActiveSection('tokenDetection') : null}
           >
             <div className="flex items-center justify-between">
-              <ShoppingCart className="w-5 h-5 mr-3 text-cyber-green" />
-              <h2 className="text-cyber-green font-terminal">Buy Button Feature</h2>
-              {activeSection !== 'buy' && (
+              <div className="flex items-center">
+                <Eye className="w-5 h-5 mr-3 text-cyber-green" />
+                <h2 className="text-cyber-green font-terminal">Token Detection</h2>
+              </div>
+              {activeSection !== 'tokenDetection' && (
                 <button className="text-cyber-green border border-cyber-green/50 px-2 py-1 rounded-sm text-xs font-terminal hover:bg-cyber-green/10 transition-colors">
                   SETTINGS
                 </button>
               )}
             </div>
-            <p className="text-cyber-green/70 text-sm mt-1 ml-8">Enable or disable on-page Buy buttons</p>
+            <p className="text-cyber-green/70 text-sm mt-1 ml-8">Configure token detection and buy button features</p>
           </div>
-          {activeSection === 'buy' && (
-            <div className="p-4 bg-cyber-black/50 animate-slide-down space-y-2">
-              <label className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  className="form-checkbox h-4 w-4 text-cyber-green bg-cyber-black border border-cyber-green/50 rounded"
-                  checked={buyEnabled}
-                  onChange={e => {
-                    const enabled = e.target.checked;
-                    setBuyEnabled(enabled);
-                    storage.set({ buyModeEnabled: enabled });
-                  }}
-                />
-                <span className="text-cyber-green text-sm font-terminal">Enable Buy Buttons</span>
-              </label>
-              <p className="text-cyber-green/50 text-xs font-terminal">
-                Changes will take effect after page refresh.
+          
+          {activeSection === 'tokenDetection' && (
+            <div className="p-4 bg-cyber-black/50 animate-slide-down space-y-5">
+              {/* Main Buy Button Toggle */}
+              <div className="space-y-2 border-b border-cyber-green/10 pb-4">
+                <h3 className="text-cyber-green/90 text-sm font-terminal flex items-center">
+                  <ShoppingCart className="w-4 h-4 mr-2" />
+                  Buy Button Feature
+                </h3>
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    className="form-checkbox h-4 w-4 text-cyber-green bg-cyber-black border border-cyber-green/50 rounded"
+                    checked={buyEnabled}
+                    onChange={e => {
+                      const enabled = e.target.checked;
+                      setBuyEnabled(enabled);
+                      storage.set({ buyModeEnabled: enabled });
+                      
+                      // If disabling buy buttons, also disable floating scan button
+                      if (!enabled && floatingScanButtonEnabled) {
+                        setFloatingScanButtonEnabled(false);
+                        storage.set({ floatingScanButtonEnabled: false });
+                      }
+                    }}
+                  />
+                  <span className="text-cyber-green text-sm font-terminal">Enable Buy Buttons on Webpages</span>
+                </label>
+                <p className="text-cyber-green/50 text-xs font-terminal ml-6">
+                  Adds "Buy with TKNZ" buttons next to token addresses and cashtags on web pages.
+                </p>
+              </div>
+
+              {/* Scan Button Controls */}
+              <div className="space-y-4 pt-1 border-b border-cyber-green/10 pb-4">
+                <h3 className={`text-cyber-green/90 text-sm font-terminal flex items-center ${!buyEnabled ? 'opacity-50' : ''}`}>
+                  <FaSync className="w-4 h-4 mr-2" />
+                  Scan Controls
+                </h3>
+                
+                {/* Floating Button Toggle */}
+                <div className="space-y-1">
+                  <label className={`flex items-center space-x-2 ${!buyEnabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
+                    <input
+                      type="checkbox"
+                      className={`form-checkbox h-4 w-4 bg-cyber-black border rounded ${buyEnabled ? 'text-cyber-green border-cyber-green/50' : 'text-cyber-green/30 border-cyber-green/20'}`}
+                      checked={floatingScanButtonEnabled}
+                      onChange={e => {
+                        if (!buyEnabled) return; // Prevent changes when main toggle is off
+                        const enabled = e.target.checked;
+                        setFloatingScanButtonEnabled(enabled);
+                        storage.set({ floatingScanButtonEnabled: enabled });
+                      }}
+                      disabled={!buyEnabled}
+                    />
+                    <span className={`text-cyber-green text-sm font-terminal ${!buyEnabled ? 'text-cyber-green/50' : ''}`}>
+                      Show floating scan button on webpages
+                    </span>
+                  </label>
+                  <p className={`text-cyber-green/50 text-xs font-terminal ml-6 ${!buyEnabled ? 'opacity-50' : ''}`}>
+                    Adds a draggable scan button to webpages for quick access. The button will reposition itself to stay visible.
+                  </p>
+                </div>
+                
+                {/* Manual Scan Button */}
+                <div className="mt-2 pt-2">
+                  <p className={`text-cyber-green/80 text-sm font-terminal mb-2 ${!buyEnabled ? 'opacity-50' : ''}`}>
+                    Manually scan the current webpage to detect token addresses and symbols.
+                  </p>
+                  
+                  <button
+                    onClick={manualScan}
+                    disabled={!buyEnabled}
+                    className={`w-full border p-3 rounded-sm font-terminal text-sm transition-colors flex items-center justify-center ${
+                      buyEnabled 
+                        ? 'bg-cyber-green/20 border-cyber-green text-cyber-green hover:bg-cyber-green/30' 
+                        : 'bg-cyber-green/5 border-cyber-green/20 text-cyber-green/40 cursor-not-allowed'
+                    }`}
+                  >
+                    <FaSync className="w-4 h-4 mr-2" />
+                    SCAN CURRENT PAGE
+                  </button>
+                </div>
+              </div>
+              
+              <p className="text-cyber-green/50 text-xs font-terminal italic">
+                Note: Changes to some settings may require page refresh to take effect.
+                {!buyEnabled && (
+                  <span className="block mt-1 text-cyber-orange/70">
+                    Enable Buy Buttons to access scanning features.
+                  </span>
+                )}
               </p>
+              
+              <button
+                type="button"
+                onClick={handleCloseSection}
+                className="w-full mt-2 border border-cyber-green/30 text-cyber-green p-2 rounded-sm hover:bg-cyber-green/10 transition-colors font-terminal text-sm"
+              >
+                CLOSE
+              </button>
             </div>
           )}
         </div>
+        
         {/* Token Validation Section */}
         <div className="border border-cyber-green/30 rounded-sm overflow-hidden">
           <div
@@ -588,6 +673,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
             </div>
           )}
         </div>
+        
         {/* Passkey Management Section */}
         <div className="border border-cyber-green/30 rounded-sm overflow-hidden">
           <div
@@ -732,7 +818,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
             </div>
           )}
         </div>
-
+        
         {/* blocklist & allowlist Section */}
         <div className="border border-cyber-green/30 rounded-sm overflow-hidden">
           <div
@@ -835,66 +921,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
               >
                 CLOSE
               </button>
-            </div>
-          )}
-        </div>
-
-        {/* Page Scanning Section */}
-        <div className="border border-cyber-green/30 rounded-sm overflow-hidden">
-          <div
-            className={`p-4 bg-gradient-to-r from-cyber-black to-cyber-black/80 ${activeSection === 'scan' ? 'border-b border-cyber-green/30' : ''}`}
-            onClick={() => activeSection !== 'scan' ? setActiveSection('scan') : null}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <FaSync className="w-5 h-5 mr-3 text-cyber-green" />
-                <h2 className="text-cyber-green font-terminal">Page Scanning</h2>
-              </div>
-              {activeSection !== 'scan' && (
-                <button className="text-cyber-green border border-cyber-green/50 px-2 py-1 rounded-sm text-xs font-terminal hover:bg-cyber-green/10 transition-colors">
-                  SCAN
-                </button>
-              )}
-            </div>
-            <p className="text-cyber-green/70 text-sm mt-1 ml-8">Scan current webpage for token addresses and symbols</p>
-          </div>
-
-          {activeSection === 'scan' && (
-            <div className="p-4 bg-cyber-black/50 animate-slide-down">
-              <p className="text-cyber-green/80 text-sm font-terminal mb-4">
-                Scan the current active webpage to detect token addresses and symbols. TKNZ will add "Buy" buttons next to identified tokens.
-              </p>
-              
-              <button
-                onClick={manualScan}
-                className="w-full bg-cyber-green/20 border border-cyber-green text-cyber-green p-3 rounded-sm hover:bg-cyber-green/30 font-terminal text-sm transition-colors flex items-center justify-center"
-              >
-                <FaSync className="w-4 h-4 mr-2" />
-                SCAN CURRENT PAGE
-              </button>
-              
-              <div className="mt-4 border-t border-cyber-green/20 pt-4">
-                <label className="flex items-center space-x-2 mb-2">
-                  <input
-                    type="checkbox"
-                    className="form-checkbox h-4 w-4 text-cyber-green bg-cyber-black border border-cyber-green/50 rounded"
-                    checked={floatingScanButtonEnabled}
-                    onChange={e => {
-                      const enabled = e.target.checked;
-                      setFloatingScanButtonEnabled(enabled);
-                      storage.set({ floatingScanButtonEnabled: enabled });
-                    }}
-                  />
-                  <span className="text-cyber-green text-sm font-terminal">Show floating scan button on webpages</span>
-                </label>
-                <p className="text-cyber-green/50 text-xs font-terminal mt-1 ml-6">
-                  Adds a draggable scan button to webpages for quick access. Changes take effect on page refresh.
-                </p>
-              </div>
-              
-              <p className="text-cyber-green/50 text-xs font-terminal mt-4">
-                Note: This feature requires the buy button functionality to be enabled.
-              </p>
             </div>
           )}
         </div>
