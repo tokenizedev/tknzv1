@@ -17,9 +17,9 @@ const MIN_MARKET_CAP = 50000;
 const MIN_HOLDERS = 100;
 const ALLOWED_TAGS = ['verified', 'strict', 'community'];
 
-async function validateToken<T extends Token>(token: T, tokens: T[], whitelist: string[], blacklist: string[]) {
-  if (whitelist.includes(token.id)) return true;
-  if (blacklist.includes(token.id)) return false;
+async function validateToken<T extends Token>(token: T, tokens: T[], allowlist: string[], blocklist: string[]) {
+  if (allowlist.includes(token.id)) return true;
+  if (blocklist.includes(token.id)) return false;
 
   // 1. Duplicate check
   const duplicates = tokens.filter(t => t.name === token.name && t.symbol === token.symbol);
@@ -55,13 +55,13 @@ async function validateToken<T extends Token>(token: T, tokens: T[], whitelist: 
 export async function getValidatedTokens<T extends Token>(
   tokens: T[],
 ): Promise<T[]> {
-  const [{ whitelist }, { blacklist }] = await Promise.all([
-    storage.get('whitelist'),
-    storage.get('blacklist'),
+  const [{ allowlist }, { blocklist }] = await Promise.all([
+    storage.get('allowlist'),
+    storage.get('blocklist'),
   ]);
 
   const validatedTokens = await Promise.all(
-    tokens.map(token => validateToken(token, tokens, whitelist ?? [], blacklist ?? []))
+    tokens.map(token => validateToken(token, tokens, allowlist ?? [], blocklist ?? []))
   );
 
   return tokens.filter((_, index) => validatedTokens[index]);
