@@ -13,6 +13,7 @@ const DEV_MODE = process.env.NODE_ENV === 'development' && !chrome?.tabs;
 import { compareVersions } from 'compare-versions'
 import { TOKEN_PROGRAM_ID, createTransferInstruction, getAssociatedTokenAddress, createAssociatedTokenAccountInstruction } from '@solana/spl-token';
 import { getTokenInfo, getUltraBalances, getPrices, BalanceInfo } from './services/jupiterService';
+import { Buffer } from 'buffer';
 import { WalletState, CreatedCoin, ArticleData, CoinCreationParams, TokenCreationData, WalletInfo } from './types';
 import { v4 as uuidv4 } from 'uuid';
 
