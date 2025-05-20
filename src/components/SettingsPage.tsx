@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Lock, Key, Shield, RefreshCw, Check, X, Plus, Trash2, LogIn, ShoppingCart, Ban, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Lock, Key, Shield, RefreshCw, Check, X, Plus, Trash2, LogIn, ShoppingCart, Ban, CheckCircle, Filter } from 'lucide-react';
 import { storage } from '../utils/storage';
 import { ExchangeSelector } from './ExchangeSelector'
 
@@ -14,7 +14,7 @@ interface SettingsPageProps {
 }
 
 export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
-  const [activeSection, setActiveSection] = useState<'password' | 'buy' | 'passkey' | 'blackwhite' | null>(null);
+  const [activeSection, setActiveSection] = useState<'password' | 'buy' | 'passkey' | 'blackwhite' | 'validation' | null>(null);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -31,6 +31,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
   const [migrationLoading, setMigrationLoading] = useState(false);
   // Buy button feature toggle
   const [buyEnabled, setBuyEnabled] = useState<boolean>(true);
+  // Token validation feature toggle
+  const [validationEnabled, setValidationEnabled] = useState<boolean>(true);
   const [blocklist, setBlocklist] = useState<string[]>([]);
   const [allowlist, setAllowlist] = useState<string[]>([]);
   const [blocklistInput, setBlocklistInput] = useState('');
@@ -66,6 +68,19 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
     };
 
     loadPasskeys();
+  }, []);
+  // Load token validation setting
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await storage.get('validationEnabled');
+        const enabled = res.validationEnabled;
+        setValidationEnabled(enabled === undefined ? true : enabled);
+      } catch (err) {
+        console.error('Failed to load validation setting:', err);
+        setValidationEnabled(true);
+      }
+    })();
   }, []);
   // Load buy button setting
   useEffect(() => {
@@ -505,6 +520,44 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
               </label>
               <p className="text-cyber-green/50 text-xs font-terminal">
                 Changes will take effect after page refresh.
+              </p>
+            </div>
+          )}
+        </div>
+        {/* Token Validation Section */}
+        <div className="border border-cyber-green/30 rounded-sm overflow-hidden">
+          <div
+            className={`p-4 bg-gradient-to-r from-cyber-black to-cyber-black/80 ${activeSection === 'validation' ? 'border-b border-cyber-green/30' : ''}`}
+            onClick={() => activeSection !== 'validation' ? setActiveSection('validation') : null}
+          >
+            <div className="flex items-center justify-between">
+              <Filter className="w-5 h-5 mr-3 text-cyber-green" />
+              <h2 className="text-cyber-green font-terminal">Token Validation</h2>
+              {activeSection !== 'validation' && (
+                <button className="text-cyber-green border border-cyber-green/50 px-2 py-1 rounded-sm text-xs font-terminal hover:bg-cyber-green/10 transition-colors">
+                  SETTINGS
+                </button>
+              )}
+            </div>
+            <p className="text-cyber-green/70 text-sm mt-1 ml-8">Enable or disable token validation</p>
+          </div>
+          {activeSection === 'validation' && (
+            <div className="p-4 bg-cyber-black/50 animate-slide-down space-y-2">
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  className="form-checkbox h-4 w-4 text-cyber-green bg-cyber-black border border-cyber-green/50 rounded"
+                  checked={validationEnabled}
+                  onChange={e => {
+                    const enabled = e.target.checked;
+                    setValidationEnabled(enabled);
+                    storage.set({ validationEnabled: enabled });
+                  }}
+                />
+                <span className="text-cyber-green text-sm font-terminal">Enable Token Validation</span>
+              </label>
+              <p className="text-cyber-green/50 text-xs font-terminal">
+                Changes will take effect immediately.
               </p>
             </div>
           )}
