@@ -859,6 +859,131 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
   // Schedule initial network idle scan
   scheduleNetworkIdleScan();
 
+  // Create a notification system for the content script
+  function createNotification(message: string, type: 'error' | 'info' | 'success' = 'info', duration: number = 5000) {
+    // Remove any existing notifications
+    document.querySelectorAll('.tknz-notification').forEach(el => el.remove());
+    
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = 'tknz-notification';
+    
+    // Set styling based on notification type
+    const bgColor = type === 'error' ? 'rgba(30, 0, 0, 0.9)' : type === 'success' ? 'rgba(0, 30, 0, 0.9)' : 'rgba(0, 10, 20, 0.9)';
+    const borderColor = type === 'error' ? '#ff3d3d' : type === 'success' ? '#00ff9d' : '#3d9eff';
+    const textColor = type === 'error' ? '#ff9d9d' : type === 'success' ? '#00ff9d' : '#9dcfff';
+    
+    // Apply cyberpunk-style CSS
+    Object.assign(notification.style, {
+      position: 'fixed',
+      bottom: '30px',
+      right: '30px',
+      backgroundColor: bgColor,
+      color: textColor,
+      padding: '15px 20px',
+      borderRadius: '4px',
+      boxShadow: `0 0 20px rgba(0, 0, 0, 0.5), 0 0 10px ${borderColor}40`,
+      zIndex: '2147483647',
+      fontFamily: 'monospace, "Courier New"',
+      fontSize: '14px',
+      maxWidth: '400px',
+      border: `1px solid ${borderColor}`,
+      backdropFilter: 'blur(4px)',
+      transform: 'translateY(100px)',
+      opacity: '0',
+      transition: 'transform 0.3s ease-out, opacity 0.3s ease-out',
+      lineHeight: '1.5',
+      display: 'flex',
+      alignItems: 'flex-start',
+      overflow: 'hidden'
+    });
+    
+    // Add a glowing line at the top
+    const glowLine = document.createElement('div');
+    Object.assign(glowLine.style, {
+      position: 'absolute',
+      top: '0',
+      left: '0',
+      right: '0',
+      height: '1px',
+      background: borderColor,
+      boxShadow: `0 0 10px ${borderColor}, 0 0 5px ${borderColor}`,
+      opacity: '0.8'
+    });
+    
+    // Create icon element based on type
+    const icon = document.createElement('div');
+    Object.assign(icon.style, {
+      marginRight: '10px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: '18px',
+      flexShrink: '0'
+    });
+    
+    if (type === 'error') {
+      icon.innerHTML = '⚠️';
+    } else if (type === 'success') {
+      icon.innerHTML = '✓';
+    } else {
+      icon.innerHTML = 'ℹ️';
+    }
+    
+    // Create content container
+    const content = document.createElement('div');
+    content.textContent = message;
+    
+    // Create close button
+    const close = document.createElement('button');
+    Object.assign(close.style, {
+      position: 'absolute',
+      top: '8px',
+      right: '8px',
+      background: 'transparent',
+      border: 'none',
+      color: textColor,
+      fontSize: '16px',
+      cursor: 'pointer',
+      opacity: '0.7',
+      transition: 'opacity 0.2s'
+    });
+    close.innerHTML = '×';
+    close.onmouseover = () => close.style.opacity = '1';
+    close.onmouseout = () => close.style.opacity = '0.7';
+    close.onclick = () => {
+      notification.style.transform = 'translateY(100px)';
+      notification.style.opacity = '0';
+      setTimeout(() => notification.remove(), 300);
+    };
+    
+    // Assemble notification
+    notification.appendChild(glowLine);
+    notification.appendChild(icon);
+    notification.appendChild(content);
+    notification.appendChild(close);
+    document.body.appendChild(notification);
+    
+    // Animate in
+    setTimeout(() => {
+      notification.style.transform = 'translateY(0)';
+      notification.style.opacity = '1';
+    }, 10);
+    
+    // Auto dismiss after duration
+    if (duration > 0) {
+      setTimeout(() => {
+        if (document.body.contains(notification)) {
+          notification.style.transform = 'translateY(100px)';
+          notification.style.opacity = '0';
+          setTimeout(() => notification.remove(), 300);
+        }
+      }, duration);
+    }
+    
+    return notification;
+  }
+
   // Create and append the Buy button
   function addBuyButton(el: HTMLElement, token: TokenMsg) {
     const btn = document.createElement('span');
@@ -883,12 +1008,67 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
     btn.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
+      
+      // Change button state to indicate processing
+      const originalText = btn.textContent;
+      btn.textContent = 'Processing...';
+      btn.style.opacity = '0.7';
+      
       // Determine UI context (sidebar vs popup) persisted by extension UI
       chrome.storage.local.get(['isSidebarMode'], ({ isSidebarMode }) => {
-        chrome.runtime.sendMessage({ type: 'TKNZ_TOKEN_CLICKED', token, isSidebar: !!isSidebarMode });
+        // Send message to background script and handle response
+        chrome.runtime.sendMessage(
+          { type: 'TKNZ_TOKEN_CLICKED', token, isSidebar: !!isSidebarMode }, 
+          (response) => {
+            console.log('TKNZ_TOKEN_CLICKED --> response', response);
+            const error = chrome.runtime.lastError;
+            
+            // Handle error case (validation failed or token not supported)
+            if (error || !response || !response.success) {
+              console.error('Token click error:', error || 'No success response');
+              // Determine appropriate error message based on background response or runtime error
+              let errorMsg = 'This token is not supported for trading. It may be unverified or restricted.';
+              if (error) {
+                errorMsg = `Error: ${error.message}`;
+              } else if (response && response.reason) {
+                switch (response.reason) {
+                  case 'blocked':
+                    errorMsg = 'This token is blocked and cannot be traded.';
+                    break;
+                  case 'sidePanel':
+                    errorMsg = 'Failed to open side panel. Please try again.';
+                    break;
+                  case 'popup':
+                    errorMsg = 'Failed to open popup. Please try again.';
+                    break;
+                  case 'storage':
+                    errorMsg = 'Failed to store token info for trading.';
+                    break;
+                  case 'unknown':
+                    errorMsg = 'An unknown error occurred while processing your request.';
+                    break;
+                  case 'unsupported':
+                    errorMsg = 'This token is not supported for trading. It may be unverified or restricted.';
+                    break;
+                  default:
+                    errorMsg = `Error: ${response.reason}`;
+                }
+              }
+              createNotification(errorMsg, 'error');
+              btn.textContent = originalText;
+              btn.style.opacity = '1';
+              return;
+            }
+            
+            // Success case - button will update as extension UI opens
+            btn.textContent = 'Opening...';
+            setTimeout(() => {
+              btn.textContent = originalText;
+              btn.style.opacity = '1';
+            }, 2000);
+          }
+        );
       });
-      btn.textContent = 'Opening...';
-      setTimeout(() => (btn.textContent = 'Buy with TKNZ'), 2000);
     };
     el.appendChild(btn);
   }
