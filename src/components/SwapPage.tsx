@@ -134,41 +134,41 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, 
   const [fromToken, setFromToken] = useState<TokenOption | null>(null);
   const [toToken, setToToken] = useState<TokenOption | null>(null);
   // Handle initial selection: allow contract-based tokens if not blocklisted
+  // Handle initial selection: wait for tokenList, then allow address or symbol unless blocklisted
   useEffect(() => {
+    if (tokenList.length === 0) return;
     // Input token override
     if (initialMint && !initialMintHandled) {
+      console.log('[SwapPage] initialMint override start:', { initialMint, tokenListLength: tokenList.length });
       setInitialMintHandled(true);
       (async () => {
         const { blocklist = [] } = await storage.get('blocklist');
+        console.log('[SwapPage] blocklist:', blocklist);
         if (blocklist.includes(initialMint)) {
+          console.log('[SwapPage] initialMint is blocklisted:', initialMint);
           setWarningMessage('The selected token is blocked.');
           setTimeout(() => setWarningMessage(null), 5000);
           return;
         }
-        // Try full token list
-        const rawFrom = tokenList.find(tok => tok.address === initialMint);
+        // Try full token list by address or symbol
+        let rawFrom = tokenList.find(tok => tok.address === initialMint);
+        if (!rawFrom) {
+          rawFrom = tokenList.find(tok => tok.symbol.toLowerCase() === initialMint.toLowerCase());
+        }
         if (rawFrom) {
-          setFromToken({
-            id: rawFrom.address,
-            symbol: rawFrom.symbol,
-            name: rawFrom.name,
-            logoURI: rawFrom.logoURI,
-            decimals: rawFrom.decimals,
-          });
+          console.log('[SwapPage] initialMint selected from tokenList:', rawFrom);
+          setFromToken({ id: rawFrom.address, symbol: rawFrom.symbol, name: rawFrom.name, logoURI: rawFrom.logoURI, decimals: rawFrom.decimals });
           return;
         }
-        // Fallback: fetch token info
+        // Fallback: fetch tokenInfo if address-like
         if (initialMint.length >= 32) {
+          console.log('[SwapPage] initialMint not in tokenList, fetching via getTokenInfo:', initialMint);
           try {
             const data = await getTokenInfo(initialMint);
-            setFromToken({
-              id: data.address,
-              symbol: data.symbol,
-              name: data.name,
-              logoURI: data.logoURI,
-              decimals: data.decimals,
-            });
-          } catch {
+            console.log('[SwapPage] getTokenInfo success for initialMint:', data);
+            setFromToken({ id: data.address, symbol: data.symbol, name: data.name, logoURI: data.logoURI, decimals: data.decimals });
+          } catch (err) {
+            console.error('[SwapPage] getTokenInfo failed for initialMint:', initialMint, err);
             setWarningMessage('The selected token is currently unsupported.');
             setTimeout(() => setWarningMessage(null), 5000);
           }
@@ -177,37 +177,34 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, 
     }
     // Output token override
     if (initialToMint && !initialToMintHandled) {
+      console.log('[SwapPage] initialToMint override start:', { initialToMint, tokenListLength: tokenList.length });
       setInitialToMintHandled(true);
       (async () => {
         const { blocklist = [] } = await storage.get('blocklist');
+        console.log('[SwapPage] blocklist:', blocklist);
         if (blocklist.includes(initialToMint)) {
+          console.log('[SwapPage] initialToMint is blocklisted:', initialToMint);
           setWarningMessage('The selected token is blocked.');
           setTimeout(() => setWarningMessage(null), 5000);
           return;
         }
-        const rawTo = tokenList.find(tok => tok.address === initialToMint)
-          || tokenList.find(tok => tok.symbol.toLowerCase() === initialToMint.toLowerCase());
+        let rawTo = tokenList.find(tok => tok.address === initialToMint);
+        if (!rawTo) {
+          rawTo = tokenList.find(tok => tok.symbol.toLowerCase() === initialToMint.toLowerCase());
+        }
         if (rawTo) {
-          setToToken({
-            id: rawTo.address,
-            symbol: rawTo.symbol,
-            name: rawTo.name,
-            logoURI: rawTo.logoURI,
-            decimals: rawTo.decimals,
-          });
+          console.log('[SwapPage] initialToMint selected from tokenList:', rawTo);
+          setToToken({ id: rawTo.address, symbol: rawTo.symbol, name: rawTo.name, logoURI: rawTo.logoURI, decimals: rawTo.decimals });
           return;
         }
         if (initialToMint.length >= 32) {
+          console.log('[SwapPage] initialToMint not in tokenList, fetching via getTokenInfo:', initialToMint);
           try {
             const data = await getTokenInfo(initialToMint);
-            setToToken({
-              id: data.address,
-              symbol: data.symbol,
-              name: data.name,
-              logoURI: data.logoURI,
-              decimals: data.decimals,
-            });
-          } catch {
+            console.log('[SwapPage] getTokenInfo success for initialToMint:', data);
+            setToToken({ id: data.address, symbol: data.symbol, name: data.name, logoURI: data.logoURI, decimals: data.decimals });
+          } catch (err) {
+            console.error('[SwapPage] getTokenInfo failed for initialToMint:', initialToMint, err);
             setWarningMessage('The selected token is currently unsupported.');
             setTimeout(() => setWarningMessage(null), 5000);
           }
