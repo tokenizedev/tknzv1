@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Lock, Key, Shield, RefreshCw, Check, X, Plus, Trash2, LogIn, ShoppingCart, Ban, CheckCircle, Filter } from 'lucide-react';
+import { FaSync } from 'react-icons/fa';
 import { storage } from '../utils/storage';
 import { ExchangeSelector } from './ExchangeSelector'
 
@@ -14,7 +15,7 @@ interface SettingsPageProps {
 }
 
 export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
-  const [activeSection, setActiveSection] = useState<'password' | 'buy' | 'passkey' | 'blackwhite' | 'validation' | null>(null);
+  const [activeSection, setActiveSection] = useState<'password' | 'buy' | 'passkey' | 'blackwhite' | 'validation' | 'scan' | null>(null);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -366,6 +367,23 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
     const updated = allowlist.filter(e => e !== entry);
     setAllowlist(updated);
     await storage.set({ allowlist: updated });
+  };
+
+  // Manual scan trigger for buy button injection
+  const manualScan = () => {
+    if (window.chrome?.tabs?.query) {
+      window.chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        const tabId = tabs[0]?.id;
+        if (tabId !== undefined) {
+          window.chrome.tabs.sendMessage(tabId, { type: 'MANUAL_SCAN' });
+          setSuccess('Page scan triggered successfully');
+          setTimeout(() => setSuccess(''), 3000);
+        }
+      });
+    } else {
+      setError('Browser API not available');
+      setTimeout(() => setError(''), 3000);
+    }
   };
 
   return (
@@ -809,6 +827,47 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
               >
                 CLOSE
               </button>
+            </div>
+          )}
+        </div>
+
+        {/* Page Scanning Section */}
+        <div className="border border-cyber-green/30 rounded-sm overflow-hidden">
+          <div
+            className={`p-4 bg-gradient-to-r from-cyber-black to-cyber-black/80 ${activeSection === 'scan' ? 'border-b border-cyber-green/30' : ''}`}
+            onClick={() => activeSection !== 'scan' ? setActiveSection('scan') : null}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <FaSync className="w-5 h-5 mr-3 text-cyber-green" />
+                <h2 className="text-cyber-green font-terminal">Page Scanning</h2>
+              </div>
+              {activeSection !== 'scan' && (
+                <button className="text-cyber-green border border-cyber-green/50 px-2 py-1 rounded-sm text-xs font-terminal hover:bg-cyber-green/10 transition-colors">
+                  SCAN
+                </button>
+              )}
+            </div>
+            <p className="text-cyber-green/70 text-sm mt-1 ml-8">Scan current webpage for token addresses and symbols</p>
+          </div>
+
+          {activeSection === 'scan' && (
+            <div className="p-4 bg-cyber-black/50 animate-slide-down">
+              <p className="text-cyber-green/80 text-sm font-terminal mb-4">
+                Scan the current active webpage to detect token addresses and symbols. TKNZ will add "Buy" buttons next to identified tokens.
+              </p>
+              
+              <button
+                onClick={manualScan}
+                className="w-full bg-cyber-green/20 border border-cyber-green text-cyber-green p-3 rounded-sm hover:bg-cyber-green/30 font-terminal text-sm transition-colors flex items-center justify-center"
+              >
+                <FaSync className="w-4 h-4 mr-2" />
+                SCAN CURRENT PAGE
+              </button>
+              
+              <p className="text-cyber-green/50 text-xs font-terminal mt-2">
+                Note: This feature requires the buy button functionality to be enabled.
+              </p>
             </div>
           )}
         </div>
