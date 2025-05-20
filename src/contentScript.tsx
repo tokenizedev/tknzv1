@@ -537,6 +537,15 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
   const STATE = {
     buttonsAdded: new Set<string>(),
   };
+  // Listen for manual scan trigger from extension UI
+  chrome.runtime.onMessage.addListener((msg, sender) => {
+    if (msg?.type === 'MANUAL_SCAN') {
+      // Clear existing buttons and state, then re-scan
+      STATE.buttonsAdded.clear();
+      document.querySelectorAll('.tknz-buy-button').forEach(btn => btn.remove());
+      scanElement(document.body);
+    }
+  });
   // Network idle detection to wait for content load
   let activeRequests = 0;
   let idleTimer: number | undefined;
