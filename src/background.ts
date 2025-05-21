@@ -69,14 +69,13 @@ chrome.runtime.onMessage.addListener((message: any, sender, sendResponse) => {
   // Handle user content selection from page
   else if (message.type === 'CONTENT_SELECTED') {
     const content = message.content;
+    const isSidebarMsg = message.isSidebar === true;
     // Store selected content for UI
     chrome.storage.local.set({ selectedContent: JSON.stringify(content) }, () => {
-      // Open popup only if side panel is not open
-      chrome.tabs.get(targetTabId, tab => {
-        if (!sidePanelOpenWindows.has(tab.windowId)) {
-          chrome.action.openPopup().catch(err => console.error('Failed to open popup:', err));
-        }
-      });
+      // Only open popup when not in sidebar context
+      if (!isSidebarMsg) {
+        chrome.action.openPopup().catch(err => console.error('Failed to open popup:', err));
+      }
     });
   }
   // Handle token buy button clicks from content script
@@ -129,20 +128,12 @@ chrome.runtime.onMessage.addListener((message: any, sender, sendResponse) => {
 
         // Store the last buy token for UI
         chrome.storage.local.set({ lastBuyToken: JSON.stringify(token) });
-        // Determine side panel open state for this window
-        let panelOpen = false;
-        try {
-          const tabInfo = await new Promise<chrome.tabs.Tab>(resolve =>
-            chrome.tabs.get(targetTabId, resolve)
-          );
-          panelOpen = sidePanelOpenWindows.has(tabInfo.windowId);
-        } catch (err) {
-          console.error('Failed to get tab info for side panel check:', err);
-        }
+        // Determine context from content script flag
+        const isSidebarMsg = message.isSidebar === true;
         // Notify UI to show swap page in correct context
-        chrome.runtime.sendMessage({ type: 'SHOW_SWAP', token, isSidebar: panelOpen });
-        // If side panel is open, update it; else open popup
-        if (panelOpen) {
+        chrome.runtime.sendMessage({ type: 'SHOW_SWAP', token, isSidebar: isSidebarMsg });
+        // If the sidebar UI is active, update it; otherwise open the popup
+        if (isSidebarMsg) {
           try {
             await (chrome as any).sidePanel.setOptions({ tabId: targetTabId, path: 'sidebar.html', enabled: true });
           } catch (err) {
