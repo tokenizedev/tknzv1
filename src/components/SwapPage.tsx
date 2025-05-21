@@ -186,43 +186,34 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, 
         }
       })();
     }
-    // Output token override
-    if (initialToMint && !initialToMintHandled) {
+    // Output token override (run on any initialToMint change)
+    if (initialToMint) {
       console.log('[SwapPage] initialToMint override start:', { initialToMint, tokenListLength: tokenList.length });
-      setInitialToMintHandled(true);
       (async () => {
         const { blocklist = [] } = await storage.get('blocklist');
-        console.log('[SwapPage] blocklist:', blocklist);
         if (blocklist.includes(initialToMint)) {
-          console.log('[SwapPage] initialToMint is blocklisted:', initialToMint);
           setWarningMessage('The selected token is blocked.');
           setTimeout(() => setWarningMessage(null), 5000);
           return;
         }
-        let rawTo = tokenList.find(tok => tok.address === initialToMint);
-        if (!rawTo) {
-          rawTo = tokenList.find(tok => tok.symbol.toLowerCase() === initialToMint.toLowerCase());
-        }
+        let rawTo = tokenList.find(tok => tok.address === initialToMint)
+                   || tokenList.find(tok => tok.symbol.toLowerCase() === initialToMint.toLowerCase());
         if (rawTo) {
-          console.log('[SwapPage] initialToMint selected from tokenList:', rawTo);
           setToToken({ id: rawTo.address, symbol: rawTo.symbol, name: rawTo.name, logoURI: rawTo.logoURI, decimals: rawTo.decimals });
           return;
         }
         if (initialToMint.length >= 32) {
-          console.log('[SwapPage] initialToMint not in tokenList, fetching via getTokenInfo:', initialToMint);
           try {
             const data = await getTokenInfo(initialToMint);
-            console.log('[SwapPage] getTokenInfo success for initialToMint:', data);
             setToToken({ id: data.address, symbol: data.symbol, name: data.name, logoURI: data.logoURI, decimals: data.decimals });
-          } catch (err) {
-            console.error('[SwapPage] getTokenInfo failed for initialToMint:', initialToMint, err);
+          } catch (_err) {
             setWarningMessage('The selected token is currently unsupported.');
             setTimeout(() => setWarningMessage(null), 5000);
           }
         }
       })();
     }
-  }, [initialMint, initialToMint, initialMintHandled, initialToMintHandled, tokenList]);
+  }, [initialMint, initialToMint, initialMintHandled, tokenList]);
 
   // Amount states
   const [fromAmount, setFromAmount] = useState('');
