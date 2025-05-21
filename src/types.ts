@@ -132,6 +132,12 @@ export interface WalletState {
      * Clear any preview transaction data without executing
      */
     clearPreviewCreateCoin: () => void;
+    /** Parameters for SDK token create, used to pre-populate form fields */
+    initialTokenCreateParams: Partial<CoinCreationParams> | null;
+    /** Set initial parameters for SDK token create prefill */
+    setInitialTokenCreateParams: (params: Partial<CoinCreationParams>) => void;
+    /** Clear initial SDK token create parameters */
+    clearInitialTokenCreateParams: () => void;
     getArticleData: () => Promise<ArticleData>;
     getTokenCreationData: (article: ArticleData, level: number) => Promise<TokenCreationData>;
     checkVersion: () => Promise<void>;
