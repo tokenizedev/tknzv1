@@ -93,6 +93,12 @@ export const useStore = create<WalletState>((set, get) => ({
   createdCoins: [],
   isRefreshing: false,
   investmentAmount: 0,
+  // Initial parameters for SDK token creation, used to pre-populate form fields
+  initialTokenCreateParams: null,
+  // Set initial token creation parameters
+  setInitialTokenCreateParams: (params: Partial<CoinCreationParams>) => set({ initialTokenCreateParams: params }),
+  // Clear initial token creation parameters
+  clearInitialTokenCreateParams: () => set({ initialTokenCreateParams: null }),
   isLatestVersion: true,
   updateAvailable: null,
   migrationStatus: 'idle',

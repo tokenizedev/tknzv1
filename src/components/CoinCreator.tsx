@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Image, Type, FileText, Send, Loader2, AlertCircle, Globe, Sparkles, DollarSign, Hand as BrandX, GitBranch as BrandTelegram, Terminal, Zap, Target, X, Upload, ChevronLeft, ChevronRight, CheckCircle, Copy, ExternalLink, Hash } from 'lucide-react';
 import { useStore } from '../store';
-import { TerminalLoader } from './TerminalLoader';
+import type { CoinCreationParams } from '../types';
 import { VersionBadge } from './VersionBadge';
 import { Loader } from './Loader';
 import { InsufficientFundsModal } from './InsufficientFundsModal';
@@ -19,7 +19,6 @@ interface ArticleData {
 }
 
 const DEV_MODE = process.env.NODE_ENV === 'development' && !chrome?.tabs;
-const version = import.meta.env.VITE_APP_VERSION || '0.0.0';
 
 const MOCK_ARTICLE_DATA: ArticleData = {
   title: "Bitcoin Reaches New All-Time High",
@@ -34,6 +33,8 @@ const MOCK_ARTICLE_DATA: ArticleData = {
 
 interface CoinCreatorProps {
   isSidebar?: boolean;
+  /** SDK initialization options for pre-filling the form */
+  sdkOptions?: Partial<CoinCreationParams>;
   onCreationStart?: (innerHandleSubmit: () => Promise<void>) => Promise<void>;
   onCreationComplete?: (coinAddress: string) => void;
   onCreationError?: (errorMessage: string) => void;
@@ -200,15 +201,19 @@ const carouselAnimationStyles = `
 
 export const CoinCreator: React.FC<CoinCreatorProps> = ({ 
   isSidebar = false, 
+  sdkOptions,
   onCreationStart, 
   onCreationComplete,
   onCreationError
 }) => {
+  // Combine SDK options and store-initialized params
+  const initialParams = useStore(state => state.initialTokenCreateParams);
+  const clearInitialParams = useStore(state => state.clearInitialTokenCreateParams);
+  const sdkParams = sdkOptions ?? initialParams;
   /**
    * Handles the Preview Confirm button click: invokes wrapper or local flow.
    */
   const handleConfirm = async () => {
-    console.log('handleConfirm called');
     if (isCreating || isDeployTransitioning) return;
     
     setIsDeployTransitioning(true);
@@ -222,28 +227,23 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
     
     // core confirmation logic
     const confirmCallback = async () => {
-      console.log('confirmCallback called');
       try {
         const res = await confirmPreviewCreateCoin();
         setCreatedCoin(res);
         if (onCreationComplete) {
-          console.log('Calling onCreationComplete', res.address);
           onCreationComplete(res.address);
         }
       } catch (err) {
         handleError(err);
       } finally {
-        console.log('Setting isCreating to false');
         setIsCreating(false);
       }
     };
     
     try {
       if (onCreationStart) {
-        console.log('Calling onCreationStart');
         await onCreationStart(confirmCallback);
       } else {
-        console.log('Calling confirmCallback directly');
         await confirmCallback();
       }
     } catch (err: any) {
@@ -254,22 +254,18 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   // New helper function to handle errors consistently
   const handleError = (err: any) => {
     // extract detailed logs if available
-    console.log('Error in handleConfirm', err);
     let msg = err instanceof Error ? err.message : String(err);
     try {
       if (typeof err.getLogs === 'function') {
-        console.log('err.getLogs is a function');
         const logs: string[] = err.getLogs();
         msg += '\n' + logs.join('\n');
       } else if (Array.isArray(err.logs)) {
-        console.log('err.logs', err.logs);
         msg += '\n' + err.logs.join('\n');
       }
     } catch {}
     
     setError(msg);
     if (onCreationError) {
-      console.error('Calling onCreationError', msg);
       if (msg.includes('Transfer: insufficient lamports')) {
         onCreationError('Insufficient SOL balance');
       } else {
@@ -322,6 +318,23 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   // const refreshPortfolioData = useStore(state => state.refreshPortfolioData); // duplicate, already declared above
   const [isPreviewing, setIsPreviewing] = useState(false);
   const refreshPortfolioData = useStore(state => state.refreshPortfolioData);
+  // Already combined above: sdkParams includes sdkOptions or store.initialTokenCreateParams
+
+  // Pre-populate form if SDK params are provided
+  useEffect(() => {
+    if (!sdkParams) return;
+    if (sdkParams.name) setCoinName(sdkParams.name);
+    if (sdkParams.ticker) setTicker(sdkParams.ticker);
+    if (sdkParams.description) setDescription(sdkParams.description);
+    if (sdkParams.imageUrl) { setImageUrl(sdkParams.imageUrl); setImageFile(null); }
+    if (sdkParams.websiteUrl) setWebsiteUrl(sdkParams.websiteUrl);
+    if (sdkParams.twitter) setXUrl(sdkParams.twitter);
+    if (sdkParams.telegram) setTelegramUrl(sdkParams.telegram);
+    if (sdkParams.investmentAmount != null) setInvestmentAmount(sdkParams.investmentAmount);
+    // Clear store-based params if any
+    clearInitialParams();
+  }, [sdkParams, clearInitialParams]);
+
   const [articleData, setArticleData] = useState<ArticleData>({
     title: '',
     primaryImage: '',
@@ -442,8 +455,8 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
       isXPost: data.isXPost || false
     };
   };
-
-  const requiredBalance = investmentAmount + 0.03;
+  const PUMP_FEE = 0.03;
+  const requiredBalance = investmentAmount + PUMP_FEE;
 
   // Progress animation effect for the terminal loading
   useEffect(() => {
@@ -483,6 +496,11 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   };
 
   const generateSuggestions = async (article: ArticleData, level = memeLevel) => {
+    // Skip AI suggestion generation when initialized via SDK params or SDK options
+    if (sdkParams) {
+      setIsGenerating(false);
+      return;
+    }
     setIsGenerating(true);
     setError(null);
     try {
@@ -539,6 +557,11 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   };
 
   useEffect(() => {
+    // If SDK params are provided, skip AI suggestion/extraction on mount
+    if (sdkParams) {
+      setIsLoading(false);
+      return;
+    }
     const getArticleData = async () => {
       try {
         setError(null);
@@ -581,7 +604,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
       setError('An unexpected error occurred. Please try again.');
       setIsLoading(false);
     });
-  }, []);
+  }, [sdkParams]);
   // Subscribe to active tab changes in side panel to re-fetch article data
   useEffect(() => {
     // Only in side panel environment
@@ -657,50 +680,6 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
     chrome.storage.onChanged.addListener(handleStorageChange);
     return () => chrome.storage.onChanged.removeListener(handleStorageChange);
   }, [isSidebar]);
-  
-  const innerHandleSubmit = async () => {
-    setIsCreating(true);
-    
-    setError(null);
-
-    try {
-      // Prepare parameters, supporting either a URL or local file blob
-      const params: any = {
-        name: coinName,
-        ticker: ticker,
-        description: description,
-        websiteUrl: websiteUrl,
-        twitter: xUrl,
-        telegram: telegramUrl,
-        investmentAmount: investmentAmount
-      };
-      
-      if (imageFile) {
-        params.imageFile = imageFile;
-      } else {
-        params.imageUrl = imageUrl;
-      }
-
-      // Create the coin and add it to the store (createCoin already persists it)
-      const response = await useStore.getState().createCoinRemote(params);
-
-      setCreatedCoin(response);
-
-      // Notify parent component that creation is complete
-      if (onCreationComplete) {
-        onCreationComplete(response.address);
-      }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to create coin';
-      setError(`Failed to create coin: ${errorMessage}`);
-      if (onCreationError) {
-        onCreationError(errorMessage);
-      }
-      setIsCreating(false);
-    } finally {
-      setIsCreating(false);
-    }
-  }
   // Build parameters object from form state
   const buildParams = () => {
     const params: any = {

@@ -47,10 +47,10 @@ export async function getCreatedCoins(walletAddress: string): Promise<CreatedCoi
     querySnapshot.forEach((doc) => {
       const data = doc.data();
       // Convert Firestore Timestamp to JS Date if it exists
-      const createdAt = data.createdAt instanceof Timestamp 
-                        ? data.createdAt.toDate() 
+      const createdAt = data.createdAt instanceof Timestamp
+                        ? data.createdAt.toDate()
                         : data.createdAt; // Keep as is if already Date or undefined
-                        
+
       coins.push({
         ...(data as Omit<CreatedCoin, 'createdAt'>), // Assert base type
         createdAt: createdAt // Add potentially converted date
@@ -66,7 +66,7 @@ export async function getCreatedCoins(walletAddress: string): Promise<CreatedCoi
   } catch (error) {
     console.error('Error fetching created coins from Firestore:', error);
     // Return empty array or re-throw, depending on desired error handling
-    return []; 
+    return [];
   }
 }
 /**
@@ -87,6 +87,7 @@ export async function getAllCreatedCoins(): Promise<CreatedCoin[]> {
         createdAt,
       });
     });
+
     // Sort by creation time descending
     coins.sort((a, b) => {
       const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
@@ -123,17 +124,17 @@ export async function addCreatedCoinToFirestore(walletAddress: string, coin: Cre
  * @returns Promise with download URL
  */
 export const uploadImageToFirebase = async (
-  file: File, 
+  file: File,
   onProgress: (progress: number) => void
 ): Promise<string> => {
   try {
     // Create a unique file name
     const fileName = `token_images/${uuidv4()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
     const storageRef = ref(storage, fileName);
-    
+
     // Start upload with progress tracking
     const uploadTask = uploadBytesResumable(storageRef, file);
-    
+
     return new Promise((resolve, reject) => {
       uploadTask.on(
         "state_changed",
@@ -173,7 +174,7 @@ export async function getLaunchedTokenEvents(walletAddress: string): Promise<any
   try {
     const eventsRef = collection(db, 'events');
     const q = query(
-      eventsRef, 
+      eventsRef,
       where('walletAddress', '==', walletAddress),
       where('eventName', '==', 'token_launched')
     );
@@ -185,8 +186,8 @@ export async function getLaunchedTokenEvents(walletAddress: string): Promise<any
     return events;
   } catch (error) {
     console.error('Error fetching token_launched events from Firestore:', error);
-    return []; 
+    return [];
   }
 }
 
-export default storage; 
+export default storage;

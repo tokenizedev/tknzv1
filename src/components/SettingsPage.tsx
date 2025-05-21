@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Lock, Key, Shield, RefreshCw, Check, X, Plus, Trash2, LogIn, ShoppingCart } from 'lucide-react';
+import { ArrowLeft, Lock, Key, Shield, RefreshCw, Check, X, Plus, Trash2, LogIn, ShoppingCart, Ban, CheckCircle, Filter, Eye } from 'lucide-react';
+import { FaSync } from 'react-icons/fa';
 import { storage } from '../utils/storage';
 import { ExchangeSelector } from './ExchangeSelector'
 
@@ -14,7 +15,7 @@ interface SettingsPageProps {
 }
 
 export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
-  const [activeSection, setActiveSection] = useState<'password' | 'buy' | 'passkey' | null>(null);
+  const [activeSection, setActiveSection] = useState<'password' | 'tokenDetection' | 'passkey' | 'blackwhite' | 'validation' | null>(null);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -29,16 +30,23 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
   const [legacyPasskeyId, setLegacyPasskeyId] = useState<string>('');
   const [legacyMigrationName, setLegacyMigrationName] = useState('Primary Passkey');
   const [migrationLoading, setMigrationLoading] = useState(false);
-  // Buy button feature toggle
+  // Token detection feature toggles
   const [buyEnabled, setBuyEnabled] = useState<boolean>(true);
-  
+  const [floatingScanButtonEnabled, setFloatingScanButtonEnabled] = useState<boolean>(true);
+  // Token validation feature toggle
+  const [validationEnabled, setValidationEnabled] = useState<boolean>(true);
+  const [blocklist, setBlocklist] = useState<string[]>([]);
+  const [allowlist, setAllowlist] = useState<string[]>([]);
+  const [blocklistInput, setBlocklistInput] = useState('');
+  const [allowlistInput, setAllowlistInput] = useState('');
+
   // Check if WebAuthn is supported on this device/browser
   useEffect(() => {
     setIsWebAuthnSupported(
-      window.PublicKeyCredential !== undefined && 
+      window.PublicKeyCredential !== undefined &&
       typeof window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === 'function'
     );
-    
+
     // Load existing passkey credentials
     const loadPasskeys = async () => {
       try {
@@ -49,7 +57,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
           setHasLegacyPasskey(true);
           setLegacyPasskeyId(id);
         }
-        
+
         // Check for new passkey credentials
         const { passkeyCredentials } = await storage.get('passkeyCredentials');
         if (passkeyCredentials) {
@@ -60,42 +68,61 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
         setCredentials([]);
       }
     };
-    
+
     loadPasskeys();
   }, []);
-  // Load buy button setting
+  // Load token validation setting
   useEffect(() => {
     (async () => {
       try {
-        const res = await storage.get('buyModeEnabled');
-        const enabled = res.buyModeEnabled;
-        setBuyEnabled(enabled === undefined ? true : enabled);
+        const res = await storage.get('validationEnabled');
+        const enabled = res.validationEnabled;
+        setValidationEnabled(enabled === undefined ? true : enabled);
       } catch (err) {
-        console.error('Failed to load buy mode setting:', err);
-        setBuyEnabled(true);
+        console.error('Failed to load validation setting:', err);
+        setValidationEnabled(true);
       }
     })();
   }, []);
-  
+  // Load token detection settings
+  useEffect(() => {
+    (async () => {
+      try {
+        // Get settings from storage
+        const res = await storage.get('buyModeEnabled');
+        const resScan = await storage.get('floatingScanButtonEnabled');
+        const buyEnabled = res.buyModeEnabled;
+        const floatingEnabled = resScan.floatingScanButtonEnabled;
+        
+        setBuyEnabled(buyEnabled === undefined ? true : buyEnabled);
+        setFloatingScanButtonEnabled(floatingEnabled === undefined ? true : floatingEnabled);
+      } catch (err) {
+        console.error('Failed to load button settings:', err);
+        setBuyEnabled(true);
+        setFloatingScanButtonEnabled(true);
+      }
+    })();
+  }, []);
+
   // Handle password change
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
-    
+
     if (newPassword !== confirmPassword) {
       setError('New passwords do not match');
       return;
     }
-    
+
     if (newPassword.length < 8) {
       setError('Password must be at least 8 characters long');
       return;
     }
-    
+
     try {
       setLoading(true);
-      
+
       // Verify current password
       const { walletPasswordHash } = await storage.get('walletPasswordHash');
       const currentHashed = await crypto.subtle.digest(
@@ -105,13 +132,13 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
       const currentHashedHex = Array.from(new Uint8Array(currentHashed))
         .map(b => b.toString(16).padStart(2, '0'))
         .join('');
-        
+
       if (currentHashedHex !== walletPasswordHash) {
         setError('Current password is incorrect');
         setLoading(false);
         return;
       }
-      
+
       // Hash new password
       const newHashed = await crypto.subtle.digest(
         'SHA-256',
@@ -120,10 +147,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
       const newHashedHex = Array.from(new Uint8Array(newHashed))
         .map(b => b.toString(16).padStart(2, '0'))
         .join('');
-      
+
       // Save new password hash
       await storage.set({ walletPasswordHash: newHashedHex });
-      
+
       setSuccess('Password updated successfully');
       setCurrentPassword('');
       setNewPassword('');
@@ -136,7 +163,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
       setLoading(false);
     }
   };
-  
+
   // Reset form state when closing a section
   const handleCloseSection = () => {
     setActiveSection(null);
@@ -153,20 +180,20 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
       setError('Please enter a name for your passkey');
       return;
     }
-    
+
     setPasskeyLoading(true);
     setError('');
-    
+
     try {
       // Generate user ID - here we're using current timestamp for simplicity
       const userId = new Uint8Array(8);
       const timestamp = Date.now();
       new DataView(userId.buffer).setBigUint64(0, BigInt(timestamp), false);
-      
+
       // Challenge should be a random value, using a random array here
       const challenge = new Uint8Array(32);
       window.crypto.getRandomValues(challenge);
-      
+
       // Create publicKey credential request options
       const publicKeyCredentialCreationOptions: PublicKeyCredentialCreationOptions = {
         challenge,
@@ -192,35 +219,35 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
           requireResidentKey: true
         }
       };
-      
+
       // Create credential
       const credential = await navigator.credentials.create({
         publicKey: publicKeyCredentialCreationOptions
       }) as PublicKeyCredential;
-      
+
       if (!credential) {
         throw new Error('Failed to create credential');
       }
-      
+
       // Extract credential ID
       const credentialId = btoa(
         String.fromCharCode(...new Uint8Array(credential.rawId))
       );
-      
+
       // Save credential info
       const newCredential: PasskeyCredential = {
         id: credentialId,
         name: passkeyName,
         createdAt: Date.now()
       };
-      
+
       // Add to existing credentials
       const updatedCredentials = [...credentials, newCredential];
       setCredentials(updatedCredentials);
-      
+
       // Save to storage
       await storage.set({ passkeyCredentials: updatedCredentials });
-      
+
       setSuccess('Passkey successfully registered');
       setPasskeyName('');
     } catch (err) {
@@ -230,19 +257,19 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
       setPasskeyLoading(false);
     }
   };
-  
+
   // Delete a passkey
   const deletePasskey = async (credentialId: string) => {
     try {
       setPasskeyLoading(true);
-      
+
       // Filter out the credential to delete
       const updatedCredentials = credentials.filter(cred => cred.id !== credentialId);
-      
+
       // Update state and storage
       setCredentials(updatedCredentials);
       await storage.set({ passkeyCredentials: updatedCredentials });
-      
+
       setSuccess('Passkey removed successfully');
     } catch (err) {
       console.error('Error removing passkey:', err);
@@ -263,38 +290,38 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
       setError('Please enter a name for the migrated passkey');
       return;
     }
-    
+
     setMigrationLoading(true);
     setError('');
-    
+
     try {
       // Fetch the user ID from storage
       const resUser = await storage.get('walletPasskeyUserId');
       const userId = resUser.walletPasskeyUserId;
-      
+
       if (!userId) {
         throw new Error('Legacy passkey is missing user ID');
       }
-      
+
       // Create new passkey credential entry
       const newCredential: PasskeyCredential = {
         id: legacyPasskeyId,
         name: legacyMigrationName,
         createdAt: Date.now()
       };
-      
+
       // Add the legacy passkey to the credentials array
       const updatedCredentials = [...credentials, newCredential];
       setCredentials(updatedCredentials);
-      
+
       // Save to storage
       await storage.set({ passkeyCredentials: updatedCredentials });
-      
+
       // Mark migration as complete
       setHasLegacyPasskey(false);
       setLegacyPasskeyId('');
       setLegacyMigrationName('');
-      
+
       setSuccess('Legacy passkey successfully migrated');
     } catch (err) {
       console.error('Error migrating legacy passkey:', err);
@@ -303,7 +330,69 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
       setMigrationLoading(false);
     }
   };
-  
+
+  useEffect(() => {
+    const loadLists = async () => {
+      try {
+        const { blocklist } = await storage.get('blocklist');
+        const { allowlist } = await storage.get('allowlist');
+
+        setBlocklist(Array.isArray(blocklist) ? blocklist : []);
+        setAllowlist(Array.isArray(allowlist) ? allowlist : []);
+      } catch {
+        setBlocklist([]);
+        setAllowlist([]);
+      }
+    };
+
+    loadLists();
+  }, []);
+
+  const addblocklist = async () => {
+    if (!blocklistInput.trim() || blocklist.includes(blocklistInput.trim())) return;
+    const updated = [...blocklist, blocklistInput.trim()];
+    setBlocklist(updated);
+    setBlocklistInput('');
+    await storage.set({ blocklist: updated });
+  };
+
+  const removeblocklist = async (entry: string) => {
+    const updated = blocklist.filter(e => e !== entry);
+    setBlocklist(updated);
+    await storage.set({ blocklist: updated });
+  };
+
+  const addallowlist = async () => {
+    if (!allowlistInput.trim() || allowlist.includes(allowlistInput.trim())) return;
+    const updated = [...allowlist, allowlistInput.trim()];
+    setAllowlist(updated);
+    setAllowlistInput('');
+    await storage.set({ allowlist: updated });
+  };
+
+  const removeallowlist = async (entry: string) => {
+    const updated = allowlist.filter(e => e !== entry);
+    setAllowlist(updated);
+    await storage.set({ allowlist: updated });
+  };
+
+  // Manual scan trigger for buy button injection
+  const manualScan = () => {
+    if (window.chrome?.tabs?.query) {
+      window.chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        const tabId = tabs[0]?.id;
+        if (tabId !== undefined) {
+          window.chrome.tabs.sendMessage(tabId, { type: 'MANUAL_SCAN' });
+          setSuccess('Page scan triggered successfully');
+          setTimeout(() => setSuccess(''), 3000);
+        }
+      });
+    } else {
+      setError('Browser API not available');
+      setTimeout(() => setError(''), 3000);
+    }
+  };
+
   return (
     <div className="h-full bg-cyber-black overflow-y-auto pb-20">
       {/* Header */}
@@ -319,7 +408,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
           GLOBAL SETTINGS
         </h1>
       </div>
-      
+
       <div className="p-4 space-y-4">
         {/* Success message */}
         {success && (
@@ -328,7 +417,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
             <span>{success}</span>
           </div>
         )}
-        
+
         {/* Error message */}
         {error && (
           <div className="bg-cyber-orange/10 border border-cyber-orange/50 p-3 rounded-sm text-cyber-orange font-terminal text-sm mb-4 flex items-start">
@@ -339,7 +428,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
 
         {/* Password Management Section */}
         <div className="border border-cyber-green/30 rounded-sm overflow-hidden">
-          <div 
+          <div
             className={`p-4 bg-gradient-to-r from-cyber-black to-cyber-black/80 ${activeSection === 'password' ? 'border-b border-cyber-green/30' : ''}`}
             onClick={() => activeSection !== 'password' ? setActiveSection('password') : null}
           >
@@ -356,7 +445,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
             </div>
             <p className="text-cyber-green/70 text-sm mt-1 ml-8">Update your wallet password</p>
           </div>
-          
+
           {activeSection === 'password' && (
             <div className="p-4 bg-cyber-black/50 animate-slide-down">
               <form onSubmit={handlePasswordChange} className="space-y-4">
@@ -370,7 +459,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
                     required
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-cyber-green/80 text-xs font-terminal mb-1">New Password</label>
                   <input
@@ -382,7 +471,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
                     minLength={8}
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-cyber-green/80 text-xs font-terminal mb-1">Confirm New Password</label>
                   <input
@@ -393,7 +482,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
                     required
                   />
                 </div>
-                
+
                 <div className="flex space-x-2 pt-2">
                   <button
                     type="submit"
@@ -421,48 +510,173 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
             </div>
           )}
         </div>
-        
-        {/* Buy Button Feature Section */}
+
+        {/* Token Detection Feature Section (Combined) */}
         <div className="border border-cyber-green/30 rounded-sm overflow-hidden">
           <div
-            className={`p-4 bg-gradient-to-r from-cyber-black to-cyber-black/80 ${activeSection === 'buy' ? 'border-b border-cyber-green/30' : ''}`}
-            onClick={() => activeSection !== 'buy' ? setActiveSection('buy') : null}
+            className={`p-4 bg-gradient-to-r from-cyber-black to-cyber-black/80 ${activeSection === 'tokenDetection' ? 'border-b border-cyber-green/30' : ''}`}
+            onClick={() => activeSection !== 'tokenDetection' ? setActiveSection('tokenDetection') : null}
           >
             <div className="flex items-center justify-between">
-              <ShoppingCart className="w-5 h-5 mr-3 text-cyber-green" />
-              <h2 className="text-cyber-green font-terminal">Buy Button Feature</h2>
-              {activeSection !== 'buy' && (
+              <div className="flex items-center">
+                <Eye className="w-5 h-5 mr-3 text-cyber-green" />
+                <h2 className="text-cyber-green font-terminal">Token Detection</h2>
+              </div>
+              {activeSection !== 'tokenDetection' && (
                 <button className="text-cyber-green border border-cyber-green/50 px-2 py-1 rounded-sm text-xs font-terminal hover:bg-cyber-green/10 transition-colors">
                   SETTINGS
                 </button>
               )}
             </div>
-            <p className="text-cyber-green/70 text-sm mt-1 ml-8">Enable or disable on-page Buy buttons</p>
+            <p className="text-cyber-green/70 text-sm mt-1 ml-8">Configure token detection and buy button features</p>
           </div>
-          {activeSection === 'buy' && (
+          
+          {activeSection === 'tokenDetection' && (
+            <div className="p-4 bg-cyber-black/50 animate-slide-down space-y-5">
+              {/* Main Buy Button Toggle */}
+              <div className="space-y-2 border-b border-cyber-green/10 pb-4">
+                <h3 className="text-cyber-green/90 text-sm font-terminal flex items-center">
+                  <ShoppingCart className="w-4 h-4 mr-2" />
+                  Buy Button Feature
+                </h3>
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    className="form-checkbox h-4 w-4 text-cyber-green bg-cyber-black border border-cyber-green/50 rounded"
+                    checked={buyEnabled}
+                    onChange={e => {
+                      const enabled = e.target.checked;
+                      setBuyEnabled(enabled);
+                      storage.set({ buyModeEnabled: enabled });
+                      
+                      // If disabling buy buttons, also disable floating scan button
+                      if (!enabled && floatingScanButtonEnabled) {
+                        setFloatingScanButtonEnabled(false);
+                        storage.set({ floatingScanButtonEnabled: false });
+                      }
+                    }}
+                  />
+                  <span className="text-cyber-green text-sm font-terminal">Enable Buy Buttons on Webpages</span>
+                </label>
+                <p className="text-cyber-green/50 text-xs font-terminal ml-6">
+                  Adds "Buy with TKNZ" buttons next to token addresses and cashtags on web pages.
+                </p>
+              </div>
+
+              {/* Scan Button Controls */}
+              <div className="space-y-4 pt-1 border-b border-cyber-green/10 pb-4">
+                <h3 className={`text-cyber-green/90 text-sm font-terminal flex items-center ${!buyEnabled ? 'opacity-50' : ''}`}>
+                  <FaSync className="w-4 h-4 mr-2" />
+                  Scan Controls
+                </h3>
+                
+                {/* Floating Button Toggle */}
+                <div className="space-y-1">
+                  <label className={`flex items-center space-x-2 ${!buyEnabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
+                    <input
+                      type="checkbox"
+                      className={`form-checkbox h-4 w-4 bg-cyber-black border rounded ${buyEnabled ? 'text-cyber-green border-cyber-green/50' : 'text-cyber-green/30 border-cyber-green/20'}`}
+                      checked={floatingScanButtonEnabled}
+                      onChange={e => {
+                        if (!buyEnabled) return; // Prevent changes when main toggle is off
+                        const enabled = e.target.checked;
+                        setFloatingScanButtonEnabled(enabled);
+                        storage.set({ floatingScanButtonEnabled: enabled });
+                      }}
+                      disabled={!buyEnabled}
+                    />
+                    <span className={`text-cyber-green text-sm font-terminal ${!buyEnabled ? 'text-cyber-green/50' : ''}`}>
+                      Show floating scan button on webpages
+                    </span>
+                  </label>
+                  <p className={`text-cyber-green/50 text-xs font-terminal ml-6 ${!buyEnabled ? 'opacity-50' : ''}`}>
+                    Adds a draggable scan button to webpages for quick access. The button will reposition itself to stay visible.
+                  </p>
+                </div>
+                
+                {/* Manual Scan Button */}
+                <div className="mt-2 pt-2">
+                  <p className={`text-cyber-green/80 text-sm font-terminal mb-2 ${!buyEnabled ? 'opacity-50' : ''}`}>
+                    Manually scan the current webpage to detect token addresses and symbols.
+                  </p>
+                  
+                  <button
+                    onClick={manualScan}
+                    disabled={!buyEnabled}
+                    className={`w-full border p-3 rounded-sm font-terminal text-sm transition-colors flex items-center justify-center ${
+                      buyEnabled 
+                        ? 'bg-cyber-green/20 border-cyber-green text-cyber-green hover:bg-cyber-green/30' 
+                        : 'bg-cyber-green/5 border-cyber-green/20 text-cyber-green/40 cursor-not-allowed'
+                    }`}
+                  >
+                    <FaSync className="w-4 h-4 mr-2" />
+                    SCAN CURRENT PAGE
+                  </button>
+                </div>
+              </div>
+              
+              <p className="text-cyber-green/50 text-xs font-terminal italic">
+                Note: Changes to some settings may require page refresh to take effect.
+                {!buyEnabled && (
+                  <span className="block mt-1 text-cyber-orange/70">
+                    Enable Buy Buttons to access scanning features.
+                  </span>
+                )}
+              </p>
+              
+              <button
+                type="button"
+                onClick={handleCloseSection}
+                className="w-full mt-2 border border-cyber-green/30 text-cyber-green p-2 rounded-sm hover:bg-cyber-green/10 transition-colors font-terminal text-sm"
+              >
+                CLOSE
+              </button>
+            </div>
+          )}
+        </div>
+        
+        {/* Token Validation Section */}
+        <div className="border border-cyber-green/30 rounded-sm overflow-hidden">
+          <div
+            className={`p-4 bg-gradient-to-r from-cyber-black to-cyber-black/80 ${activeSection === 'validation' ? 'border-b border-cyber-green/30' : ''}`}
+            onClick={() => activeSection !== 'validation' ? setActiveSection('validation') : null}
+          >
+            <div className="flex items-center justify-between">
+              <Filter className="w-5 h-5 mr-3 text-cyber-green" />
+              <h2 className="text-cyber-green font-terminal">Token Validation</h2>
+              {activeSection !== 'validation' && (
+                <button className="text-cyber-green border border-cyber-green/50 px-2 py-1 rounded-sm text-xs font-terminal hover:bg-cyber-green/10 transition-colors">
+                  SETTINGS
+                </button>
+              )}
+            </div>
+            <p className="text-cyber-green/70 text-sm mt-1 ml-8">Enable or disable token validation</p>
+          </div>
+          {activeSection === 'validation' && (
             <div className="p-4 bg-cyber-black/50 animate-slide-down space-y-2">
               <label className="flex items-center space-x-2">
                 <input
                   type="checkbox"
                   className="form-checkbox h-4 w-4 text-cyber-green bg-cyber-black border border-cyber-green/50 rounded"
-                  checked={buyEnabled}
+                  checked={validationEnabled}
                   onChange={e => {
                     const enabled = e.target.checked;
-                    setBuyEnabled(enabled);
-                    storage.set({ buyModeEnabled: enabled });
+                    setValidationEnabled(enabled);
+                    storage.set({ validationEnabled: enabled });
                   }}
                 />
-                <span className="text-cyber-green text-sm font-terminal">Enable Buy Buttons</span>
+                <span className="text-cyber-green text-sm font-terminal">Enable Token Validation</span>
               </label>
               <p className="text-cyber-green/50 text-xs font-terminal">
-                Changes will take effect after page refresh.
+                Changes will take effect immediately.
               </p>
             </div>
           )}
         </div>
+        
         {/* Passkey Management Section */}
         <div className="border border-cyber-green/30 rounded-sm overflow-hidden">
-          <div 
+          <div
             className={`p-4 bg-gradient-to-r from-cyber-black to-cyber-black/80 ${activeSection === 'passkey' ? 'border-b border-cyber-green/30' : ''}`}
             onClick={() => activeSection !== 'passkey' ? setActiveSection('passkey') : null}
           >
@@ -479,7 +693,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
             </div>
             <p className="text-cyber-green/70 text-sm mt-1 ml-8">Set up passkeys for secure authentication</p>
           </div>
-          
+
           {activeSection === 'passkey' && (
             <div className="p-4 bg-cyber-black/50 animate-slide-down">
               {!isWebAuthnSupported ? (
@@ -503,7 +717,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
                           </p>
                         </div>
                       </div>
-                      
+
                       <div className="flex items-center space-x-2">
                         <input
                           type="text"
@@ -526,7 +740,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
                       </div>
                     </div>
                   )}
-                  
+
                   {/* Registered passkeys list */}
                   <div className="space-y-2">
                     <h3 className="text-cyber-green/90 text-sm font-terminal">Registered Passkeys</h3>
@@ -537,8 +751,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
                     ) : (
                       <div className="space-y-2">
                         {credentials.map((cred) => (
-                          <div 
-                            key={cred.id} 
+                          <div
+                            key={cred.id}
                             className="flex items-center justify-between p-2 border border-cyber-green/20 rounded-sm bg-cyber-green/5"
                           >
                             <div>
@@ -560,7 +774,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
                       </div>
                     )}
                   </div>
-                  
+
                   {/* Register new passkey form */}
                   <div className="pt-2 border-t border-cyber-green/20">
                     <h3 className="text-cyber-green/90 text-sm font-terminal mb-2">Register New Passkey</h3>
@@ -593,7 +807,113 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
                   </div>
                 </div>
               )}
-              
+
+              <button
+                type="button"
+                onClick={handleCloseSection}
+                className="w-full mt-4 border border-cyber-green/30 text-cyber-green p-2 rounded-sm hover:bg-cyber-green/10 transition-colors font-terminal text-sm"
+              >
+                CLOSE
+              </button>
+            </div>
+          )}
+        </div>
+        
+        {/* blocklist & allowlist Section */}
+        <div className="border border-cyber-green/30 rounded-sm overflow-hidden">
+          <div
+            className={`p-4 bg-gradient-to-r from-cyber-black to-cyber-black/80 ${activeSection === 'blackwhite' ? 'border-b border-cyber-green/30' : ''}`}
+            onClick={() => activeSection !== 'blackwhite' ? setActiveSection('blackwhite') : null}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <Ban className="w-5 h-5 text-cyber-green" />
+                <h2 className="text-cyber-green font-terminal">Token list management</h2>
+              </div>
+              {activeSection !== 'blackwhite' && (
+                <button className="text-cyber-green border border-cyber-green/50 px-2 py-1 rounded-sm text-xs font-terminal hover:bg-cyber-green/10 transition-colors">
+                  MANAGE
+                </button>
+              )}
+            </div>
+            <p className="text-cyber-green/70 text-sm mt-1 ml-8">Manage blocklist and allowlist CA entries</p>
+          </div>
+          {activeSection === 'blackwhite' && (
+            <div className="p-4 bg-cyber-black/50 animate-slide-down space-y-6">
+              <div>
+                <h3 className="text-cyber-orange font-terminal text-sm mb-2 flex items-center"><Ban className="w-4 h-4 mr-2" />blocklist CAs </h3>
+                <div className="flex space-x-2 mb-2">
+                  <input
+                    type="text"
+                    placeholder="Add to blocklist"
+                    value={blocklistInput}
+                    onChange={e => setBlocklistInput(e.target.value)}
+                    className="flex-1 bg-cyber-black border border-cyber-orange/30 rounded-sm p-2 text-cyber-orange focus:border-cyber-orange/70 focus:outline-none focus:ring-1 focus:ring-cyber-orange/30 text-sm"
+                  />
+                  <button
+                    onClick={addblocklist}
+                    className="px-3 py-2 bg-cyber-orange/10 border border-cyber-orange/50 text-cyber-orange rounded-sm hover:bg-cyber-orange/20 transition-colors font-terminal text-sm flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={!blocklistInput.trim()}
+                  >
+                    <Plus className="w-4 h-4 mr-1" />ADD
+                  </button>
+                </div>
+                <div className="space-y-1 max-h-[200px] overflow-y-auto pr-1">
+                  {!blocklist.length ? (
+                    <p className="text-cyber-orange/60 text-xs font-terminal">No blocklist entries.</p>
+                  ) : (
+                    blocklist.map(entry => (
+                      <div key={entry} className="flex items-center justify-between p-2 border border-cyber-orange/20 rounded-sm bg-cyber-orange/5">
+                        <span className="text-cyber-orange font-terminal text-sm break-all">{entry}</span>
+                        <button
+                          onClick={() => removeblocklist(entry)}
+                          className="p-1.5 text-cyber-orange hover:bg-cyber-orange/10 rounded-sm transition-colors"
+                          title="Remove"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+              <div>
+                <h3 className="text-cyber-green font-terminal text-sm mb-2 flex items-center"><CheckCircle className="w-4 h-4 mr-2" />allowlist CAs</h3>
+                <div className="flex space-x-2 mb-2">
+                  <input
+                    type="text"
+                    placeholder="Add to allowlist"
+                    value={allowlistInput}
+                    onChange={e => setAllowlistInput(e.target.value)}
+                    className="flex-1 bg-cyber-black border border-cyber-green/30 rounded-sm p-2 text-cyber-green focus:border-cyber-green/70 focus:outline-none focus:ring-1 focus:ring-cyber-green/30 text-sm"
+                  />
+                  <button
+                    onClick={addallowlist}
+                    className="px-3 py-2 bg-cyber-green/10 border border-cyber-green/50 text-cyber-green rounded-sm hover:bg-cyber-green/20 transition-colors font-terminal text-sm flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={!allowlistInput.trim()}
+                  >
+                    <Plus className="w-4 h-4 mr-1" />ADD
+                  </button>
+                </div>
+                <div className="space-y-1 max-h-[200px] overflow-y-auto pr-1">
+                  {!allowlist.length ? (
+                    <p className="text-cyber-green/60 text-xs font-terminal">No allowlist entries.</p>
+                  ) : (
+                    allowlist.map(entry => (
+                      <div key={entry} className="flex items-center justify-between p-2 border border-cyber-green/20 rounded-sm bg-cyber-green/5">
+                        <span className="text-cyber-green font-terminal text-sm break-all">{entry}</span>
+                        <button
+                          onClick={() => removeallowlist(entry)}
+                          className="p-1.5 text-cyber-green hover:bg-cyber-green/10 rounded-sm transition-colors"
+                          title="Remove"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
               <button
                 type="button"
                 onClick={handleCloseSection}
@@ -612,4 +932,4 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
       </div>
     </div>
   );
-}; 
+};

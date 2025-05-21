@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import type { CoinCreationParams } from './types';
 import { loadVerifiedTokens } from './services/tokenService';
 import { useStore } from './store';
 import { CoinCreator } from './components/CoinCreator';
@@ -84,6 +85,8 @@ function App({ isSidebar = false }: AppProps = {}) {
   // Track specific token mints for swap: from and to
   const [selectedSwapMint, setSelectedSwapMint] = useState<string | null>(null);
   const [selectedSwapToMint, setSelectedSwapToMint] = useState<string | null>(null);
+  // SDK token creation options (for pre-populating the create form)
+  const [sdkOptions, setSdkOptions] = useState<Partial<CoinCreationParams> | null>(null);
   // Timeout for wallet unlock in milliseconds (1 hour)
   const UNLOCK_TIMEOUT = 60 * 60 * 1000;
 
@@ -409,16 +412,6 @@ function App({ isSidebar = false }: AppProps = {}) {
       // Set success state that will trigger CSS classes in render
       setCreationSuccessState('glitch');
       
-      // Add a success sound effect if desired
-      try {
-        const successSound = new Audio();
-        successSound.src = 'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA/+M4wAAAAAAAAAAAAEluZm8AAAAPAAAABQAAAkAAQEBAQEBAQEBAQEBAQEBQUFBQUFBQUFBQUFBQUFBQYGBgYGBgYGBgYGBgYGBgYHBwcHBwcHBwcHBwcHBwcHCAgICAgICAgICAgICAgICQkJCQkJCQkJCQkJCQkJCQoKCgoKCgoKCgoKCgoKCgsLCwsLCwsLCwsLCwsLCwwMDAwMDAwMDAwMDAwMDA0NDQ0NDQ0NDQ0NDQ0NDQ4ODg4ODg4ODg4ODg4ODg////////AAAAAExhdmM1OC4xMy4xMDAAAAAAAAAAAAAAAP/jOMAAAAAAAAAAAABJbmZvAAAADwAAAAUAAAJAAECAgICAgICAgICAgICAgJCQkJCQkJCQkJCQkJCQkJCQoKCgoKCgoKCgoKCgoKCgsLCwsLCwsLCwsLCwsLCwsMDAwMDAwMDAwMDAwMDAwNDQ0NDQ0NDQ0NDQ0NDQ0ODg4ODg4ODg4ODg4ODg4P///////wAAAABMYXZjNTguMTMuMTAwAAAAAAAAAAAAAAD/4zjQAAAAAAAAAAAASW5mbwAAAA8AAAAFAAACQABAgICAgICAgICAgICAgICQkJCQkJCQkJCQkJCQkJCQoKCgoKCgoKCgoKCgoKCgoLCwsLCwsLCwsLCwsLCwsLDAwMDAwMDAwMDAwMDAwMDA0NDQ0NDQ0NDQ0NDQ0NDQ4ODg4ODg4ODg4ODg4ODg////////AAAAAExhdmM1OC4xMy4xMDAAAAAAAAA=';
-        successSound.volume = 0.2;
-        successSound.play().catch(() => {});
-      } catch (e) {
-        console.log('Audio not supported');
-      }
-      
       setTimeout(() => {
         setGlitching(false);
         setCreationSuccessState('fade');
@@ -510,6 +503,16 @@ function App({ isSidebar = false }: AppProps = {}) {
         setSelectedSwapMint(DEFAULT_INPUT_MINT);
         setSelectedSwapToMint(message.token.address || message.token.symbol || null);
         setActiveView('swap');
+      }
+      // Handle SDK token create init: pre-populate and navigate to create view
+      if (message.type === 'SDK_TOKEN_CREATE' && message.options) {
+        setSdkOptions(message.options); 
+        useStore.getState().setInitialTokenCreateParams(message.options);
+        if (message.isSidebar !== isSidebar) return;
+        // Enter SDK mode and store options locally
+        
+        // Navigate to token creation view
+        navigateToTokenCreate();
       }
     };
     if (chrome?.runtime && chrome.runtime.onMessage) {
@@ -822,7 +825,9 @@ function App({ isSidebar = false }: AppProps = {}) {
               ) : (
                 /* Default token creator view */
                 <CoinCreator
+                  key={sdkOptions ? 'sdk' : 'default'}
                   isSidebar={isSidebar}
+                  sdkOptions={sdkOptions}
                   /* Trigger the creation loader modal when starting */
                   onCreationStart={handleCoinCreationStart}
                   /* Navigate to My Created Coins on successful creation */
