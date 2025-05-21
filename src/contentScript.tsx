@@ -305,6 +305,29 @@ function startSelectionMode(isSidebar: boolean) {
   });
 }
 
+window.addEventListener('message', (event) => {
+  if (event.data?.source !== 'tknz' || event.data?.type !== 'INIT_TOKEN_CREATE') return;
+
+  chrome.storage.local.get(['isSidebarMode'], ({ isSidebarMode }) => {
+    chrome.runtime.sendMessage({
+      type: 'INIT_TOKEN_CREATE',
+      options: event.data.options,
+      isSidebar: !!isSidebarMode
+    }).then((response) => {
+      if (chrome.runtime.lastError) {
+        console.error('Messaging error:', chrome.runtime.lastError.message);
+        return;
+      }
+
+      if (!response?.success) {
+        console.error('Failed: ', response.error);
+      }
+    });
+  });
+});
+
+chrome.runtime.sendMessage({ type: 'INJECT_SDK' });
+
 // Flag to track initialization
 let isInitialized = false;
 
@@ -312,7 +335,7 @@ let isInitialized = false;
 const initialize = () => {
   if (isInitialized) return;
   
-  console.log('Content script initializing...');
+  //console.log('Content script initializing...');
   
   // Set up message listener
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -332,7 +355,7 @@ const initialize = () => {
 
   // Mark as initialized
   isInitialized = true;
-  console.log('Content script initialized');
+  //console.log('Content script initialized');
 
   // Notify that content script is ready
   try {
@@ -1091,12 +1114,12 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
         chrome.runtime.sendMessage(
           { type: 'TKNZ_TOKEN_CLICKED', token, isSidebar: !!isSidebarMode }, 
           (response) => {
-            console.log('TKNZ_TOKEN_CLICKED --> response', response);
+            //console.log('TKNZ_TOKEN_CLICKED --> response', response);
             const error = chrome.runtime.lastError;
             
             // Handle error case (validation failed or token not supported)
             if (error || !response || !response.success) {
-              console.error('Token click error:', error || 'No success response');
+              //console.error('Token click error:', error || 'No success response');
               // Determine appropriate error message based on background response or runtime error
               let errorMsg = 'This token is not supported for trading. It may be unverified or restricted.';
               if (error) {
@@ -1152,7 +1175,7 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
   // Process a single text node for token mentions
   function handleTextNode(node: Node) {
     const text = node.textContent;
-    console.log('handleTextNode', text);
+    //console.log('handleTextNode', text);
     if (!text || !text.trim()) return;
     const parent = (node as Node & { parentElement?: HTMLElement }).parentElement;
     if (!parent || parent.querySelector('.tknz-buy-button')) return;
