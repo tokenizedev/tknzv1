@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.15.1](https://tokenizedev///compare/v0.15.0...v0.15.1) (2025-05-21)
+
+
+### Features
+
+* **App:** Add success sound effect when creating glitch effect ([9f43193](https://tokenizedev///commit/9f431937f03e7faffe09fe89dd7aca2acef710e0))
+* **App:** pre-populate options for SDK token creation and store them locally ([616ce51](https://tokenizedev///commit/616ce51a71f697696ea07f02d95d8cd6c5dc9b5d))
+* **README:** Added 'SDK Token Creation API' section and 'Code of Conduct' section ([d3ec8d3](https://tokenizedev///commit/d3ec8d3e55620597f1ba097666506ce580fabe14))
+
+
+### Bug Fixes
+
+* **components:** insufficientFundsModal - remove hardcoded value and use var ([1e8fac5](https://tokenizedev///commit/1e8fac5682ee074805dd7e14107bd0c252d915f7))
+
 ## [0.15.0](https://tokenizedev///compare/v0.14.0...v0.15.0) (2025-05-21)
 
 
