@@ -514,16 +514,10 @@ function App({ isSidebar = false }: AppProps = {}) {
         setSelectedSwapToMint(message.token.address || message.token.symbol || null);
         setActiveView('swap');
       }
-      console.log('=============================')
-      console.log('=============================')
-      console.log('=============================')
       // Handle SDK token create init: pre-populate and navigate to create view
       if (message.type === 'SDK_TOKEN_CREATE' && message.options) {
-        setSdkOptions(message.options);
-        
-        // Also populate store for backward compatibility (optional)
+        setSdkOptions(message.options); 
         useStore.getState().setInitialTokenCreateParams(message.options);
-
         if (message.isSidebar !== isSidebar) return;
         // Enter SDK mode and store options locally
         
