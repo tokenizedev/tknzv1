@@ -1,5 +1,6 @@
 import { getTokenInfo } from './services/jupiterService';
 import { loadAllTokens } from './services/tokenService';
+import { CoinCreationParams } from './types';
 // Background service worker
 chrome.runtime.onInstalled.addListener(() => {
   console.log('Extension installed');
@@ -30,6 +31,32 @@ if ((chrome as any).sidePanel?.onVisibilityChanged) {
       sidePanelOpenWindows.delete(windowId);
     }
   });
+}
+
+function isValidCoinCreationPayload(obj: Record<string, any>): boolean {
+  return (
+    obj &&
+    typeof obj.name === 'string' &&
+    typeof obj.ticker === 'string' &&
+    typeof obj.imageUrl === 'string' &&
+    typeof obj.description === 'string' &&
+    typeof obj.websiteUrl === 'string' &&
+    typeof obj.investmentAmount === 'number' &&
+    obj.investmentAmount > 0.03
+  );
+}
+
+function isValidForCoinCreateTrigger(obj: Record<string, any>): boolean {
+  return (
+    obj &&
+    typeof obj === 'object' &&
+    (
+      typeof obj.name === 'string' ||
+      typeof obj.ticker === 'string' ||
+      typeof obj.imageUrl === 'string' ||
+      typeof obj.description === 'string'
+    )
+  );
 }
 
 // Clean up when windows are closed
@@ -174,8 +201,80 @@ chrome.runtime.onMessage.addListener((message: any, sender, sendResponse) => {
     })();
     return true;
   }
+  // Handle SDK token create initialization from page
+  else if (message.type === 'INIT_TOKEN_CREATE') {
+    if (!isValidForCoinCreateTrigger(message.options)) {
+      console.log('invalid coin create trigger');
+      sendResponse({ success: false, reason: 'Missing or invalid required fields' });
+      return false;
+    }
+    const options = message.options || {};
+    const isSidebarMsg = message.isSidebar === true;
+    (async () => {
+      // Determine window of the tab to check side panel status
+      try {
+        chrome.storage.local.set({ initCoinData: JSON.stringify(message.options) });
+      } catch (e) {
+        console.error('Failed to populate token:', e);
+      }
+
+      chrome.runtime.sendMessage({ type: 'SDK_TOKEN_CREATE', options, isSidebar: isSidebarMsg });
+
+      if (isSidebarMsg) {
+        try {
+          await (chrome as any).sidePanel.setOptions({ tabId: targetTabId, path: 'sidebar.html', enabled: true });
+        } catch (err) {
+          console.error('Failed to update side panel:', err);
+          // Fallback: attempt to open side panel then set options
+          try {
+            await (chrome as any).sidePanel.open({ tabId: targetTabId });
+            await (chrome as any).sidePanel.setOptions({ tabId: targetTabId, path: 'sidebar.html', enabled: true });
+          } catch (err2) {
+            console.error('Fallback side panel open failed:', err2);
+            sendResponse({ success: false, reason: 'sidePanel' });
+            return;
+          }
+        }
+      } else {
+        try {
+          console.log('open popup');
+          await chrome.action.openPopup();
+        } catch (err) {
+          // Fallback: open side panel if popup fails
+          try {
+            await (chrome as any).sidePanel.open({ tabId: targetTabId });
+            await (chrome as any).sidePanel.setOptions({ tabId: targetTabId, path: 'sidebar.html', enabled: true });
+          } catch (err2) {
+            console.error('Fallback side panel open failed:', err2);
+          }
+          sendResponse({ success: false, reason: 'popup' });
+          return;
+        }
+      }
+    
+    })();
+    
+    return true;
+  }
   
   return true;
+});
+
+chrome.runtime.onMessage.addListener((message, sender) => {
+  if (message.type === 'INJECT_SDK' && sender.tab?.id) {
+    chrome.scripting.executeScript({
+      target: { tabId: sender.tab.id },
+      world: 'MAIN',
+      func: () => {
+        (window as any).tknz = {
+          initTokenCreate: (coin: Partial<CoinCreationParams>) => {
+            console.log('initTokenCreate', coin);
+            window.postMessage({ source: 'tknz', type: 'INIT_TOKEN_CREATE', options: coin });
+          }
+        }
+      }
+    });
+  }
 });
 
 // Clean up when tabs are closed
