@@ -2,6 +2,60 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.15.0](https://tokenizedev///compare/v0.14.0...v0.15.0) (2025-05-21)
+
+
+### ⚠ BREAKING CHANGES
+
+* **background:** The behavior of displaying the swap page has been modified to align with the context flag. Users may experience differences in UI presentation.
+* **contentScript:** Removed console logs for initializing and initialized messages.
+* **background:** Revised the flow for displaying the swap page based on the side panel state. This may affect current behavior related to showing content in sidebar contexts.
+* **contentScript:** Existing notification system has been replaced with a more robust and visually appealing system.
+* **content script:** This feature may affect existing custom positioning of the button, especially if relying on specific CSS styles like left, right
+* **components:** - Updated the 'activeSection' state in SettingsPage to include a new value 'scan' to support page scanning feature.
+* **components:** This feature introduces a new button for manual scan triggering, providing users with more control over the scanning process.
+* **contentScript:** Updated network tracking for improved performance
+
+### Features
+
+* Add ability to resolve token address by symbol in background service(worker) ([f27aa50](https://tokenizedev///commit/f27aa5097d91a81e6bec985d2b34a72bdd32abb8))
+* Add toggle feature for floating scan button ([64bbd1b](https://tokenizedev///commit/64bbd1b75603f58671bf908fbd961ef940e7703e))
+* **App:** add SDK token creation options and populate creating form with SDK options ([fa59be4](https://tokenizedev///commit/fa59be4511acc99a8ef5fc0b36e20580f0be16c5))
+* **App:** pre-populate form fields and navigate to create view for SDK token create init ([5a5ad58](https://tokenizedev///commit/5a5ad582c492c762decbaaf8dcf71b037874fa64))
+* **background:** add check for sidebar context in content script ([4b952e3](https://tokenizedev///commit/4b952e3e32561e2996eb3d7b7bbda42b0f730d39))
+* **background:** Add functions for validating coin creation payload and trigger ([e0f8fba](https://tokenizedev///commit/e0f8fbafa37c717ebe727581d515bc7b960bf5f1))
+* **background:** add logic for showing swap page in correct context ([622ee60](https://tokenizedev///commit/622ee604ca98fcf7623d5a38766d7b6aa08e7474))
+* **background:** Add logic to check side panel state before showing swap page ([379e681](https://tokenizedev///commit/379e6817b2d8f769b7c59c49d48ebd6e0a5e02c3))
+* **background:** implement asynchronous token click handler ([d88bdd3](https://tokenizedev///commit/d88bdd398d4787239323e6f7d88dbd0799587b52))
+* **background:** improve handling of UI context flag ([aa84056](https://tokenizedev///commit/aa84056f2af0fcf8a67754e515c61139eb2ba75c))
+* **components:** Add functionality to pre-populate form fields with initial token creation parameters ([b439804](https://tokenizedev///commit/b43980405c75ccfa91579dc146008e89988b7c7f))
+* **components:** Add manual page scanning feature ([bfabe6e](https://tokenizedev///commit/bfabe6e1233184d9b684851a5fc8080e2fe31193))
+* **components:** add manual scan trigger button ([dd4e211](https://tokenizedev///commit/dd4e2113951d00a04a5276a3ecbb84b760d8d7c7))
+* **components:** add sdkOptions prop to CoinCreator ([d2e683d](https://tokenizedev///commit/d2e683d9b872b261010394099d0df406b3eafba7))
+* **components:** Add Token Detection feature and settings ([d54289e](https://tokenizedev///commit/d54289e040cc57d73c5771d332d4dfe655f0897a))
+* **components:** retrieve settings individually from storage ([65f527e](https://tokenizedev///commit/65f527ebf893d18bd759707a849e6c2739844454))
+* **content script:** Add functionality to reposition button off-screen when needed ([e682187](https://tokenizedev///commit/e682187d8ef0eac051e72da595dcc80652c73e46))
+* **content script:** Add temporary hiding and restoring of buy buttons ([473cbc5](https://tokenizedev///commit/473cbc51c835321a311919013e78892b26622cef))
+* **contentScript:** add event listener for message and sendMessage for INIT_TOKEN_CREATE and INJECT_SDK ([2163491](https://tokenizedev///commit/2163491cc478c8428641503faa0b9ebebbfcd278))
+* **contentScript:** add floating scan button feature ([478a089](https://tokenizedev///commit/478a089a70d521c28e0c9e6f35d9480af45d640e))
+* **contentScript:** add network idle detection for content load ([68b53a1](https://tokenizedev///commit/68b53a1d991a2382a8d228374a87442a02eb7804))
+* **contentScript:** Add notification system for content script ([1c8381c](https://tokenizedev///commit/1c8381c37c45b2829759e345353505b5afdb8885))
+* **contentScript:** add smooth gliding and inertia for draggable button ([2433f74](https://tokenizedev///commit/2433f744b409fc1008095cee41639fc39510c17c))
+* **contentScript:** improve tweet data extraction and visibility ([602d57a](https://tokenizedev///commit/602d57a0687902559dd79c36a7dc0f62290ad72d))
+* Listen for manual scan trigger from extension UI ([0fcb10e](https://tokenizedev///commit/0fcb10e07169e5e3a3197dd70f3cc709593b1a35))
+* **services:** add validation switch setting and condition to skip token validation ([0c3be26](https://tokenizedev///commit/0c3be262e76df38245f44e8aafe79521167cbaa4))
+* **settings:** Add token validation feature toggle ([9c97989](https://tokenizedev///commit/9c97989dbfae78b0ae5b65b82bca9477c879e754))
+* **store:** Add initialTokenCreateParams and functions to set and clear initial token creation parameters ([#123](https://tokenizedev//null/issues/123)) ([1e0d102](https://tokenizedev///commit/1e0d102676409a15be579fe7c80964ec40e05557))
+* **SwapPage:** Remove manual scan button and FaSync icon ([9babb17](https://tokenizedev///commit/9babb1786d919d19dad2d71d9a241e812bfdc2eb))
+* **types:** Add initialTokenCreateParams, setInitialTokenCreateParams, and clearInitialTokenCreateParams to WalletState ([58833d4](https://tokenizedev///commit/58833d4f00cadc3304d9597fe7c31aa089a1e0cc))
+
+
+### Bug Fixes
+
+* **components:** Fix initialToMint handling and token selection logic ([b118f93](https://tokenizedev///commit/b118f932c6b3a18c25689706f953a4c4fa07f9a1))
+* **components:** remove unused import and constant declaration ([62c8651](https://tokenizedev///commit/62c86512f10c5d7765234bfab81c1bd357a29670))
+* **components:** update PUMP_FEE to 0.03 to calculate required balance accurately ([ee94d88](https://tokenizedev///commit/ee94d880e0171ea29dea78c721b4cd03ba17560c))
+
 ## [0.14.0](https://tokenizedev///compare/v0.13.2...v0.14.0) (2025-05-20)
 
 
