@@ -252,10 +252,20 @@ function startSelectionMode(isSidebar: boolean) {
   }
 
   const selectElement = (el: HTMLElement, isSidebar: boolean) => {
+    // Remove selection UI elements and styles
     cleanup();
-    
+    // Temporarily hide any injected buy buttons to avoid capture during extraction
+    const hideStyle = document.createElement('style');
+    hideStyle.id = 'tknz-hide-buy-buttons';
+    hideStyle.textContent = `.tknz-buy-button { display: none !important; }`;
+    document.head.appendChild(hideStyle);
+    // Restore buy buttons after a brief delay
+    setTimeout(() => {
+      const s = document.getElementById('tknz-hide-buy-buttons');
+      if (s) s.remove();
+    }, 1000);
+    // Extract the content and notify background
     extractContent(el).then(async content => {
-      // Notify background of selected content and UI context
       chrome.runtime.sendMessage({ type: 'CONTENT_SELECTED', content, isSidebar });
     });
   };
