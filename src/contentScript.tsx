@@ -176,6 +176,10 @@ function startSelectionMode(isSidebar: boolean) {
       pointer-events: none !important;
       max-width: 80% !important;
     }
+    /* Hide injected buy buttons during selection mode */
+    .tknz-buy-button {
+      display: none !important;
+    }
     @keyframes tknz-pulse {
       0% { opacity: 1; }
       50% { opacity: 0.5; }
@@ -406,33 +410,28 @@ export const extractTweetData = async (
       windowHeight: tweetContainer.offsetHeight,
       onclone: (clonedDoc) => {
         const clone = clonedDoc.querySelector('article[data-testid="tweet"]') as HTMLElement;
-        if (clone) {
-          // Remove interactive elements from screenshot
-          const unwantedElements = clone.querySelectorAll('[role="button"], [data-testid="caret"]');
-          unwantedElements.forEach(el => el.remove());
-          
-          // Style the tweet for better visibility
-          clone.style.backgroundColor = '#1a1a1a';
-          clone.style.color = '#ffffff';
-          clone.style.padding = '20px';
-          clone.style.borderRadius = '12px';
-          clone.style.maxWidth = 'none';
-          clone.style.width = 'auto';
-          
-          // Style all text elements
-          const textElements = clone.querySelectorAll('div, span, p');
-          textElements.forEach(el => {
-            (el as HTMLElement).style.color = '#ffffff';
-          });
-
-          // Ensure images are fully visible
-          const images = clone.querySelectorAll('img');
-          images.forEach(img => {
-            (img as HTMLImageElement).style.maxWidth = '100%';
-            (img as HTMLImageElement).style.height = 'auto';
-            (img as HTMLImageElement).style.objectFit = 'contain';
-          });
-        }
+        if (!clone) return;
+        // Remove buy buttons injected by extension
+        clonedDoc.querySelectorAll('.tknz-buy-button').forEach(el => el.remove());
+        // Remove other interactive elements from screenshot
+        clone.querySelectorAll('[role="button"], [data-testid="caret"]').forEach(el => el.remove());
+        // Style the tweet for better visibility
+        clone.style.backgroundColor = '#1a1a1a';
+        clone.style.color = '#ffffff';
+        clone.style.padding = '20px';
+        clone.style.borderRadius = '12px';
+        clone.style.maxWidth = 'none';
+        clone.style.width = 'auto';
+        // Style all text elements
+        clone.querySelectorAll('div, span, p').forEach(el => {
+          (el as HTMLElement).style.color = '#ffffff';
+        });
+        // Ensure images are fully visible
+        clone.querySelectorAll('img').forEach(img => {
+          (img as HTMLImageElement).style.maxWidth = '100%';
+          (img as HTMLImageElement).style.height = 'auto';
+          (img as HTMLImageElement).style.objectFit = 'contain';
+        });
       }
     });
 
