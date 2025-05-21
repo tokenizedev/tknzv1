@@ -21,7 +21,9 @@
  - [Scripts](#scripts)
  - [Directory Structure](#directory-structure)
  - [Architecture](#architecture)
+ - [SDK Token Creation API](#sdk-token-creation-api)
  - [Contributing](#contributing)
+ - [Code of Conduct](#code-of-conduct)
  - [Roadmap](#roadmap)
  - [License](#license)
 
@@ -202,7 +204,49 @@
    Store -->|State| UI
  ```
 
- ## Contributing
+## SDK Token Creation API
+
+The **TKNZ Extension SDK** injects a `tknz` object into the page context, allowing you to programmatically initiate the token creation flow directly from any webpage.
+
+### window.tknz.initTokenCreate(options)
+
+**Signature:**  
+`window.tknz.initTokenCreate(options: Partial<CoinCreationParams>): void`
+
+**Description:**  
+Launches the extension UI (popup or side panel) and pre-fills the token creation form with your provided options.
+
+**Parameters (`options`):**  
+- `name` (string, optional): Token name.  
+- `ticker` (string, optional): Token symbol (e.g., "TKNZ").  
+- `description` (string, optional): Token description.  
+- `imageUrl` (string, optional): URL to the token image.  
+- `imageFile` (Blob, optional): Image file blob (provide either `imageUrl` or `imageFile`).  
+- `websiteUrl` (string, required for creation): Project or website URL in token metadata.  
+- `twitter` (string, optional): Twitter handle (without "@").  
+- `telegram` (string, optional): Telegram handle.  
+- `investmentAmount` (number, optional): Amount of SOL to invest in the pool (must be > 0).
+
+**Example:**  
+```js
+window.tknz.initTokenCreate({
+  name: 'Example Token',
+  ticker: 'EXTK',
+  description: 'An example token.',
+  imageUrl: 'https://example.com/logo.png',
+  websiteUrl: 'https://example.com',
+  investmentAmount: 2
+});
+```
+
+**Behind the scenes:**  
+1. A script is injected into the page that attaches `window.tknz`.  
+2. Calling `initTokenCreate` posts a `window.postMessage` event (`INIT_TOKEN_CREATE`) to the content script.  
+3. The content script forwards the data to the background script via `chrome.runtime.sendMessage`.  
+4. The background script stores the parameters and opens the extension UI (popup or side panel).  
+5. On UI initialization, the stored parameters are loaded and used to prefill the token creation form.
+
+## Contributing
  Contributions welcome! Please fork the repo and submit a pull request:
  1. Fork the repo.
  2. Create a feature branch: `git checkout -b feature/YourFeature`.
@@ -211,7 +255,11 @@
  5. Open a pull request.
  Ensure code is linted and builds cleanly.
 
- ## Roadmap
+## Code of Conduct
+
+This project and everyone participating in it is governed by the [Code of Conduct](CODE_OF_CONDUCT.md). By participating, you agree to abide by its terms.
+
+## Roadmap
  ```javascript
  /* TKNZ Roadmap Implementation */
 

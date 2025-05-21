@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { VersionedTransaction } from '@solana/web3.js';
 import { useStore } from '../store';
 import { web3Connection } from '../utils/connection';
+import { logEventToFirestore } from '../firebase';
 import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 import {
   getUltraBalances,
@@ -10,8 +11,10 @@ import {
   getPrices,
   getTokenInfo,
 } from '../services/jupiterService';
+import { storage } from '../utils/storage';
 import type { TokenInfoAPI, BalanceInfo } from '../services/jupiterService';
 import { loadAllTokens } from '../services/tokenService';
+import { getValidatedTokens } from '../services/validationService';
 import type { CreatedCoin } from '../types';
 import { TokenSelector } from './swap/TokenSelector';
 import { AmountInput } from './swap/AmountInput';
@@ -51,18 +54,51 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, 
   const [platformCoins, setPlatformCoins] = useState<CreatedCoin[]>([]);
   // Token list fetched from Jupiter
   const [tokenList, setTokenList] = useState<TokenInfoAPI[]>([]);
+  const [filteredTokens, setFilteredTokens] = useState<typeof uiTokens>([]);
+  // Initial selection and warning states
+  const [initialMintHandled, setInitialMintHandled] = useState(false);
+  const [initialToMintHandled, setInitialToMintHandled] = useState(false);
+  const [warningMessage, setWarningMessage] = useState<string | null>(null);
+
   const [loadingTokens, setLoadingTokens] = useState(false);
   const [tokenError, setTokenError] = useState<string | null>(null);
   // UI tokens array for TokenList component
-  const uiTokens = tokenList.map(t => ({
-    id: t.address,
-    symbol: t.symbol,
-    name: t.name,
-    logoURI: t.logoURI,
-    decimals: t.decimals,
-  }));
-  
-  
+  // Group tokens by symbol (ticker); if duplicates exist, select token with earliest creation date,
+  // and if creation dates are equal, select token with higher daily_volume.
+  const uniqueTokens = useMemo(() => {
+    const symbolMap = new Map<string, TokenInfoAPI>();
+    tokenList.forEach(t => {
+      const key = t.symbol.toLowerCase();
+      if (!symbolMap.has(key)) {
+        symbolMap.set(key, t);
+      } else {
+        const existing = symbolMap.get(key)!;
+        const existingDate = new Date(existing.created_at).getTime();
+        const tDate = new Date(t.created_at).getTime();
+        // select earliest creation date; if equal, select higher daily_volume
+        if (tDate < existingDate || (tDate === existingDate && t.daily_volume > existing.daily_volume)) {
+          symbolMap.set(key, t);
+        }
+      }
+    });
+    return Array.from(symbolMap.values());
+  }, [tokenList]);
+
+  const uiTokens = useMemo(() => {
+    return uniqueTokens.map(t => ({
+      id: t.address,
+      symbol: t.symbol,
+      name: t.name,
+      logoURI: t.logoURI,
+      decimals: t.decimals,
+      mintedAt: t.minted_at,
+      createdAt: t.created_at,
+      dailyVolume: t.daily_volume,
+      tags: t.tags
+    }));
+  }, [uniqueTokens]);
+
+
   // Fetch user balances via Jupiter Ultra API
   const [balances, setBalances] = useState<Record<string, BalanceInfo>>({});
 
@@ -72,26 +108,119 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, 
       .then(setBalances)
       .catch(err => console.error('Balance load error:', err));
   }, [activeWallet]);
+  // Manual scan trigger for buy button injection
+  const manualScan = () => {
+    if (window.chrome?.tabs?.query) {
+      window.chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        const tabId = tabs[0]?.id;
+        if (tabId !== undefined) {
+          window.chrome.tabs.sendMessage(tabId, { type: 'MANUAL_SCAN' });
+        }
+      });
+    }
+  };
   // Load all platform-created tokens from the api
-  
+
   // Load tokens (cached via RxDB) and merge with platform coins
   useEffect(() => {
     setLoadingTokens(true);
     loadAllTokens(platformCoins)
       .then(tokens => setTokenList(tokens))
-      .catch(err => setTokenError(err instanceof Error ? err.message : String(err)))
-      .finally(() => setLoadingTokens(false));
+      .catch(err => {
+        setTokenError(err instanceof Error ? err.message : String(err))
+        setLoadingTokens(false)
+      })
   }, [platformCoins]);
+
+  useEffect(() => {
+    getValidatedTokens(uiTokens)
+      .then(tokens => setFilteredTokens(tokens))
+      .catch(err => setTokenError(err instanceof Error ? err.message : String(err)))
+      .finally(() => {
+        setLoadingTokens(false);
+      });
+  }, [uiTokens]);
+
   // Token states
   const [fromToken, setFromToken] = useState<TokenOption | null>(null);
   const [toToken, setToToken] = useState<TokenOption | null>(null);
-  
+  // Handle initial selection: allow contract-based tokens if not blocklisted
+  // Handle initial selection: wait for tokenList, then allow address or symbol unless blocklisted
+  useEffect(() => {
+    if (tokenList.length === 0) return;
+    // Input token override
+    if (initialMint && !initialMintHandled) {
+      console.log('[SwapPage] initialMint override start:', { initialMint, tokenListLength: tokenList.length });
+      setInitialMintHandled(true);
+      (async () => {
+        const { blocklist = [] } = await storage.get('blocklist');
+        console.log('[SwapPage] blocklist:', blocklist);
+        if (blocklist.includes(initialMint)) {
+          console.log('[SwapPage] initialMint is blocklisted:', initialMint);
+          setWarningMessage('The selected token is blocked.');
+          setTimeout(() => setWarningMessage(null), 5000);
+          return;
+        }
+        // Try full token list by address or symbol
+        let rawFrom = tokenList.find(tok => tok.address === initialMint);
+        if (!rawFrom) {
+          rawFrom = tokenList.find(tok => tok.symbol.toLowerCase() === initialMint.toLowerCase());
+        }
+        if (rawFrom) {
+          console.log('[SwapPage] initialMint selected from tokenList:', rawFrom);
+          setFromToken({ id: rawFrom.address, symbol: rawFrom.symbol, name: rawFrom.name, logoURI: rawFrom.logoURI, decimals: rawFrom.decimals });
+          return;
+        }
+        // Fallback: fetch tokenInfo if address-like
+        if (initialMint.length >= 32) {
+          console.log('[SwapPage] initialMint not in tokenList, fetching via getTokenInfo:', initialMint);
+          try {
+            const data = await getTokenInfo(initialMint);
+            console.log('[SwapPage] getTokenInfo success for initialMint:', data);
+            setFromToken({ id: data.address, symbol: data.symbol, name: data.name, logoURI: data.logoURI, decimals: data.decimals });
+          } catch (err) {
+            console.error('[SwapPage] getTokenInfo failed for initialMint:', initialMint, err);
+            setWarningMessage('The selected token is currently unsupported.');
+            setTimeout(() => setWarningMessage(null), 5000);
+          }
+        }
+      })();
+    }
+    // Output token override (run on any initialToMint change)
+    if (initialToMint) {
+      console.log('[SwapPage] initialToMint override start:', { initialToMint, tokenListLength: tokenList.length });
+      (async () => {
+        const { blocklist = [] } = await storage.get('blocklist');
+        if (blocklist.includes(initialToMint)) {
+          setWarningMessage('The selected token is blocked.');
+          setTimeout(() => setWarningMessage(null), 5000);
+          return;
+        }
+        let rawTo = tokenList.find(tok => tok.address === initialToMint)
+                   || tokenList.find(tok => tok.symbol.toLowerCase() === initialToMint.toLowerCase());
+        if (rawTo) {
+          setToToken({ id: rawTo.address, symbol: rawTo.symbol, name: rawTo.name, logoURI: rawTo.logoURI, decimals: rawTo.decimals });
+          return;
+        }
+        if (initialToMint.length >= 32) {
+          try {
+            const data = await getTokenInfo(initialToMint);
+            setToToken({ id: data.address, symbol: data.symbol, name: data.name, logoURI: data.logoURI, decimals: data.decimals });
+          } catch (_err) {
+            setWarningMessage('The selected token is currently unsupported.');
+            setTimeout(() => setWarningMessage(null), 5000);
+          }
+        }
+      })();
+    }
+  }, [initialMint, initialToMint, initialMintHandled, tokenList]);
+
   // Amount states
   const [fromAmount, setFromAmount] = useState('');
   const [toAmount, setToAmount] = useState('');
   const [fromAmountUsd, setFromAmountUsd] = useState('');
   const [toAmountUsd, setToAmountUsd] = useState('');
-  
+
   // UI states
   const [showFromTokenList, setShowFromTokenList] = useState(false);
   const [showToTokenList, setShowToTokenList] = useState(false);
@@ -106,48 +235,7 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, 
     show: false,
     status: 'pending',
   });
-  // If an initialMint was provided, auto-select it as input token (fallback to Jupiter lookup)
-  useEffect(() => {
-    if (!initialMint || tokenList.length === 0) return;
-    const t = tokenList.find(tok => tok.address === initialMint);
-    if (t) {
-      setFromToken({ id: t.address, symbol: t.symbol, name: t.name, logoURI: t.logoURI, decimals: t.decimals });
-    } else {
-      // fallback: fetch token info from Jupiter Token API
-      getTokenInfo(initialMint)
-        .then(data => {
-          setFromToken({ id: data.address, symbol: data.symbol, name: data.name, logoURI: data.logoURI, decimals: data.decimals });
-        })
-        .catch(err => console.error('Initial token lookup failed:', err));
-    }
-  }, [initialMint, tokenList]);
-  // If an initialToMint was provided, auto-select it as output token
-  useEffect(() => {
-    if (!initialToMint || tokenList.length === 0) return;
-    const t = tokenList.find(tok => tok.address === initialToMint);
-    if (t) {
-      setToToken({
-        id: t.address,
-        symbol: t.symbol,
-        name: t.name,
-        logoURI: t.logoURI,
-        decimals: t.decimals,
-      });
-    } else {
-      // fallback: fetch token info
-      getTokenInfo(initialToMint)
-        .then(data => {
-          setToToken({
-            id: data.address,
-            symbol: data.symbol,
-            name: data.name,
-            logoURI: data.logoURI,
-            decimals: data.decimals,
-          });
-        })
-        .catch(err => console.error('Initial to-token lookup failed:', err));
-    }
-  }, [initialToMint, tokenList]);
+  /* Initial token selection is handled after validation to prevent unsupported tokens */
   // Jupiter order preview state, includes overall fee and platform (referral) fee in bps
   const [previewData, setPreviewData] = useState<{
     inputAmount: number;
@@ -333,7 +421,7 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, 
     }
     // Subtract total fee percentage (Jupiter fee + platform fee)
     const feeBps = previewData?.feeBps ?? 0;
-    const platformFeeBps = previewData?.platformFeeBps 
+    const platformFeeBps = previewData?.platformFeeBps
       ?? parseInt(import.meta.env.VITE_AFFILIATE_FEE_BPS ?? '0', 10);
     const totalFeePct = (feeBps + platformFeeBps) / 10000;
     const maxAmt = bal * (1 - totalFeePct);
@@ -346,11 +434,11 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, 
     const tempToken = fromToken;
     setFromToken(toToken);
     setToToken(tempToken);
-    
+
     const tempAmount = fromAmount;
     setFromAmount(toAmount);
     setToAmount(tempAmount);
-    
+
     const tempAmountUsd = fromAmountUsd;
     setFromAmountUsd(toAmountUsd);
     setToAmountUsd(tempAmountUsd);
@@ -385,6 +473,15 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, 
       // Execute order
       const exec = await executeOrder({ signedTransaction: signedBase64, requestId: order.requestId });
       if (exec.status === 'Success') {
+        // Log token swap event to Firestore
+        await logEventToFirestore('token_swapped', {
+          walletAddress: activeWallet.publicKey,
+          fromMint: inputMint,
+          toMint: outputMint,
+          fromAmount: parseFloat(fromAmount),
+          toAmount: parseFloat(toAmount),
+          transactionHash: exec.signature
+        });
         setSwapStatus({ show: true, status: 'success', hash: exec.signature });
       } else {
         throw new Error(exec.error || `Swap failed: ${exec.status}`);
@@ -398,18 +495,18 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, 
   // Calculate swap rate
   const getSwapRate = () => {
     if (!fromToken || !toToken || !fromAmount || !toAmount) return null;
-    
+
     const rate = parseFloat(toAmount) / parseFloat(fromAmount);
     return `1 ${fromToken.symbol} = ${rate.toFixed(6)} ${toToken.symbol}`;
   };
 
   // Check if swap is valid
-  const isSwapValid = 
-    fromToken && 
-    toToken && 
-    fromAmount && 
-    parseFloat(fromAmount) > 0 && 
-    toAmount && 
+  const isSwapValid =
+    fromToken &&
+    toToken &&
+    fromAmount &&
+    parseFloat(fromAmount) > 0 &&
+    toAmount &&
     parseFloat(toAmount) > 0;
 
     /**
@@ -450,17 +547,17 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, 
       0% { transform: translateY(-100%); }
       100% { transform: translateY(100vh); }
     }
-    
+
     @keyframes scanLine {
       0% { background-position: 0 0; }
       100% { background-position: 0 100%; }
     }
-    
+
     @keyframes glowPulse {
       0%, 100% { text-shadow: 0 0 8px rgba(0, 255, 65, 0.6); }
       50% { text-shadow: 0 0 15px rgba(0, 255, 65, 0.9), 0 0 25px rgba(0, 255, 65, 0.5); }
     }
-    
+
     .animate-fadeIn {
       animation: fade-in 0.3s ease-out forwards;
     }
@@ -468,12 +565,17 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, 
 
   return (
     <div className="flex flex-col items-center justify-start h-full p-4 relative">
+      {warningMessage && (
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-red-500 text-white text-sm px-3 py-1 rounded z-20">
+          {warningMessage}
+        </div>
+      )}
       {/* Custom animations */}
       <style>{customStyles}</style>
-      
+
       {/* Animated background grid */}
-      <div 
-        className="absolute inset-0 z-0 overflow-hidden pointer-events-none opacity-20" 
+      <div
+        className="absolute inset-0 z-0 overflow-hidden pointer-events-none opacity-20"
         style={{
           backgroundImage: `
             linear-gradient(to right, rgba(0, 255, 160, 0.07) 1px, transparent 1px),
@@ -483,7 +585,7 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, 
           maskImage: 'radial-gradient(circle at center, black 40%, transparent 80%)'
         }}
       />
-      
+
       {/* Random glowing dots */}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
         {cyberDots.map(dot => (
@@ -502,19 +604,19 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, 
           />
         ))}
       </div>
-      
+
       {/* Top horizontal scanning line */}
-      <div 
+      <div
         className="absolute top-0 left-0 right-0 h-[1px] bg-cyber-green/30 z-0"
         style={{
           animation: 'scanLineVertical 15s infinite linear',
           boxShadow: '0 0 10px 1px rgba(0, 255, 160, 0.4)'
         }}
       />
-      
+
       {/* Main swap container */}
       <div className="w-full max-w-md z-10 relative">
-        <h2 
+        <h2
           className="text-cyber-green font-terminal text-3xl mb-6 text-center font-bold tracking-wider"
           style={{
             textShadow: '0 0 10px rgba(0, 255, 160, 0.7)',
@@ -523,7 +625,7 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, 
         >
           Token Swap
         </h2>
-        
+
         {/* Main swap interface container */}
         <div className="relative rounded-lg border border-cyber-green/40 p-5 backdrop-blur-sm bg-cyber-black/70 shadow-[0_0_15px_rgba(0,255,160,0.2)]">
           {/* Subtle corner accents */}
@@ -531,22 +633,22 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, 
           <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-cyber-green/70"></div>
           <div className="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-cyber-green/70"></div>
           <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-cyber-green/70"></div>
-          
+
           {/* From token section */}
-          <div 
+          <div
             className="bg-cyber-dark/70 rounded-md p-4 border border-cyber-green/30 mb-1 relative overflow-hidden transition-all duration-300 hover:border-cyber-green/60 hover:shadow-[0_0_10px_rgba(0,255,160,0.15)]"
             style={{
               backgroundImage: 'linear-gradient(135deg, rgba(10, 10, 10, 0.9) 0%, rgba(15, 15, 15, 0.9) 100%)',
             }}
           >
             {/* Bottom highlight line animation */}
-            <div 
+            <div
               className="absolute bottom-0 left-0 right-0 h-[1px] bg-cyber-green/40"
               style={{
                 boxShadow: '0 0 5px rgba(0, 255, 160, 0.5)'
               }}
             />
-            
+
             <TokenSelector
               tokenSymbol={fromToken?.symbol}
               tokenName={fromToken?.name}
@@ -560,7 +662,7 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, 
               label="You pay"
             />
             <div className="mt-3">
-              <AmountInput 
+              <AmountInput
                 value={fromAmount}
                 onChange={handleFromAmountChange}
                 fiatValue={fromAmountUsd}
@@ -568,25 +670,25 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, 
               />
             </div>
           </div>
-          
+
           {/* Switch button */}
           <SwitchButton onClick={handleSwitchTokens} disabled={!fromToken || !toToken} />
-          
+
           {/* To token section */}
-          <div 
+          <div
             className="bg-cyber-dark/70 rounded-md p-4 border border-cyber-green/30 mt-1 relative overflow-hidden transition-all duration-300 hover:border-cyber-green/60 hover:shadow-[0_0_10px_rgba(0,255,160,0.15)]"
             style={{
               backgroundImage: 'linear-gradient(135deg, rgba(10, 10, 10, 0.9) 0%, rgba(15, 15, 15, 0.9) 100%)',
             }}
           >
             {/* Bottom highlight line animation */}
-            <div 
+            <div
               className="absolute bottom-0 left-0 right-0 h-[1px] bg-cyber-green/40"
               style={{
                 boxShadow: '0 0 5px rgba(0, 255, 160, 0.5)'
               }}
             />
-            
+
             <TokenSelector
               tokenSymbol={toToken?.symbol}
               tokenName={toToken?.name}
@@ -600,14 +702,14 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, 
               label="You receive"
             />
             <div className="mt-3">
-              <AmountInput 
+              <AmountInput
                 value={toAmount}
                 onChange={handleToAmountChange}
                 fiatValue={toAmountUsd}
               />
             </div>
           </div>
-          
+
           {/* Loading indicator when preview is loading */}
           {isPreviewLoading && (
             <div className="flex justify-center items-center py-2">
@@ -615,7 +717,7 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, 
               <span className="ml-2 text-xs text-cyber-green/70 font-terminal">CALCULATING</span>
             </div>
           )}
-          
+
           {/* Swap details */}
           <div className="mt-4">
             <SwapDetails
@@ -647,10 +749,10 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, 
               onSlippageChange={setSlippage}
             />
           </div>
-          
+
           {/* Insufficient balance warning */}
           {fromToken && fromAmount && !hasEnoughBalance && (
-            <div 
+            <div
               className="bg-[#331500] border border-cyber-orange/50 rounded-md p-3 mt-3 text-sm text-cyber-orange/90 transition-all animate-fadeIn"
               style={{
                 boxShadow: '0 0 10px rgba(255, 140, 0, 0.2) inset'
@@ -665,12 +767,12 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, 
             </div>
           )}
         </div>
-        
+
         {/* Swap button */}
         <button
           className={`w-full mt-6 px-4 py-3.5 rounded-md font-terminal text-lg font-bold tracking-wider shadow-lg transition-all duration-300 relative overflow-hidden
                      ${isSwapValid && hasEnoughBalance
-                        ? 'text-cyber-black bg-cyber-green hover:bg-cyber-green-dark active:translate-y-0.5 shadow-neon-green' 
+                        ? 'text-cyber-black bg-cyber-green hover:bg-cyber-green-dark active:translate-y-0.5 shadow-neon-green'
                         : 'bg-cyber-dark/80 text-cyber-green/50 cursor-not-allowed border border-cyber-green/10'}`}
           disabled={!isSwapValid || !hasEnoughBalance}
           onClick={() => setShowConfirmation(true)}
@@ -680,8 +782,8 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, 
         >
           {/* Button scan line animation for active button */}
           {isSwapValid && hasEnoughBalance && (
-            <div 
-              className="absolute inset-0 opacity-10 pointer-events-none" 
+            <div
+              className="absolute inset-0 opacity-10 pointer-events-none"
               style={{
                 backgroundImage: 'linear-gradient(transparent 0%, transparent 50%, rgba(0, 255, 160, 0.3) 50%, transparent 51%, transparent 100%)',
                 backgroundSize: '100% 8px',
@@ -689,8 +791,8 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, 
               }}
             />
           )}
-          
-          {!fromToken || !toToken 
+
+          {!fromToken || !toToken
             ? 'Select Tokens'
             : !fromAmount || !toAmount
             ? 'Enter Amount'
@@ -699,7 +801,7 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, 
             : 'Swap'}
         </button>
       </div>
-      
+
       {/* Token selection modal */}
       {showFromTokenList && (
         <TokenList
@@ -708,15 +810,15 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, 
           onClose={() => setShowFromTokenList(false)}
         />
       )}
-      
+
       {showToTokenList && (
         <TokenList
-          tokens={uiTokens}
+          tokens={filteredTokens}
           onSelect={handleToTokenSelect}
           onClose={() => setShowToTokenList(false)}
         />
       )}
-      
+
       {/* Confirmation modal */}
       {showConfirmation && fromToken && toToken && (
         <SwapConfirmation
@@ -761,7 +863,7 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, 
           onCancel={() => setShowConfirmation(false)}
         />
       )}
-      
+
       {/* Status modal */}
       {swapStatus.show && fromToken && toToken && (
         <SwapStatus

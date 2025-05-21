@@ -424,6 +424,144 @@
     );
     z-index: 1;
   }
+  
+  /* Terminal-specific animations for token creation */
+  @keyframes terminal-scanline {
+    0% { transform: translateY(-100%); }
+    100% { transform: translateY(100%); }
+  }
+  
+  @keyframes terminal-cursor-blink {
+    0%, 100% { opacity: 0; }
+    50% { opacity: 1; }
+  }
+  
+  @keyframes terminal-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  
+  @keyframes terminal-flicker {
+    0% { opacity: 0.85; }
+    5% { opacity: 1; }
+    10% { opacity: 0.9; }
+    15% { opacity: 0.95; }
+    20% { opacity: 1; }
+    25% { opacity: 0.93; }
+    30% { opacity: 1; }
+    100% { opacity: 1; }
+  }
+  
+  @keyframes data-flow {
+    0% { background-position: 0% center; }
+    100% { background-position: -200% center; }
+  }
+  
+  @keyframes terminal-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+  
+  @keyframes success-glitch {
+    0% {
+      clip-path: inset(40% 0 61% 0);
+      transform: skew(0.15deg);
+      filter: hue-rotate(0deg);
+    }
+    20% {
+      clip-path: inset(92% 0 1% 0);
+      transform: skew(-0.3deg);
+      filter: hue-rotate(20deg);
+    }
+    40% {
+      clip-path: inset(43% 0 1% 0);
+      transform: skew(0.4deg);
+      filter: hue-rotate(-10deg);
+    }
+    60% {
+      clip-path: inset(25% 0 58% 0);
+      transform: skew(-0.25deg);
+      filter: hue-rotate(5deg);
+    }
+    80% {
+      clip-path: inset(54% 0 7% 0);
+      transform: skew(0.2deg);
+      filter: hue-rotate(-20deg);
+    }
+    100% {
+      clip-path: inset(0% 0 0% 0);
+      transform: skew(0deg);
+      filter: hue-rotate(0deg);
+    }
+  }
+  
+  /* Terminal style classes */
+  .terminal-bg {
+    background-image: 
+      radial-gradient(
+        rgba(0, 255, 65, 0.05) 1px,
+        transparent 1px
+      );
+    background-size: 10px 10px;
+  }
+  
+  .shadow-terminal {
+    box-shadow: 
+      0 0 15px rgba(0, 0, 0, 0.5),
+      0 0 5px rgba(0, 255, 65, 0.2);
+  }
+  
+  .terminal-cursor {
+    animation: terminal-cursor-blink 1s step-end infinite;
+  }
+  
+  .terminal-scanline {
+    animation: terminal-scanline 8s linear infinite;
+  }
+  
+  .terminal-fade-in {
+    animation: terminal-fade-in 0.3s ease-out forwards;
+  }
+  
+  .terminal-flicker {
+    animation: terminal-flicker 3s ease-in-out infinite;
+  }
+  
+  .terminal-pulse {
+    animation: terminal-pulse 2s infinite;
+  }
+  
+  .data-flow-animation {
+    background: linear-gradient(90deg, 
+      rgba(0, 255, 65, 0.8) 25%, 
+      rgba(0, 255, 65, 0.4) 50%, 
+      rgba(0, 255, 65, 0.8) 75%);
+    background-size: 200% 100%;
+    animation: data-flow 3s linear infinite;
+  }
+  
+  /* Token creation success transition effects */
+  .success-glitch::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: linear-gradient(
+      rgba(0, 255, 65, 0.3),
+      transparent 3px,
+      transparent 9px,
+      rgba(0, 255, 65, 0.3) 9px
+    );
+    background-size: 100% 12px;
+    z-index: 9999;
+    pointer-events: none;
+    animation: success-glitch 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+  
+  .view-transition {
+    opacity: 0;
+    transform: scale(1.05) translateY(-10px);
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
 }
 
 #root {
@@ -721,6 +859,28 @@ body.sidebar #root {
   
   .leaderboard-sort {
     @apply flex items-center space-x-2 text-cyber-green font-terminal px-3 py-1.5 border border-cyber-green/30 rounded-sm;
+  }
+
+  /* Focus highlight for deploy button */
+  .focus-highlight {
+    animation: button-highlight 1s ease-in-out;
+    position: relative;
+    z-index: 1;
+  }
+  
+  @keyframes button-highlight {
+    0% {
+      box-shadow: 0 0 0 2px rgba(0, 255, 65, 0.3);
+      transform: scale(1);
+    }
+    50% {
+      box-shadow: 0 0 0 4px rgba(0, 255, 65, 0.6), 0 0 20px rgba(0, 255, 65, 0.3);
+      transform: scale(1.03);
+    }
+    100% {
+      box-shadow: 0 0 0 2px rgba(0, 255, 65, 0.3);
+      transform: scale(1);
+    }
   }
 }
 

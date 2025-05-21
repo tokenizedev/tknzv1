@@ -96,6 +96,48 @@ export interface WalletState {
      */
     removeAddressBookEntry: (address: string) => Promise<void>;
     createCoin: (params: CoinCreationParams) => Promise<{ address: string; pumpUrl: string; }>;
+    createCoinRemote: (params: CoinCreationParams) => Promise<{ address: string; pumpUrl: string; }>;
+    /**
+     * Preview token creation: fetch unsigned transaction and fee/amount breakdown
+     */
+    /**
+     * Preview data for token creation, including fees and totals
+     */
+    previewData: {
+      mintKeypair: Keypair;
+      serializedTransaction: string;
+      feeAmount: number;       // Platform fee in SOL
+      pumpFeeAmount: number;   // Pump portal fee in SOL
+      totalAmount: number;     // Investment amount in SOL
+      netAmount: number;       // Net investment amount (equal to totalAmount)
+      totalCost: number;       // Total cost to user (totalAmount + pumpFeeAmount + feeAmount)
+      name: string;
+      ticker: string;
+    } | null;
+    /**
+     * Preview token creation: fetch unsigned tx and fee/amount breakdown
+     */
+    previewCreateCoinRemote: (params: CoinCreationParams) => Promise<{
+      feeAmount: number;
+      pumpFeeAmount: number;
+      totalAmount: number;
+      netAmount: number;
+      totalCost: number;
+    }>;
+    /**
+     * Confirm and execute a previously previewed token creation transaction
+     */
+    confirmPreviewCreateCoin: () => Promise<{ address: string; pumpUrl: string }>;
+    /**
+     * Clear any preview transaction data without executing
+     */
+    clearPreviewCreateCoin: () => void;
+    /** Parameters for SDK token create, used to pre-populate form fields */
+    initialTokenCreateParams: Partial<CoinCreationParams> | null;
+    /** Set initial parameters for SDK token create prefill */
+    setInitialTokenCreateParams: (params: Partial<CoinCreationParams>) => void;
+    /** Clear initial SDK token create parameters */
+    clearInitialTokenCreateParams: () => void;
     getArticleData: () => Promise<ArticleData>;
     getTokenCreationData: (article: ArticleData, level: number) => Promise<TokenCreationData>;
     checkVersion: () => Promise<void>;
@@ -104,6 +146,18 @@ export interface WalletState {
      * Update the avatar for a given wallet
      */
     updateWalletAvatar: (walletId: string, avatar: string) => Promise<void>;
+    /**
+     * Selected exchange domain (e.g., 'pump.fun')
+     */
+    selectedExchange: string;
+    /**
+     * Full URL of the selected exchange (e.g., 'https://pump.fun')
+     */
+    exchangeUrl: string;
+    /**
+     * Update the selected exchange
+     */
+    setSelectedExchange: (exchange: string) => Promise<void>;
 }
   
 export interface ArticleData {

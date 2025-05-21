@@ -17,6 +17,7 @@ import { WalletState, CreatedCoin, ArticleData, CoinCreationParams, TokenCreatio
 import { v4 as uuidv4 } from 'uuid';
 
 const TOKEN_CREATION_API_URL = 'https://tknz.fun/.netlify/functions/article-token';
+const COIN_CREATE_API_URL = 'https://tknz.fun/.netlify/functions/create-token-tx';
 const APP_VERSION_API_URL = 'https://tknz.fun/.netlify/functions/version';
 const SOL_PRICE_API_URL = 'https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd';
 
@@ -92,15 +93,64 @@ export const useStore = create<WalletState>((set, get) => ({
   createdCoins: [],
   isRefreshing: false,
   investmentAmount: 0,
+  // Initial parameters for SDK token creation, used to pre-populate form fields
+  initialTokenCreateParams: null,
+  // Set initial token creation parameters
+  setInitialTokenCreateParams: (params: Partial<CoinCreationParams>) => set({ initialTokenCreateParams: params }),
+  // Clear initial token creation parameters
+  clearInitialTokenCreateParams: () => set({ initialTokenCreateParams: null }),
   isLatestVersion: true,
   updateAvailable: null,
   migrationStatus: 'idle',
   // Address book entries (address -> label)
   addressBook: {},
+  // Default exchange domain and URL
+  selectedExchange: 'pump.fun',
+  exchangeUrl: 'https://pump.fun',
+  /**
+   * Update the selected exchange and persist across sessions
+   */
+  setSelectedExchange: async (exchange: string) => {
+    // Build URL based on selected exchange
+    let url: string;
+    switch (exchange) {
+      case 'birdeye':
+      case 'birdeye.so':
+        url = 'https://birdeye.so/token/';
+        break;
+      case 'solscan':
+      case 'solscan.io':
+        url = 'https://solscan.io/token/';
+        break;
+      case 'gmgn':
+      case 'GMGN':
+        url = 'https://gmgn.ai/sol/token/solscan_';
+        break;
+      default:
+        url = 'https://pump.fun';
+    }
+    // Persist selection
+    try {
+      await storage.set({ selectedExchange: exchange });
+    } catch (err) {
+      console.error('Failed to persist selected exchange:', err);
+    }
+    // Update store
+    set({ selectedExchange: exchange, exchangeUrl: url });
+  },
 
   initializeWallet: async () => {
     try {
       set({ error: null });
+      // Load persisted exchange selection
+      try {
+        const storedExch = await storage.get('selectedExchange');
+        const exch = storedExch.selectedExchange || get().selectedExchange;
+        
+        await get().setSelectedExchange(exch);
+      } catch (e) {
+        console.error('Failed to load persisted exchange:', e);
+      }
       const storedWallets = await storage.get('wallets');
       const storedActiveWalletId = await storage.get('activeWalletId');
       const storedInvestment = await storage.get('investmentAmount');
@@ -112,6 +162,7 @@ export const useStore = create<WalletState>((set, get) => ({
           const secretKey = new Uint8Array(walletData.keypairSecretKey);
           const keypair = Keypair.fromSecretKey(secretKey);
           return {
+            avatar: walletData.avatar,
             id: walletData.id,
             name: walletData.name,
             publicKey: walletData.publicKey,
@@ -979,7 +1030,9 @@ export const useStore = create<WalletState>((set, get) => ({
       const data = await response.arrayBuffer();
       const tx = VersionedTransaction.deserialize(new Uint8Array(data));
       tx.sign([mintKeypair, activeWallet.keypair]);
-      const signature = await web3Connection.sendTransaction(tx);
+      // Send raw signed versioned transaction
+      const rawTx = tx.serialize();
+      const signature = await web3Connection.sendRawTransaction(rawTx);
       const confirmation = await web3Connection.confirmTransaction(signature);
       if (confirmation.value.err) throw new Error('Transaction failed to confirm');
 
@@ -997,6 +1050,135 @@ export const useStore = create<WalletState>((set, get) => ({
       throw error;
     }
   },
+
+  createCoinRemote: async ({ name, ticker, description, imageUrl, websiteUrl, twitter, telegram, investmentAmount }: CoinCreationParams) => {
+    // Client-side token creation: call server endpoint, sign & send transaction
+    const { activeWallet } = get();
+    if (!activeWallet) throw new Error('Wallet not initialized');
+    // Build request payload
+    const mintKeypair = Keypair.generate();
+    const payload = {
+      walletAddress: activeWallet.publicKey,
+      token: { name, ticker, description, imageUrl, websiteUrl, twitter, telegram },
+      portalParams: { amount: investmentAmount, slippage: 10, mint: mintKeypair.publicKey.toString(), priorityFee: 0.0005, pool: 'pump' }
+    };
+    // Use timeout for fetch
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+    let response: Response;
+    try {
+      response = await fetch(COIN_CREATE_API_URL, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload), signal: controller.signal
+      });
+    } catch (err) {
+      clearTimeout(timeoutId);
+      const msg = err instanceof Error ? err.message : String(err);
+      throw new Error(`Network error creating token: ${msg}`);
+    } finally {
+      clearTimeout(timeoutId);
+    }
+    if (!response.ok) {
+      const text = await response.text().catch(() => response.statusText);
+      throw new Error(`Server error: ${response.status} ${text}`);
+    }
+    let data: any;
+    try {
+      data = await response.json();
+    } catch {
+      throw new Error('Invalid response JSON from create-token endpoint');
+    }
+    const { transaction } = data;
+    if (typeof transaction !== 'string') {
+      throw new Error('Missing transaction in server response');
+    }
+    // Deserialize, sign, and send versioned transaction
+    let txV: VersionedTransaction;
+    try {
+      const txBytes = Buffer.from(transaction, 'base64');
+      txV = VersionedTransaction.deserialize(txBytes);
+    } catch (err) {
+      throw new Error('Failed to deserialize versioned transaction');
+    }
+    try {
+      txV.sign([mintKeypair, activeWallet.keypair]);
+    } catch {
+      throw new Error('Failed to sign transaction');
+    }
+    let signature: string;
+    try {
+      const rawTx = txV.serialize();
+      signature = await web3Connection.sendRawTransaction(rawTx);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      throw new Error(`Failed to send transaction: ${msg}`);
+    }
+    const confirmation = await web3Connection.confirmTransaction(signature);
+    if (confirmation.value.err) {
+      throw new Error('Transaction failed on chain');
+    }
+    // Persist and return
+    const tokenAddress = mintKeypair.publicKey.toString();
+    const pumpUrl = `https://pump.fun/coin/${tokenAddress}`;
+    try {
+      logEventToFirestore('token_launched', { walletAddress: activeWallet.publicKey, contractAddress: tokenAddress, name, ticker, investmentAmount });
+      await get().addCreatedCoin({ address: tokenAddress, name, ticker, pumpUrl, balance: 0 });
+    } catch (err) {
+      console.error('Error persisting created coin:', err);
+    }
+    return { address: tokenAddress, pumpUrl };
+  },
+  // Preview-only token creation: fetch unsigned tx and fee info
+  previewData: null,
+  previewCreateCoinRemote: async ({ name, ticker, description, imageUrl, websiteUrl, twitter, telegram, investmentAmount }: CoinCreationParams) => {
+    const { activeWallet } = get();
+    if (!activeWallet) throw new Error('Wallet not initialized');
+    const mintKeypair = Keypair.generate();
+    const response = await fetch(COIN_CREATE_API_URL, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        walletAddress: activeWallet.publicKey,
+        token: { name, ticker, description, imageUrl, websiteUrl, twitter, telegram },
+        portalParams: { amount: investmentAmount, slippage: 10, mint: mintKeypair.publicKey.toString(), priorityFee: 0.0005, pool: 'pump' }
+      })
+    });
+    if (!response.ok) throw new Error(`Preview request failed: ${response.statusText}`);
+    const data = await response.json();
+    const { transaction, feeAmount, pumpFeeAmount, totalAmount, netAmount, totalCost } = data;
+    // Store preview details including both fees and total cost
+    set({ previewData: {
+      mintKeypair,
+      serializedTransaction: transaction,
+      feeAmount,
+      pumpFeeAmount,
+      totalAmount,
+      netAmount,
+      totalCost,
+      name,
+      ticker
+    } });
+    return { feeAmount, pumpFeeAmount, totalAmount, netAmount, totalCost };
+  },
+  confirmPreviewCreateCoin: async () => {
+    const { activeWallet, previewData } = get();
+    if (!activeWallet) throw new Error('Wallet not initialized');
+    if (!previewData) throw new Error('No preview transaction found');
+    const { mintKeypair, serializedTransaction, feeAmount, totalAmount, netAmount, name, ticker } = previewData;
+    // Deserialize, sign, and send versioned preview transaction
+    const txV = VersionedTransaction.deserialize(Buffer.from(serializedTransaction, 'base64'));
+    txV.sign([mintKeypair, activeWallet.keypair]);
+    const rawTx = txV.serialize();
+    const sig = await web3Connection.sendRawTransaction(rawTx);
+    const conf = await web3Connection.confirmTransaction(sig);
+    if (conf.value.err) throw new Error('Transaction failed to confirm');
+    const tokenAddress = mintKeypair.publicKey.toString();
+    const pumpUrl = `https://pump.fun/coin/${tokenAddress}`;
+    logEventToFirestore('token_launched', { walletAddress: activeWallet.publicKey, contractAddress: tokenAddress, name, ticker, investmentAmount: totalAmount });
+    await get().addCreatedCoin({ address: tokenAddress, name, ticker, pumpUrl, balance: 0 });
+    set({ previewData: null });
+    return { address: tokenAddress, pumpUrl };
+  },
+  clearPreviewCreateCoin: () => set({ previewData: null }),
   // Send native SOL or SPL token to a recipient address
   sendToken: async (mintAddress: string, recipient: string, amount: number): Promise<string> => {
     const { activeWallet } = get();
@@ -1030,5 +1212,6 @@ export const useStore = create<WalletState>((set, get) => ({
       console.error('sendToken error:', error);
       throw error;
     }
-  }
+  },
+  
 }));

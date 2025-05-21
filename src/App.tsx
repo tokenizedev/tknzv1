@@ -1,12 +1,11 @@
 import { useEffect, useState, useRef } from 'react';
+import type { CoinCreationParams } from './types';
 import { loadVerifiedTokens } from './services/tokenService';
 import { useStore } from './store';
-import { WalletSetup } from './components/WalletSetup';
 import { CoinCreator } from './components/CoinCreator';
 import { WalletPageCyber } from './components/WalletPageCyber';
 import { CreatedCoinsPage } from './components/CreatedCoinsPage';
 import { MyCreatedCoinsPage } from './components/MyCreatedCoinsPage';
-import { VersionCheck } from './components/VersionCheck';
 import { Loader } from './components/Loader';
 import { PasswordSetup } from './components/PasswordSetup';
 import { PasswordUnlock } from './components/PasswordUnlock';
@@ -16,7 +15,6 @@ import { WalletManagerPage } from './components/WalletManagerPage';
 import { Navigation } from './components/Navigation';
 import { BottomNavigation } from './components/BottomNavigation';
 import { SwapPage } from './components/SwapPage';
-import { VersionBadge } from './components/VersionBadge';
 import { WalletOverview } from './components/WalletOverview';
 import SendTokenModal from './components/SendTokenModal';
 import { SettingsPage } from './components/SettingsPage';
@@ -43,6 +41,13 @@ function App({ isSidebar = false }: AppProps = {}) {
           console.error('Failed to notify sidebar ready:', error);
         }
       })();
+    }
+  }, [isSidebar]);
+
+  // Persist UI mode for content script to detect sidePanel vs popup
+  useEffect(() => {
+    if (chrome?.storage?.local) {
+      chrome.storage.local.set({ isSidebarMode: !!isSidebar });
     }
   }, [isSidebar]);
 
@@ -80,6 +85,8 @@ function App({ isSidebar = false }: AppProps = {}) {
   // Track specific token mints for swap: from and to
   const [selectedSwapMint, setSelectedSwapMint] = useState<string | null>(null);
   const [selectedSwapToMint, setSelectedSwapToMint] = useState<string | null>(null);
+  // SDK token creation options (for pre-populating the create form)
+  const [sdkOptions, setSdkOptions] = useState<Partial<CoinCreationParams> | null>(null);
   // Timeout for wallet unlock in milliseconds (1 hour)
   const UNLOCK_TIMEOUT = 60 * 60 * 1000;
 
@@ -399,22 +406,41 @@ function App({ isSidebar = false }: AppProps = {}) {
 
     // Flash a glitch effect
     setGlitching(true);
+    
+    // Create more dramatic success effect with classes instead of direct DOM manipulation
     setTimeout(() => {
-      setGlitching(false);
-      // Transition to My Created Coins view
-      setActiveView('myCoins');
-      // Reset creation state after transition
+      // Set success state that will trigger CSS classes in render
+      setCreationSuccessState('glitch');
+      
       setTimeout(() => {
-        setIsCreatingCoin(false);
-        // Keep the address for highlighting for a while
-        setTimeout(() => setNewCoinAddress(null), 10000);
-      }, 300);
+        setGlitching(false);
+        setCreationSuccessState('fade');
+        
+        // Add a brief congratulatory message
+        setNotification({ 
+          message: `Token successfully created at ${coinAddress.slice(0, 8)}...${coinAddress.slice(-8)}`, 
+          type: 'success' 
+        });
+        
+        // Transition to My Created Coins view with state
+        setTimeout(() => {
+          setActiveView('myCoins');
+          // Reset creation state after transition
+          setTimeout(() => {
+            setIsCreatingCoin(false);
+            setCreationSuccessState(null);
+            // Keep the address for highlighting for a while
+            setTimeout(() => setNewCoinAddress(null), 10000);
+          }, 300);
+        }, 400);
+      }, 500);
     }, 200);
   };
 
   const handleCoinCreationError = (_errorMessage: string) => {
     setGlitching(false);
     setIsCreatingCoin(false);
+    setNotification({ message: _errorMessage, type: 'error' });
   };
 
   useEffect(() => {
@@ -448,7 +474,57 @@ function App({ isSidebar = false }: AppProps = {}) {
     };
     init();
   }, [initializeWallet, checkVersion]);
+  
 
+    
+  // Handle token buy requests from content script or background
+  useEffect(() => {
+    const DEFAULT_INPUT_MINT = 'So11111111111111111111111111111111111111112';
+    // On initial load, check for stored buy token (popup context only)
+    if (!isSidebar && chrome?.storage?.local) {
+      chrome.storage.local.get(['lastBuyToken'], (result) => {
+        if (result.lastBuyToken) {
+          try {
+            const token = JSON.parse(result.lastBuyToken);
+            setSelectedSwapMint(DEFAULT_INPUT_MINT);
+            setSelectedSwapToMint(token.address || token.symbol || null);
+            setActiveView('swap');
+          } catch (_) {}
+          // Clear stored token
+          chrome.storage.local.remove(['lastBuyToken']);
+        }
+      });
+    }
+    // Listen for direct messages to show swap
+    const listener = (message: any) => {
+      if (message.type === 'SHOW_SWAP' && message.token) {
+        // Only handle in correct UI context
+        if (message.isSidebar !== isSidebar) return;
+        setSelectedSwapMint(DEFAULT_INPUT_MINT);
+        setSelectedSwapToMint(message.token.address || message.token.symbol || null);
+        setActiveView('swap');
+      }
+      // Handle SDK token create init: pre-populate and navigate to create view
+      if (message.type === 'SDK_TOKEN_CREATE' && message.options) {
+        setSdkOptions(message.options); 
+        useStore.getState().setInitialTokenCreateParams(message.options);
+        if (message.isSidebar !== isSidebar) return;
+        // Enter SDK mode and store options locally
+        
+        // Navigate to token creation view
+        navigateToTokenCreate();
+      }
+    };
+    if (chrome?.runtime && chrome.runtime.onMessage) {
+      chrome.runtime.onMessage.addListener(listener);
+    }
+    return () => {
+      if (chrome?.runtime && chrome.runtime.onMessage) {
+        chrome.runtime.onMessage.removeListener(listener);
+      }
+    };
+  }, []);
+  
   // Navigation to home/TKNZ button
   const navigateToHome = () => {
     setActiveView(null);
@@ -457,8 +533,80 @@ function App({ isSidebar = false }: AppProps = {}) {
     setTimeout(() => setGlitching(false), 200);
   };
 
+  // Add this style to your file, outside of any components
+  useEffect(() => {
+    // Add these styles for the success effects
+    const style = document.createElement('style');
+    style.innerHTML = `
+      @keyframes success-glitch {
+        0% {
+          clip-path: inset(40% 0 61% 0);
+          transform: skew(0.15deg);
+          filter: hue-rotate(0deg);
+        }
+        20% {
+          clip-path: inset(92% 0 1% 0);
+          transform: skew(-0.3deg);
+          filter: hue-rotate(20deg);
+        }
+        40% {
+          clip-path: inset(43% 0 1% 0);
+          transform: skew(0.4deg);
+          filter: hue-rotate(-10deg);
+        }
+        60% {
+          clip-path: inset(25% 0 58% 0);
+          transform: skew(-0.25deg);
+          filter: hue-rotate(5deg);
+        }
+        80% {
+          clip-path: inset(54% 0 7% 0);
+          transform: skew(0.2deg);
+          filter: hue-rotate(-20deg);
+        }
+        100% {
+          clip-path: inset(0% 0 0% 0);
+          transform: skew(0deg);
+          filter: hue-rotate(0deg);
+        }
+      }
+      
+      .success-glitch::after {
+        content: '';
+        position: fixed;
+        inset: 0;
+        background: linear-gradient(
+          rgba(0, 255, 65, 0.3),
+          transparent 3px,
+          transparent 9px,
+          rgba(0, 255, 65, 0.3) 9px
+        );
+        background-size: 100% 12px;
+        z-index: 9999;
+        pointer-events: none;
+        animation: success-glitch 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      }
+      
+      .view-transition {
+        opacity: 0;
+        transform: scale(1.05) translateY(-10px);
+        transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      }
+    `;
+    document.head.appendChild(style);
+
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
+
+  // Add this to your state declarations section
+  const [creationSuccessState, setCreationSuccessState] = useState<'glitch' | 'fade' | null>(null);
+
   return (
-    <div className={`${isSidebar ? 'w-full h-full ' : 'w-[400px] h-[650px] '}bg-cyber-black bg-binary-pattern binary-overlay`}>
+    <div className={`${isSidebar ? 'w-full h-full ' : 'w-[400px] h-[650px] '}bg-cyber-black bg-binary-pattern binary-overlay ${
+      creationSuccessState === 'glitch' ? 'success-glitch' : ''
+    } ${creationSuccessState === 'fade' ? 'view-transition' : ''}`}>
       {/* In-app notification */}
       {notification && (
         <div
@@ -677,6 +825,9 @@ function App({ isSidebar = false }: AppProps = {}) {
               ) : (
                 /* Default token creator view */
                 <CoinCreator
+                  key={sdkOptions ? 'sdk' : 'default'}
+                  isSidebar={isSidebar}
+                  sdkOptions={sdkOptions}
                   /* Trigger the creation loader modal when starting */
                   onCreationStart={handleCoinCreationStart}
                   /* Navigate to My Created Coins on successful creation */
