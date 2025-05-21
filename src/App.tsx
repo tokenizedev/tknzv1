@@ -412,16 +412,6 @@ function App({ isSidebar = false }: AppProps = {}) {
       // Set success state that will trigger CSS classes in render
       setCreationSuccessState('glitch');
       
-      // Add a success sound effect if desired
-      try {
-        const successSound = new Audio();
-        successSound.src = 'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA/+M4wAAAAAAAAAAAAEluZm8AAAAPAAAABQAAAkAAQEBAQEBAQEBAQEBAQEBQUFBQUFBQUFBQUFBQUFBQYGBgYGBgYGBgYGBgYGBgYHBwcHBwcHBwcHBwcHBwcHCAgICAgICAgICAgICAgICQkJCQkJCQkJCQkJCQkJCQoKCgoKCgoKCgoKCgoKCgsLCwsLCwsLCwsLCwsLCwwMDAwMDAwMDAwMDAwMDA0NDQ0NDQ0NDQ0NDQ0NDQ4ODg4ODg4ODg4ODg4ODg////////AAAAAExhdmM1OC4xMy4xMDAAAAAAAAAAAAAAAP/jOMAAAAAAAAAAAABJbmZvAAAADwAAAAUAAAJAAECAgICAgICAgICAgICAgJCQkJCQkJCQkJCQkJCQkJCQoKCgoKCgoKCgoKCgoKCgsLCwsLCwsLCwsLCwsLCwsMDAwMDAwMDAwMDAwMDAwNDQ0NDQ0NDQ0NDQ0NDQ0ODg4ODg4ODg4ODg4ODg4P///////wAAAABMYXZjNTguMTMuMTAwAAAAAAAAAAAAAAD/4zjQAAAAAAAAAAAASW5mbwAAAA8AAAAFAAACQABAgICAgICAgICAgICAgICQkJCQkJCQkJCQkJCQkJCQoKCgoKCgoKCgoKCgoKCgoLCwsLCwsLCwsLCwsLCwsLDAwMDAwMDAwMDAwMDAwMDA0NDQ0NDQ0NDQ0NDQ0NDQ4ODg4ODg4ODg4ODg4ODg////////AAAAAExhdmM1OC4xMy4xMDAAAAAAAAA=';
-        successSound.volume = 0.2;
-        successSound.play().catch(() => {});
-      } catch (e) {
-        console.log('Audio not supported');
-      }
-      
       setTimeout(() => {
         setGlitching(false);
         setCreationSuccessState('fade');
