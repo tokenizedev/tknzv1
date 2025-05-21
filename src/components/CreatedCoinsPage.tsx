@@ -39,7 +39,7 @@ export const CreatedCoinsPage: React.FC<CreatedCoinsPageProps> = ({ onBack, onSw
         </button>
         <h1 className="text-xl font-terminal text-cyber-green">Community Coins</h1>
       </div>
-      
+
       <div className="crypto-card">
         <div className="crypto-card-header flex items-center justify-between">
           <h2 className="crypto-card-title">All Created Coins</h2>
