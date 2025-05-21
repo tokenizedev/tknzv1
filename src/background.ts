@@ -158,7 +158,7 @@ chrome.runtime.onMessage.addListener((message: any, sender, sendResponse) => {
         // Use context flag from content script to decide mode
         const isSidebarMsg = message.isSidebar === true;
         // Notify UI to show swap page in correct context
-        chrome.runtime.sendMessage({ type: 'SHOW_SWAP', token, isSidebar: isSidebarMsg });
+        
         // If sidebar UI is active, update it; otherwise open popup
         if (isSidebarMsg) {
           try {
@@ -192,6 +192,8 @@ chrome.runtime.onMessage.addListener((message: any, sender, sendResponse) => {
           }
         }
 
+        chrome.runtime.sendMessage({ type: 'SHOW_SWAP', token, isSidebar: isSidebarMsg });
+
         // Everything succeeded
         sendResponse({ success: true });
       } catch (err) {
@@ -218,7 +220,7 @@ chrome.runtime.onMessage.addListener((message: any, sender, sendResponse) => {
         console.error('Failed to populate token:', e);
       }
 
-      chrome.runtime.sendMessage({ type: 'SDK_TOKEN_CREATE', options, isSidebar: isSidebarMsg });
+    
 
       if (isSidebarMsg) {
         try {
@@ -237,7 +239,6 @@ chrome.runtime.onMessage.addListener((message: any, sender, sendResponse) => {
         }
       } else {
         try {
-          console.log('open popup');
           await chrome.action.openPopup();
         } catch (err) {
           // Fallback: open side panel if popup fails
@@ -251,6 +252,8 @@ chrome.runtime.onMessage.addListener((message: any, sender, sendResponse) => {
           return;
         }
       }
+
+      chrome.runtime.sendMessage({ type: 'SDK_TOKEN_CREATE', options, isSidebar: isSidebarMsg });
     
     })();
     
