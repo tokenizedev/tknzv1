@@ -511,6 +511,14 @@ function App({ isSidebar = false }: AppProps = {}) {
         setSelectedSwapToMint(message.token.address || message.token.symbol || null);
         setActiveView('swap');
       }
+      // Handle SDK token create init: pre-populate and navigate to create view
+      if (message.type === 'SDK_TOKEN_CREATE' && message.options) {
+        if (message.isSidebar !== isSidebar) return;
+        // Set initial form fields in store
+        useStore.getState().setInitialTokenCreateParams(message.options);
+        // Navigate to token creation view
+        navigateToTokenCreate();
+      }
     };
     if (chrome?.runtime && chrome.runtime.onMessage) {
       chrome.runtime.onMessage.addListener(listener);
