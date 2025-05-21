@@ -320,6 +320,23 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   // const refreshPortfolioData = useStore(state => state.refreshPortfolioData); // duplicate, already declared above
   const [isPreviewing, setIsPreviewing] = useState(false);
   const refreshPortfolioData = useStore(state => state.refreshPortfolioData);
+  // SDK init parameters: pre-populate form fields when provided
+  const initialParams = useStore(state => state.initialTokenCreateParams);
+  const clearInitialParams = useStore(state => state.clearInitialTokenCreateParams);
+
+  useEffect(() => {
+    if (initialParams) {
+      if (initialParams.name) setCoinName(initialParams.name);
+      if (initialParams.ticker) setTicker(initialParams.ticker);
+      if (initialParams.description) setDescription(initialParams.description);
+      if (initialParams.imageUrl) { setImageUrl(initialParams.imageUrl); setImageFile(null); }
+      if (initialParams.websiteUrl) setWebsiteUrl(initialParams.websiteUrl);
+      if (initialParams.twitter) setXUrl(initialParams.twitter);
+      if (initialParams.telegram) setTelegramUrl(initialParams.telegram);
+      if (initialParams.investmentAmount != null) setInvestmentAmount(initialParams.investmentAmount);
+      clearInitialParams();
+    }
+  }, [initialParams, clearInitialParams]);
   const [articleData, setArticleData] = useState<ArticleData>({
     title: '',
     primaryImage: '',
