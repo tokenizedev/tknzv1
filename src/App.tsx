@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import type { CoinCreationParams } from './types';
 import { loadVerifiedTokens } from './services/tokenService';
 import { useStore } from './store';
 import { CoinCreator } from './components/CoinCreator';
@@ -84,6 +85,8 @@ function App({ isSidebar = false }: AppProps = {}) {
   // Track specific token mints for swap: from and to
   const [selectedSwapMint, setSelectedSwapMint] = useState<string | null>(null);
   const [selectedSwapToMint, setSelectedSwapToMint] = useState<string | null>(null);
+  // SDK token creation options (for pre-populating the create form)
+  const [sdkOptions, setSdkOptions] = useState<Partial<CoinCreationParams> | null>(null);
   // Timeout for wallet unlock in milliseconds (1 hour)
   const UNLOCK_TIMEOUT = 60 * 60 * 1000;
 
@@ -511,11 +514,19 @@ function App({ isSidebar = false }: AppProps = {}) {
         setSelectedSwapToMint(message.token.address || message.token.symbol || null);
         setActiveView('swap');
       }
+      console.log('=============================')
+      console.log('=============================')
+      console.log('=============================')
       // Handle SDK token create init: pre-populate and navigate to create view
       if (message.type === 'SDK_TOKEN_CREATE' && message.options) {
-        if (message.isSidebar !== isSidebar) return;
-        // Set initial form fields in store
+        setSdkOptions(message.options);
+        
+        // Also populate store for backward compatibility (optional)
         useStore.getState().setInitialTokenCreateParams(message.options);
+
+        if (message.isSidebar !== isSidebar) return;
+        // Enter SDK mode and store options locally
+        
         // Navigate to token creation view
         navigateToTokenCreate();
       }
@@ -830,7 +841,9 @@ function App({ isSidebar = false }: AppProps = {}) {
               ) : (
                 /* Default token creator view */
                 <CoinCreator
+                  key={sdkOptions ? 'sdk' : 'default'}
                   isSidebar={isSidebar}
+                  sdkOptions={sdkOptions}
                   /* Trigger the creation loader modal when starting */
                   onCreationStart={handleCoinCreationStart}
                   /* Navigate to My Created Coins on successful creation */
