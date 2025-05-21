@@ -128,24 +128,38 @@ chrome.runtime.onMessage.addListener((message: any, sender, sendResponse) => {
 
         // Store the last buy token for UI
         chrome.storage.local.set({ lastBuyToken: JSON.stringify(token) });
-        // Determine context from content script flag
+        // Use context flag from content script to decide mode
         const isSidebarMsg = message.isSidebar === true;
         // Notify UI to show swap page in correct context
         chrome.runtime.sendMessage({ type: 'SHOW_SWAP', token, isSidebar: isSidebarMsg });
-        // If the sidebar UI is active, update it; otherwise open the popup
+        // If sidebar UI is active, update it; otherwise open popup
         if (isSidebarMsg) {
           try {
             await (chrome as any).sidePanel.setOptions({ tabId: targetTabId, path: 'sidebar.html', enabled: true });
           } catch (err) {
             console.error('Failed to update side panel:', err);
-            sendResponse({ success: false, reason: 'sidePanel' });
-            return;
+            // Fallback: attempt to open side panel then set options
+            try {
+              await (chrome as any).sidePanel.open({ tabId: targetTabId });
+              await (chrome as any).sidePanel.setOptions({ tabId: targetTabId, path: 'sidebar.html', enabled: true });
+            } catch (err2) {
+              console.error('Fallback side panel open failed:', err2);
+              sendResponse({ success: false, reason: 'sidePanel' });
+              return;
+            }
           }
         } else {
           try {
             await chrome.action.openPopup();
           } catch (err) {
             console.error('Failed to open popup:', err);
+            // Fallback: open side panel if popup fails
+            try {
+              await (chrome as any).sidePanel.open({ tabId: targetTabId });
+              await (chrome as any).sidePanel.setOptions({ tabId: targetTabId, path: 'sidebar.html', enabled: true });
+            } catch (err2) {
+              console.error('Fallback side panel open failed:', err2);
+            }
             sendResponse({ success: false, reason: 'popup' });
             return;
           }
