@@ -458,11 +458,34 @@ export async function executeOrder(params: {
   }
 }
 
-export async function searchToken(symbol: string) {
+/**
+ * Search for a token asset by symbol or query string.
+ * Fetches multiple results and selects the asset with the highest organicScore (tie-breaker: usdPrice).
+ */
+export async function searchToken(query: string) {
   try {
-    const { data } = await axios.get<Array<{ id: string, organicScore: number, usdPrice: number }>>(`https://datapi.jup.ag/v1/assets/search?query=${symbol}&sortBy=verified&limit=1`);
-
-    return data?.[0];
+    // Fetch multiple matching assets to choose the best one
+    const limit = 50;
+    const url = `https://datapi.jup.ag/v1/assets/search?query=${encodeURIComponent(query)}&limit=${limit}`;
+    const response = await axios.get<Array<{ id: string; organicScore: number; usdPrice: number }>>(url);
+    const data = response.data;
+    if (!Array.isArray(data) || data.length === 0) {
+      return undefined;
+    }
+    // Select asset with highest organicScore; tie-breaker: highest usdPrice
+    const best = data.reduce((prev, curr) => {
+      const prevScore = prev.organicScore ?? 0;
+      const currScore = curr.organicScore ?? 0;
+      if (currScore > prevScore) {
+        return curr;
+      } else if (currScore === prevScore) {
+        const prevPrice = prev.usdPrice ?? 0;
+        const currPrice = curr.usdPrice ?? 0;
+        return currPrice > prevPrice ? curr : prev;
+      }
+      return prev;
+    });
+    return best;
   } catch (err) {
     throw new Error(`assetsSearch network error: ${err instanceof Error ? err.message : err}`);
   }
