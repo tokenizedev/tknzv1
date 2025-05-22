@@ -199,6 +199,22 @@ const carouselAnimationStyles = `
   }
 `;
 
+const useDebounce = (value: any, delay: number) => {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+};
+
 export const CoinCreator: React.FC<CoinCreatorProps> = ({ 
   isSidebar = false, 
   sdkOptions,
@@ -380,6 +396,68 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   const [isPreviewTransitioning, setIsPreviewTransitioning] = useState(false);
   const [isDeployTransitioning, setIsDeployTransitioning] = useState(false);
   const [isCancelTransitioning, setIsCancelTransitioning] = useState(false);
+
+  // Add state for auto-preview
+  const [isAutoPreviewLoading, setIsAutoPreviewLoading] = useState(false);
+  const [formReady, setFormReady] = useState(false);
+
+  // Create debounced values for auto-preview trigger
+  const debouncedCoinName = useDebounce(coinName, 1000);
+  const debouncedTicker = useDebounce(ticker, 1000);
+  const debouncedDescription = useDebounce(description, 1000);
+  const debouncedImageUrl = useDebounce(imageUrl, 1000);
+  const debouncedInvestmentAmount = useDebounce(investmentAmount, 1000);
+
+  // Check if form has minimum required fields
+  useEffect(() => {
+    const hasRequiredFields = Boolean(
+      coinName.trim() && 
+      ticker.trim() && 
+      description.trim() && 
+      (imageUrl.trim() || imageFile) &&
+      investmentAmount > 0
+    );
+    setFormReady(hasRequiredFields);
+  }, [coinName, ticker, description, imageUrl, imageFile, investmentAmount]);
+
+  // Auto-preview effect
+  useEffect(() => {
+    if (!formReady) {
+      // Clear preview if form becomes invalid
+      if (previewData) {
+        clearPreviewCreateCoin();
+      }
+      return;
+    }
+
+    // Only trigger if we have all required fields and values have stabilized
+    const triggerAutoPreview = async () => {
+      if (isCreating || isAutoPreviewLoading) return;
+      
+      setIsAutoPreviewLoading(true);
+      setError(null);
+      
+      try {
+        const params = buildParams();
+        await previewCreateCoinRemote(params);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : 'Unknown error';
+        console.error('Auto-preview failed:', msg);
+        // Don't show error for auto-preview failures
+      } finally {
+        setIsAutoPreviewLoading(false);
+      }
+    };
+
+    triggerAutoPreview();
+  }, [
+    debouncedCoinName, 
+    debouncedTicker, 
+    debouncedDescription, 
+    debouncedImageUrl, 
+    debouncedInvestmentAmount,
+    formReady
+  ]);
 
   // Handle close insufficient funds modal
   const handleCloseModal = () => {
@@ -763,7 +841,9 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
       }, 300);
     }
   };
-  const handleSubmit = async () => {
+
+  // Modify the handleSubmit to handle both preview and creation in one step
+  const handleCreateCoin = async () => {
     // Refresh wallet balance before submitting
     await refreshPortfolioData();
     const currentBalance = useStore.getState().nativeSolBalance;
@@ -773,8 +853,39 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
       return;
     }
 
-    // Trigger preview of token creation
-    await handlePreview();
+    setIsCreating(true);
+    setError(null);
+
+    const createCoinCallback = async () => {
+      try {
+        // If we don't have preview data yet, get it first
+        if (!previewData) {
+          const params = buildParams();
+          await previewCreateCoinRemote(params);
+        }
+
+        // Then create the coin
+        const res = await confirmPreviewCreateCoin();
+        setCreatedCoin(res);
+        if (onCreationComplete) {
+          onCreationComplete(res.address);
+        }
+      } catch (err) {
+        handleError(err);
+      } finally {
+        setIsCreating(false);
+      }
+    };
+
+    try {
+      if (onCreationStart) {
+        await onCreationStart(createCoinCallback);
+      } else {
+        await createCoinCallback();
+      }
+    } catch (err: any) {
+      handleError(err);
+    }
   };
 
   const clearForm = () => {
@@ -1174,6 +1285,51 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
             )}
           </div>
 
+          {/* Auto-preview section - shows right after investment amount */}
+          {formReady && (previewData || isAutoPreviewLoading) && (
+            <div 
+              className={`crypto-card p-4 space-y-3 border border-cyber-green/20 relative transition-all duration-300 ${
+                isAutoPreviewLoading ? 'opacity-60' : 'opacity-100'
+              }`}
+            >
+              <h3 className="text-sm font-terminal text-cyber-green uppercase">
+                Cost Breakdown
+                {isAutoPreviewLoading && (
+                  <span className="ml-2 text-cyber-green/60">
+                    <Loader2 className="w-3 h-3 inline animate-spin" />
+                  </span>
+                )}
+              </h3>
+              
+              {previewData && !isAutoPreviewLoading ? (
+                <div className="space-y-1 font-terminal text-xs text-white">
+                  <p className="flex justify-between">
+                    <span>Total Cost:</span> 
+                    <span className="text-cyber-green">{previewData.totalCost.toFixed(4)} SOL</span>
+                  </p>
+                  <p className="flex justify-between">
+                    <span>Pump Fee:</span> 
+                    <span>{previewData.pumpFeeAmount.toFixed(4)} SOL</span>
+                  </p>
+                  <p className="flex justify-between">
+                    <span>Platform Fee:</span> 
+                    <span>{previewData.feeAmount.toFixed(4)} SOL</span>
+                  </p>
+                  <p className="flex justify-between border-t border-cyber-green/30 pt-1 mt-1">
+                    <span>Investment:</span> 
+                    <span className="text-cyber-green">{previewData.totalAmount.toFixed(4)} SOL</span>
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <div className="h-4 bg-cyber-green/10 rounded animate-pulse"></div>
+                  <div className="h-4 bg-cyber-green/10 rounded animate-pulse"></div>
+                  <div className="h-4 bg-cyber-green/10 rounded animate-pulse"></div>
+                </div>
+              )}
+            </div>
+          )}
+
           {createdCoin && (
             <div className="crypto-card p-6 space-y-4 border-cyber-green">
               <h3 className="text-lg font-terminal text-cyber-green uppercase tracking-wide">🎉 Coin Created Successfully!</h3>
@@ -1192,109 +1348,30 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
             </div>
           )}
 
-          {/* Preview or Create button */}
-          {previewData ? (
-            <div 
-              ref={previewContainerRef}
-              className={`crypto-card p-4 space-y-4 border ${isPreviewing && !isPreviewTransitioning ? 'border-cyber-purple' : 'border-transparent'} relative terminal-fade-in transition-all duration-300 terminal-bg ${isDeployTransitioning || isCancelTransitioning ? 'opacity-70 scale-95' : 'opacity-100 scale-100'}`}
-              style={{
-                transformOrigin: 'center',
-                transitionProperty: 'transform, opacity, border-color',
-                transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)'
-              }}
-            >
-              {/* Error overlay for RPC or creation errors */}
-              {error && (
-                <div className="absolute top-0 left-0 w-full px-2 py-1 bg-cyber-pink/20 border-b border-cyber-pink text-cyber-pink text-xs font-terminal text-center z-10 terminal-fade-in">
-                  {error}
-                </div>
-              )}
-              
-              {/* Scanline effect for terminal feel */}
-              <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-b from-cyber-green/5 to-transparent bg-repeat-y terminal-scanline" style={{backgroundSize: '100% 8px'}}></div>
+          {/* Single create button */}
+          <button
+            onClick={handleCreateCoin}
+            disabled={!formReady || isCreating || balance < requiredBalance}
+            className={`w-full font-terminal text-lg uppercase tracking-wider border rounded-sm transition-all duration-300 relative overflow-hidden ${
+              !formReady || balance < requiredBalance
+                ? 'bg-cyber-dark border-cyber-green/30 text-cyber-green/50 py-4 cursor-not-allowed'
+                : isCreating
+                  ? 'bg-cyber-dark border-cyber-green text-cyber-green py-2 opacity-90'
+                  : 'bg-cyber-black hover:bg-cyber-green/20 border-cyber-green text-cyber-green py-4 hover:shadow-neon-green'
+            }`}
+          >
+            {isCreating ? (
+              <div className="flex items-center justify-center space-x-2 w-full h-full">
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span>CREATING...</span>
               </div>
-              
-              <h3 className="text-lg font-terminal text-cyber-green uppercase relative">
-                Preview
-                <span className="absolute top-1 -left-2 text-cyber-green/60 terminal-cursor">_</span>
-              </h3>
-              
-              <div className="space-y-1 font-terminal text-sm text-white">
-                <p className="flex justify-between">
-                  <span>Total Cost:</span> 
-                  <span className="text-cyber-green">{previewData.totalCost.toFixed(4)} SOL</span>
-                </p>
-                <p className="flex justify-between">
-                  <span>Pump Fee:</span> 
-                  <span>{previewData.pumpFeeAmount.toFixed(4)} SOL</span>
-                </p>
-                <p className="flex justify-between">
-                  <span>Platform Fee:</span> 
-                  <span>{previewData.feeAmount.toFixed(4)} SOL</span>
-                </p>
-                <p className="flex justify-between border-t border-cyber-green/30 pt-1 mt-1">
-                  <span>Investment:</span> 
-                  <span className="text-cyber-green">{previewData.totalAmount.toFixed(4)} SOL</span>
-                </p>
+            ) : (
+              <div className="flex items-center justify-center space-x-2 w-full h-full">
+                <Zap className="w-5 h-5" />
+                <span>CREATE COIN</span>
               </div>
-              
-              <div className="flex space-x-2">
-                <button
-                  ref={deployButtonRef}
-                  onClick={handleConfirm}
-                  disabled={isCreating || isDeployTransitioning}
-                  className={`btn-primary flex-1 font-terminal relative overflow-hidden cyber-transition ${isDeployTransitioning ? 'active animate-pulse-border' : ''} focus:outline-none focus:ring-2 focus:ring-cyber-green/50 focus:ring-offset-1 focus:ring-offset-black`}
-                >
-                  {isCreating ? 'DEPLOYING...' : 'DEPLOY'}
-                  {isDeployTransitioning && (
-                    <div className="absolute inset-0 bg-cyber-green/10 pointer-events-none"></div>
-                  )}
-                </button>
-                <button
-                  onClick={handleCancelPreview}
-                  disabled={isPreviewing === false || isCancelTransitioning}
-                  className={`flex-1 font-terminal border border-cyber-pink text-cyber-pink py-2 rounded-sm hover:bg-cyber-pink/10 transition-all duration-300 ${isCancelTransitioning ? 'opacity-70' : 'opacity-100'}`}
-                >
-                  CANCEL
-                </button>
-              </div>
-            </div>
-          ) : (
-            <button
-              onClick={handleSubmit}
-              disabled={isPreviewing || isCreating || isPreviewTransitioning}
-              className={`w-full font-terminal text-lg uppercase tracking-wider border rounded-sm transition-all duration-300 relative overflow-hidden cyber-transition ${
-                isPreviewTransitioning
-                  ? 'active bg-cyber-dark border-cyber-green text-cyber-green py-2 opacity-90'
-                  : isPreviewing
-                    ? 'bg-cyber-dark border-cyber-green/70 text-cyber-green py-2'
-                    : 'bg-cyber-black hover:bg-cyber-green/20 border-cyber-green text-cyber-green py-4 hover:shadow-neon-green'
-              }`}
-            >
-              {isPreviewTransitioning || isPreviewing ? (
-                <div className="flex items-center justify-center space-x-2 w-full h-full">
-                  <Loader2 className={`w-5 h-5 ${isPreviewTransitioning ? 'animate-spin' : ''}`} />
-                  <span>PREPPING...</span>
-                </div>
-              ) : (
-                <div className="flex items-center justify-center space-x-2 w-full h-full">
-                  <Zap className="w-5 h-5" />
-                  <span>COOK IT</span>
-                </div>
-              )}
-              
-              {/* Glitch line effect for transition */}
-              {isPreviewTransitioning && (
-                <>
-                  <div className="absolute top-0 left-0 w-full h-[1px] bg-cyber-green/50 terminal-fade-in"></div>
-                  <div className="absolute bottom-0 left-0 w-full h-[1px] bg-cyber-green/50 terminal-fade-in" style={{animationDelay: '0.1s'}}></div>
-                  <div className="absolute left-0 top-0 w-[1px] h-full bg-cyber-green/50 terminal-fade-in" style={{animationDelay: '0.2s'}}></div>
-                  <div className="absolute right-0 top-0 w-[1px] h-full bg-cyber-green/50 terminal-fade-in" style={{animationDelay: '0.3s'}}></div>
-                </>
-              )}
-            </button>
-          )}
+            )}
+          </button>
         </div>
       </div>
       {/* Modal */}
@@ -1304,9 +1381,9 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
           onClose={handleCloseModal}
           tryAgain={async () => {
             if (onCreationStart) {
-              await onCreationStart(handleSubmit);
+              await onCreationStart(handleCreateCoin);
             } else {
-              await handleSubmit();
+              await handleCreateCoin();
             }
           }}
         />
