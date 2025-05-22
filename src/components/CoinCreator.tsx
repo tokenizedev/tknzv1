@@ -346,7 +346,10 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
     if (sdkParams.websiteUrl) setWebsiteUrl(sdkParams.websiteUrl);
     if (sdkParams.twitter) setXUrl(sdkParams.twitter);
     if (sdkParams.telegram) setTelegramUrl(sdkParams.telegram);
-    if (sdkParams.investmentAmount != null) setInvestmentAmount(sdkParams.investmentAmount);
+    if (sdkParams.investmentAmount != null) {
+      setInvestmentAmount(sdkParams.investmentAmount);
+      setInvestmentInputValue(sdkParams.investmentAmount.toString());
+    }
     // Clear store-based params if any
     clearInitialParams();
   }, [sdkParams, clearInitialParams]);
@@ -401,6 +404,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   const [isAutoPreviewLoading, setIsAutoPreviewLoading] = useState(false);
   const [formReady, setFormReady] = useState(false);
   const [hasAutoScrolled, setHasAutoScrolled] = useState(false);
+  const [investmentInputValue, setInvestmentInputValue] = useState('');
 
   // Create debounced values for auto-preview trigger
   const debouncedCoinName = useDebounce(coinName, 1000);
@@ -426,7 +430,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
     // Remove non-numeric characters except decimal
     const cleaned = value.replace(/[^\d.]/g, '');
     
-    // Ensure only one decimal point
+    // Prevent multiple decimals
     const parts = cleaned.split('.');
     if (parts.length > 2) {
       return parts[0] + '.' + parts.slice(1).join('');
@@ -443,25 +447,44 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   const handleInvestmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawValue = e.target.value;
     const formatted = formatSolAmount(rawValue);
+    
+    // Always update the input value to preserve user's typing (including trailing zeros)
+    setInvestmentInputValue(formatted);
+    
+    // Parse for numeric value
     const numValue = parseFloat(formatted);
     
-    if (formatted === '' || formatted === '.') {
+    if (formatted === '' || formatted === '.' || isNaN(numValue)) {
       setInvestmentAmount(0);
       return;
     }
     
-    if (!isNaN(numValue)) {
-      if (numValue > 85) {
-        setError('Maximum investment amount is 85 SOL');
-        setInvestmentAmount(85);
-      } else if (numValue < 0) {
-        setInvestmentAmount(0);
-      } else {
-        setError(null);
-        setInvestmentAmount(numValue);
-      }
+    if (numValue > 85) {
+      setError('Maximum investment amount is 85 SOL');
+      setInvestmentAmount(85);
+      setInvestmentInputValue('85');
+    } else if (numValue < 0) {
+      setInvestmentAmount(0);
+      setInvestmentInputValue('0');
+    } else {
+      setError(null);
+      setInvestmentAmount(numValue);
     }
   };
+
+  // Sync input value with investment amount on mount and when defaultInvestment changes
+  useEffect(() => {
+    if (investmentAmount > 0 && !investmentInputValue) {
+      setInvestmentInputValue(investmentAmount.toString());
+    }
+  }, [investmentAmount]);
+
+  useEffect(() => {
+    setInvestmentAmount(defaultInvestment);
+    if (defaultInvestment > 0) {
+      setInvestmentInputValue(defaultInvestment.toString());
+    }
+  }, [defaultInvestment]);
 
   // Auto-preview effect
   useEffect(() => {
@@ -1319,7 +1342,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
                   <input
                     type="text"
                     inputMode="decimal"
-                    value={investmentAmount > 0 ? investmentAmount.toString() : ''}
+                    value={investmentInputValue}
                     onChange={handleInvestmentChange}
                     onWheel={(e) => e.currentTarget.blur()} // Prevent scroll
                     className={`input-field w-full font-terminal pr-16 text-lg ${investmentAmount > 85 ? 'border-cyber-pink' : ''}`}
