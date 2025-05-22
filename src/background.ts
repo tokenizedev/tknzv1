@@ -111,6 +111,7 @@ chrome.runtime.onMessage.addListener((message: any, sender, sendResponse) => {
     // Handle click asynchronously: blocklist check and token validation
     (async () => {
       try {
+        console.log('TKNZ_TOKEN_CLICKED', token);
         // Retrieve blocklist from storage
         const items: any = await new Promise(resolve =>
           chrome.storage.local.get(['blocklist'], resolve)
@@ -123,25 +124,32 @@ chrome.runtime.onMessage.addListener((message: any, sender, sendResponse) => {
           return;
         }
 
-        try {
-          const asset = await searchToken(tokenId);
-
-          if (!asset?.id) {
-            throw new Error()
-          }
-
-          token.address ??= asset.id;
-
-          if (asset.usdPrice <= 0 || asset.organicScore <= 0) {
-            console.error('Token validation failed (unsupported):', token.address);
-            sendResponse({ success: false, reason: 'unsupported' });
-
+        // Validate token: if symbol provided, lookup via searchToken; skip lookup for provided contract address
+        if (!token.address && token.symbol) {
+          try {
+            console.log('Searching for token by symbol:', token.symbol);
+            const asset = await searchToken(token.symbol);
+            // No matching asset
+            if (!asset?.id) {
+              console.error('Token validation failed (no asset found):', token.symbol);
+              sendResponse({ success: false, reason: 'unsupported' });
+              return;
+            }
+            // Set contract address
+            token.address = asset.id;
+            // Ensure valid price and organic score
+            if (asset.usdPrice <= 0 || asset.organicScore <= 0) {
+              console.error('Token validation failed (unsupported):', token.address);
+              sendResponse({ success: false, reason: 'unsupported' });
+              return;
+            }
+          } catch (err) {
+            console.error('Failed to lookup token by symbol:', token.symbol, err);
+            sendResponse({ success: false, reason: 'unknown' });
             return;
           }
-        } catch (e) {
-          console.error('Failed to lookup token by symbol:', token.symbol, e);
         }
-
+        console.log('token', token);
         // Store the last buy token for UI
         chrome.storage.local.set({ lastBuyToken: JSON.stringify(token) });
         // Use context flag from content script to decide mode
@@ -243,6 +251,8 @@ chrome.runtime.onMessage.addListener((message: any, sender, sendResponse) => {
       }
 
       chrome.runtime.sendMessage({ type: 'SDK_TOKEN_CREATE', options, isSidebar: isSidebarMsg });
+      // Respond to sender that initialization succeeded
+      sendResponse({ success: true });
 
     })();
 
