@@ -8,24 +8,38 @@ export const extractImages = (baseElement: HTMLElement = document.body): string[
   const images: Set<string> = new Set(); // Use a Set to avoid duplicates
   // Base URL for resolving relative image URLs; use full href for accurate origin and path
   const baseUrl = window.location.href;
+  
+  // Helper function to add image URL
+  const addImageUrl = (url: string | null, source: string = '') => {
+    if (!url) return;
+    try {
+      const absoluteUrl = new URL(url, baseUrl).href;
+      // Skip tracking pixels and tiny images
+      if (url.includes('1x1') || url.includes('pixel') || url.includes('spacer')) {
+        return;
+      }
+      images.add(absoluteUrl);
+    } catch (e) {
+      console.warn(`Invalid ${source} image URL:`, url);
+    }
+  };
+  
   // Check if baseElement itself is an image
   if (baseElement instanceof HTMLImageElement) {
-    const srcAttr = baseElement.getAttribute('src');
-    if (srcAttr) {
-      try {
-        const absoluteUrl = new URL(srcAttr, baseUrl).href;
-        images.add(absoluteUrl);
-      } catch (e) {
-        console.warn('Invalid base element image URL:', srcAttr);
-      }
-    }
+    addImageUrl(baseElement.src, 'base element');
   }
   
-  // Meta image selectors (usually highest quality/most relevant)
+  // 1. Meta image selectors (usually highest quality/most relevant)
   const metaSelectors = [
     'meta[property="og:image"]',
+    'meta[property="og:image:url"]',
+    'meta[property="og:image:secure_url"]',
     'meta[name="twitter:image"]',
+    'meta[name="twitter:image:src"]',
+    'meta[itemprop="image"]',
     'link[rel="image_src"]',
+    'link[rel="apple-touch-icon"]',
+    'link[rel="icon"]',
   ];
   
   // Check meta images in document head and base element
@@ -40,53 +54,200 @@ export const extractImages = (baseElement: HTMLElement = document.body): string[
           ? element.getAttribute('href')
           : null;
       
-      if (imgSrc) {
-        try {
-          const absoluteUrl = new URL(imgSrc, baseUrl).href;
-          images.add(absoluteUrl);
-        } catch (e) {
-          console.warn('Invalid meta image URL:', imgSrc);
-        }
-      }
+      addImageUrl(imgSrc, 'meta');
     }
   }
   
-  // Content image selectors (find actual <img> elements)
-  const imgSelectors = [
-    'article img',
-    '.article-content img',
-    '.post-content img',
-    'img[src]:not([src^="data:"])', // Get all images with src attribute that aren't data URIs
-  ];
-  
-  // Extract images from content
-  for (const selector of imgSelectors) {
-    const elements = baseElement.querySelectorAll(selector);
-    elements.forEach(element => {
-      if (element instanceof HTMLImageElement) {
-        const srcAttr = element.getAttribute('src');
-        if (!srcAttr) return;
-        // Ignore tiny images (icons, spacers, etc.)
-        const isLargeEnough = (
-          element.naturalWidth > 80 ||
-          element.naturalHeight > 80 ||
-          element.width > 80 ||
-          element.height > 80 ||
-          // If dimensions aren't available yet, check CSS
-          parseInt(getComputedStyle(element).width) > 80 ||
-          parseInt(getComputedStyle(element).height) > 80
-        );
-
-        if (isLargeEnough || selector.includes('article')) { // Always include article images
-          try {
-            const absoluteUrl = new URL(srcAttr, baseUrl).href;
-            images.add(absoluteUrl);
-          } catch (e) {
-            console.warn('Invalid content image URL:', srcAttr);
-          }
+  // 2. ALL img elements (including data URIs with size limit)
+  const imgElements = baseElement.querySelectorAll('img');
+  imgElements.forEach(img => {
+    if (!(img instanceof HTMLImageElement)) return;
+    
+    // Regular src
+    if (img.src) {
+      // For data URIs, only include if reasonably sized
+      if (img.src.startsWith('data:')) {
+        if (img.src.length < 50000) { // ~37KB base64
+          addImageUrl(img.src, 'img data-uri');
+        }
+      } else {
+        addImageUrl(img.src, 'img src');
+      }
+    }
+    
+    // Srcset for responsive images
+    if (img.srcset) {
+      const srcsetParts = img.srcset.split(',');
+      srcsetParts.forEach(part => {
+        const urlMatch = part.trim().split(/\s+/)[0];
+        if (urlMatch) {
+          addImageUrl(urlMatch, 'img srcset');
+        }
+      });
+    }
+    
+    // Lazy loading attributes
+    const lazyAttrs = ['data-src', 'data-lazy', 'data-original', 'data-lazy-src', 'data-srcset'];
+    lazyAttrs.forEach(attr => {
+      const value = img.getAttribute(attr);
+      if (value) {
+        if (attr.includes('srcset')) {
+          // Handle srcset format
+          const srcsetParts = value.split(',');
+          srcsetParts.forEach(part => {
+            const urlMatch = part.trim().split(/\s+/)[0];
+            if (urlMatch) {
+              addImageUrl(urlMatch, `img ${attr}`);
+            }
+          });
+        } else {
+          addImageUrl(value, `img ${attr}`);
         }
       }
     });
+  });
+  
+  // 3. Picture elements with source tags
+  const pictureElements = baseElement.querySelectorAll('picture');
+  pictureElements.forEach(picture => {
+    // Check source elements
+    const sources = picture.querySelectorAll('source');
+    sources.forEach(source => {
+      if (source.srcset) {
+        const srcsetParts = source.srcset.split(',');
+        srcsetParts.forEach(part => {
+          const urlMatch = part.trim().split(/\s+/)[0];
+          if (urlMatch) {
+            addImageUrl(urlMatch, 'picture source');
+          }
+        });
+      }
+    });
+    
+    // Also check the img inside picture
+    const img = picture.querySelector('img');
+    if (img instanceof HTMLImageElement && img.src) {
+      addImageUrl(img.src, 'picture img');
+    }
+  });
+  
+  // 4. CSS Background images
+  const elementsToCheck = baseElement.querySelectorAll('*');
+  elementsToCheck.forEach(el => {
+    if (!(el instanceof HTMLElement)) return;
+    
+    const style = window.getComputedStyle(el);
+    const backgroundImage = style.backgroundImage;
+    
+    if (backgroundImage && backgroundImage !== 'none') {
+      // Extract URLs from background-image (can have multiple with gradients)
+      const urlRegex = /url\(['"]?([^'")]+)['"]?\)/g;
+      let match;
+      while ((match = urlRegex.exec(backgroundImage)) !== null) {
+        addImageUrl(match[1], 'css background');
+      }
+    }
+    
+    // Also check inline styles
+    const inlineStyle = el.getAttribute('style');
+    if (inlineStyle && inlineStyle.includes('url(')) {
+      const urlRegex = /url\(['"]?([^'")]+)['"]?\)/g;
+      let match;
+      while ((match = urlRegex.exec(inlineStyle)) !== null) {
+        addImageUrl(match[1], 'inline style');
+      }
+    }
+  });
+  
+  // 5. Video poster images
+  const videos = baseElement.querySelectorAll('video[poster]');
+  videos.forEach(video => {
+    const poster = video.getAttribute('poster');
+    if (poster) {
+      addImageUrl(poster, 'video poster');
+    }
+  });
+  
+  // 6. SVG images (as img src or object)
+  const svgImages = baseElement.querySelectorAll('img[src$=".svg"], object[data$=".svg"], embed[src$=".svg"]');
+  svgImages.forEach(svg => {
+    if (svg instanceof HTMLImageElement) {
+      addImageUrl(svg.src, 'svg img');
+    } else if (svg instanceof HTMLObjectElement) {
+      addImageUrl(svg.data, 'svg object');
+    } else if (svg instanceof HTMLEmbedElement) {
+      addImageUrl(svg.src, 'svg embed');
+    }
+  });
+  
+  // 7. Canvas elements (convert to data URL if reasonable size)
+  const canvases = baseElement.querySelectorAll('canvas');
+  canvases.forEach(canvas => {
+    if (!(canvas instanceof HTMLCanvasElement)) return;
+    try {
+      // Only for reasonably sized canvases
+      if (canvas.width > 50 && canvas.height > 50 && canvas.width < 2000 && canvas.height < 2000) {
+        const dataUrl = canvas.toDataURL('image/png', 0.8);
+        if (dataUrl && dataUrl.length < 100000) { // ~75KB limit
+          images.add(dataUrl);
+        }
+      }
+    } catch (e) {
+      // Might fail due to CORS
+      console.warn('Failed to extract canvas image:', e);
+    }
+  });
+  
+  // 8. Image inputs
+  const imageInputs = baseElement.querySelectorAll('input[type="image"][src]');
+  imageInputs.forEach(input => {
+    if (input instanceof HTMLInputElement && input.src) {
+      addImageUrl(input.src, 'input image');
+    }
+  });
+  
+  // 9. Special attributes used by various frameworks/libraries
+  const specialAttrs = [
+    'data-image', 
+    'data-background-image',
+    'data-bg',
+    'data-img-url',
+    'data-thumb',
+    'data-preview'
+  ];
+  
+  specialAttrs.forEach(attr => {
+    const elements = baseElement.querySelectorAll(`[${attr}]`);
+    elements.forEach(el => {
+      const value = el.getAttribute(attr);
+      if (value && (value.includes('.') || value.startsWith('data:') || value.startsWith('http'))) {
+        addImageUrl(value, `special attr ${attr}`);
+      }
+    });
+  });
+  
+  // 10. JSON-LD structured data
+  try {
+    const jsonLdScripts = baseElement.querySelectorAll('script[type="application/ld+json"]');
+    jsonLdScripts.forEach(script => {
+      try {
+        const data = JSON.parse(script.textContent || '');
+        // Recursively find image URLs in JSON
+        const findImages = (obj: any): void => {
+          if (!obj) return;
+          if (typeof obj === 'string' && (obj.includes('.jpg') || obj.includes('.png') || obj.includes('.webp') || obj.includes('.gif'))) {
+            addImageUrl(obj, 'json-ld');
+          } else if (typeof obj === 'object') {
+            Object.values(obj).forEach(val => findImages(val));
+          }
+        };
+        findImages(data);
+      } catch (e) {
+        // Invalid JSON
+      }
+    });
+  } catch (e) {
+    console.warn('Failed to parse JSON-LD:', e);
   }
   
   return Array.from(images);
