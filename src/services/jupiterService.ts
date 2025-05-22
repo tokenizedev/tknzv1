@@ -259,7 +259,7 @@ export async function getTokenInfo(mintAddress: string): Promise<TokenInfoAPI> {
   try {
     const response = await client.get<TokenInfoAPI>(`tokens/v1/token/${encodeURIComponent(mintAddress)}`);
     const data = response.data;
-    
+
     if (!data || typeof data.address !== 'string') {
       throw new Error('getTokenInfo: invalid token data');
     }
@@ -278,7 +278,7 @@ export async function getTokenInfo(mintAddress: string): Promise<TokenInfoAPI> {
 export async function getTaggedTokens(tag: string): Promise<TokenInfoAPI[]> {
   try {
     const response = await client.get<TokenInfoAPI[]>(`tokens/v1/tagged/${encodeURIComponent(tag)}`);
-    
+
     return response.data;
   } catch (err) {
     if (axios.isAxiosError(err) && err.response) {
@@ -413,8 +413,8 @@ export async function getOrder(params: {
   referralFee?: number;
 }): Promise<OrderResponse> {
   try {
-    
-    
+
+
     // Inject affiliate (referral) account and fee if configured via environment
     const affiliateAccount = import.meta.env.VITE_AFFILIATE_WALLET;
     // Default affiliate fee in basis points (bps) if not specified via env
@@ -455,5 +455,15 @@ export async function executeOrder(params: {
       throw new Error(`executeOrder HTTP ${err.response.status}: ${err.response.statusText}`);
     }
     throw new Error(`executeOrder network error: ${(err as Error).message}`);
+  }
+}
+
+export async function searchToken(symbol: string) {
+  try {
+    const { data } = await axios.get<Array<{ id: string, organicScore: number, usdPrice: number }>>(`https://datapi.jup.ag/v1/assets/search?query=${symbol}&sortBy=verified&limit=1`);
+
+    return data?.[0];
+  } catch (err) {
+    throw new Error(`assetsSearch network error: ${err instanceof Error ? err.message : err}`);
   }
 }

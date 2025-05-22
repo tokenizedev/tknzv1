@@ -1,5 +1,4 @@
-import { getTokenInfo } from './services/jupiterService';
-import { loadAllTokens } from './services/tokenService';
+import { searchToken } from './services/jupiterService';
 import { CoinCreationParams } from './types';
 // Background service worker
 chrome.runtime.onInstalled.addListener(() => {
@@ -124,33 +123,23 @@ chrome.runtime.onMessage.addListener((message: any, sender, sendResponse) => {
           return;
         }
 
-        // Resolve token address by symbol if missing, then validate exists on Jupiter
-        let tokenAddress = token.address;
-        if (!tokenAddress) {
-          try {
-            const verified = await loadAllTokens([]);
-            
-            const match = verified.find(t => t.symbol.toUpperCase() === token.symbol.toUpperCase());
-            
-            if (match?.address) {
-              tokenAddress = match.address;
-              token.address = tokenAddress;
-            }
-          } catch (e) {
-            console.error('Failed to lookup token by symbol:', token.symbol, e);
-          }
-        }
-        if (!tokenAddress) {
-          console.warn('Unsupported token format (symbol lookup failed):', token.symbol);
-          sendResponse({ success: false, reason: 'unsupported' });
-          return;
-        }
         try {
-          await getTokenInfo(tokenAddress);
-        } catch (err) {
-          console.error('Token validation failed (unsupported):', tokenAddress, err);
-          sendResponse({ success: false, reason: 'unsupported' });
-          return;
+          const asset = await searchToken(tokenId);
+
+          if (!asset?.id) {
+            throw new Error()
+          }
+
+          token.address ??= asset.id;
+
+          if (asset.usdPrice <= 0 || asset.organicScore <= 0) {
+            console.error('Token validation failed (unsupported):', token.address);
+            sendResponse({ success: false, reason: 'unsupported' });
+
+            return;
+          }
+        } catch (e) {
+          console.error('Failed to lookup token by symbol:', token.symbol, e);
         }
 
         // Store the last buy token for UI
@@ -158,7 +147,7 @@ chrome.runtime.onMessage.addListener((message: any, sender, sendResponse) => {
         // Use context flag from content script to decide mode
         const isSidebarMsg = message.isSidebar === true;
         // Notify UI to show swap page in correct context
-        
+
         // If sidebar UI is active, update it; otherwise open popup
         if (isSidebarMsg) {
           try {
@@ -220,7 +209,7 @@ chrome.runtime.onMessage.addListener((message: any, sender, sendResponse) => {
         console.error('Failed to populate token:', e);
       }
 
-    
+
 
       if (isSidebarMsg) {
         try {
@@ -254,12 +243,12 @@ chrome.runtime.onMessage.addListener((message: any, sender, sendResponse) => {
       }
 
       chrome.runtime.sendMessage({ type: 'SDK_TOKEN_CREATE', options, isSidebar: isSidebarMsg });
-    
+
     })();
-    
+
     return true;
   }
-  
+
   return true;
 });
 
