@@ -1374,6 +1374,16 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
     const parent = (node as Node & { parentElement?: HTMLElement }).parentElement;
     if (!parent || parent.querySelector('.tknz-buy-button')) return;
     
+    // Check if the text is inside an input, textarea, or contenteditable element
+    let currentElement: HTMLElement | null = parent;
+    while (currentElement) {
+      const tagName = currentElement.tagName?.toLowerCase();
+      if (tagName === 'input' || tagName === 'textarea' || currentElement.getAttribute('contenteditable') === 'true') {
+        return; // Skip injection in input fields
+      }
+      currentElement = currentElement.parentElement;
+    }
+    
     // Cashtags like $ABC
     const cashtags = text.match(/\$[A-Za-z][A-Za-z0-9]{1,9}\b/g) || [];
     cashtags.forEach(tag => {
@@ -1423,6 +1433,17 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
             if (!parent) return NodeFilter.FILTER_REJECT;
             const tag = parent.tagName.toLowerCase();
             if (tag === 'script' || tag === 'style') return NodeFilter.FILTER_REJECT;
+            
+            // Check if node is inside an input field, textarea, or contenteditable
+            let currentElement: HTMLElement | null = parent;
+            while (currentElement) {
+              const tagName = currentElement.tagName?.toLowerCase();
+              if (tagName === 'input' || tagName === 'textarea' || currentElement.getAttribute('contenteditable') === 'true') {
+                return NodeFilter.FILTER_REJECT; // Skip text in input fields
+              }
+              currentElement = currentElement.parentElement;
+            }
+            
             return NodeFilter.FILTER_ACCEPT;
           }
         }
