@@ -344,7 +344,9 @@ const initialize = () => {
       return true;
     }
     if (request.type === 'SIDE_PANEL_CLOSED') {
-      cleanup();
+      // Clean up any selection mode UI if active
+      document.querySelectorAll('#tknz-selection-style, .tknz-overlay, .tknz-instructions, .tknz-highlight').forEach(el => el.remove());
+      document.querySelectorAll('.tknz-select-btn').forEach(el => el.remove());
       chrome.runtime.sendMessage({ type: 'SIDE_PANEL_CLOSED' });
     }
     if (request.type === 'GET_ARTICLE_DATA') {
@@ -559,10 +561,14 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
   if (typeof chrome === 'undefined' || !chrome.storage?.local?.get) {
     return;
   }
-  // Check user setting for buy buttons
-  chrome.storage.local.get(['buyModeEnabled', 'floatingScanButtonEnabled'], ({ buyModeEnabled, floatingScanButtonEnabled = true }) => {
+  // Check user setting for buy buttons and domain blocklist
+  chrome.storage.local.get(['buyModeEnabled', 'floatingScanButtonEnabled', 'blockedDomains'], ({ buyModeEnabled, floatingScanButtonEnabled = true, blockedDomains = [] }) => {
     // Default to enabled
     if (buyModeEnabled === false) return;
+    
+    // Check if current domain is blocked
+    const currentDomain = window.location.hostname;
+    const isDomainBlocked = blockedDomains.includes(currentDomain);
   type TokenMsg = { cashtag?: string; symbol?: string; address?: string };
   const STATE = {
     buttonsAdded: new Set<string>(),
@@ -589,45 +595,214 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
     // Create the floating button
     const button = document.createElement('div');
     button.id = 'tknz-floating-scan-btn';
-    button.setAttribute('title', 'Scan for tokens with TKNZ');
+    button.setAttribute('title', 'TKNZ Actions');
     button.innerHTML = `
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M23 4v6h-6"></path>
-        <path d="M1 20v-6h6"></path>
-        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"></path>
-        <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"></path>
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
       </svg>
     `;
     
-    // Create a tooltip element
-    const tooltip = document.createElement('div');
-    tooltip.id = 'tknz-floating-btn-tooltip';
-    tooltip.innerText = 'Scan page for tokens';
-    Object.assign(tooltip.style, {
-      position: 'absolute',
-      backgroundColor: 'rgba(0, 0, 0, 0.8)',
-      color: '#00ff9d',
-      padding: '5px 10px',
-      borderRadius: '4px',
-      fontSize: '12px',
-      whiteSpace: 'nowrap',
-      opacity: '0',
-      transition: 'opacity 0.2s',
+    // Create menu container
+    const menuContainer = document.createElement('div');
+    menuContainer.id = 'tknz-menu-container';
+    Object.assign(menuContainer.style, {
+      position: 'fixed',
+      bottom: '100px',
+      right: '20px',
+      width: '40px',
+      height: '40px',
       pointerEvents: 'none',
-      bottom: '50px',
-      left: '50%',
-      transform: 'translateX(-50%)',
-      zIndex: '10000'
+      zIndex: '9998'
     });
-    button.appendChild(tooltip);
-    
-    // Show/hide tooltip on hover
-    button.addEventListener('mouseenter', () => {
-      tooltip.style.opacity = '1';
+
+    // Create menu items
+    const menuItems = [
+      {
+        id: 'scan',
+        icon: `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M23 4v6h-6"></path>
+          <path d="M1 20v-6h6"></path>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"></path>
+          <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"></path>
+        </svg>`,
+        tooltip: 'Scan for tokens',
+        action: () => {
+          STATE.buttonsAdded.clear();
+          document.querySelectorAll('.tknz-buy-button').forEach(btn => btn.remove());
+          scanElement(document.body);
+          toggleMenu();
+        }
+      },
+      {
+        id: 'block',
+        icon: isDomainBlocked 
+          ? `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M9 9l6 6"></path>
+              <path d="M15 9l-6 6"></path>
+            </svg>`
+          : `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+            </svg>`,
+        tooltip: isDomainBlocked ? 'Enable buy buttons on this site' : 'Disable buy buttons on this site',
+        action: () => {
+          const domain = window.location.hostname;
+          chrome.storage.local.get(['blockedDomains'], (result) => {
+            const blockedDomains = result.blockedDomains || [];
+            if (!blockedDomains.includes(domain)) {
+              // Block domain
+              blockedDomains.push(domain);
+              chrome.storage.local.set({ blockedDomains }, () => {
+                // Remove all buy buttons immediately
+                document.querySelectorAll('.tknz-buy-button').forEach(btn => btn.remove());
+                STATE.buttonsAdded.clear();
+                createNotification(`Buy buttons disabled on ${domain}`, 'success');
+                // Update button icon and tooltip
+                const blockBtn = document.getElementById('tknz-menu-block');
+                if (blockBtn) {
+                  blockBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M9 9l6 6"></path>
+                    <path d="M15 9l-6 6"></path>
+                  </svg>`;
+                  const tooltip = blockBtn.querySelector('.tknz-menu-tooltip') as HTMLElement;
+                  if (tooltip) tooltip.innerText = 'Enable buy buttons on this site';
+                }
+              });
+            } else {
+              // Unblock domain
+              const index = blockedDomains.indexOf(domain);
+              blockedDomains.splice(index, 1);
+              chrome.storage.local.set({ blockedDomains }, () => {
+                createNotification(`Buy buttons enabled on ${domain}`, 'success');
+                // Re-scan after unblocking
+                scanElement(document.body);
+                // Update button icon and tooltip
+                const blockBtn = document.getElementById('tknz-menu-block');
+                if (blockBtn) {
+                  blockBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+                  </svg>`;
+                  const tooltip = blockBtn.querySelector('.tknz-menu-tooltip') as HTMLElement;
+                  if (tooltip) tooltip.innerText = 'Disable buy buttons on this site';
+                }
+              });
+            }
+          });
+          toggleMenu();
+        }
+      },
+      {
+        id: 'select',
+        icon: `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+          <circle cx="8.5" cy="8.5" r="1.5"></circle>
+          <polyline points="21 15 16 10 5 21"></polyline>
+        </svg>`,
+        tooltip: 'Select content to tokenize',
+        action: () => {
+          chrome.storage.local.get(['isSidebarMode'], ({ isSidebarMode }) => {
+            startSelectionMode(!!isSidebarMode);
+          });
+          toggleMenu();
+        }
+      }
+    ];
+
+    let menuOpen = false;
+
+    menuItems.forEach((item, index) => {
+      const menuBtn = document.createElement('div');
+      menuBtn.className = 'tknz-menu-item';
+      menuBtn.id = `tknz-menu-${item.id}`;
+      menuBtn.innerHTML = item.icon;
+      
+      // Create tooltip for menu item
+      const itemTooltip = document.createElement('div');
+      itemTooltip.className = 'tknz-menu-tooltip';
+      itemTooltip.innerText = item.tooltip;
+      Object.assign(itemTooltip.style, {
+        position: 'absolute',
+        backgroundColor: 'rgba(0, 0, 0, 0.9)',
+        color: '#00ff9d',
+        padding: '5px 10px',
+        borderRadius: '4px',
+        fontSize: '11px',
+        whiteSpace: 'nowrap',
+        opacity: '0',
+        transition: 'opacity 0.2s',
+        pointerEvents: 'none',
+        right: '40px',
+        top: '50%',
+        transform: 'translateY(-50%)',
+        zIndex: '10001'
+      });
+      menuBtn.appendChild(itemTooltip);
+      
+      Object.assign(menuBtn.style, {
+        position: 'absolute',
+        width: '32px',
+        height: '32px',
+        borderRadius: '50%',
+        backgroundColor: 'rgba(0, 0, 0, 0.85)',
+        color: '#00ff9d',
+        border: '1px solid #00ff9d',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: 'pointer',
+        opacity: '0',
+        transform: 'scale(0.3)',
+        transition: 'all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55)',
+        pointerEvents: 'none',
+        boxShadow: '0 2px 8px rgba(0, 255, 157, 0.3)'
+      });
+
+      menuBtn.onmouseenter = () => {
+        itemTooltip.style.opacity = '1';
+        menuBtn.style.backgroundColor = 'rgba(0, 255, 157, 0.2)';
+      };
+      menuBtn.onmouseleave = () => {
+        itemTooltip.style.opacity = '0';
+        menuBtn.style.backgroundColor = 'rgba(0, 0, 0, 0.85)';
+      };
+
+      menuBtn.onclick = (e) => {
+        e.stopPropagation();
+        item.action();
+      };
+
+      menuContainer.appendChild(menuBtn);
     });
-    button.addEventListener('mouseleave', () => {
-      tooltip.style.opacity = '0';
-    });
+
+    const toggleMenu = () => {
+      menuOpen = !menuOpen;
+      button.style.transform = menuOpen ? 'scale(1.1) rotate(180deg)' : 'scale(1) rotate(0deg)';
+      
+      menuItems.forEach((item, index) => {
+        const menuBtn = document.getElementById(`tknz-menu-${item.id}`);
+        if (menuBtn) {
+          if (menuOpen) {
+            const angle = (index * 45) + 180; // Spread items in an arc
+            const radius = 50;
+            const x = radius * Math.cos(angle * Math.PI / 180);
+            const y = radius * Math.sin(angle * Math.PI / 180);
+            
+            menuBtn.style.opacity = '1';
+            menuBtn.style.transform = `translate(${x}px, ${y}px) scale(1)`;
+            menuBtn.style.pointerEvents = 'auto';
+          } else {
+            menuBtn.style.opacity = '0';
+            menuBtn.style.transform = 'scale(0.3)';
+            menuBtn.style.pointerEvents = 'none';
+          }
+        }
+      });
+      
+      menuContainer.style.pointerEvents = menuOpen ? 'auto' : 'none';
+    };
 
     // Style the button
     Object.assign(button.style, {
@@ -644,38 +819,39 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
       justifyContent: 'center',
       cursor: 'pointer',
       zIndex: '9999',
-      boxShadow: '0 2px 10px rgba(0, 0, 0, 0.2)',
-      transition: 'transform 0.2s ease-out, opacity 0.2s ease-out, left 0.2s ease-out, top 0.2s ease-out',
+      boxShadow: '0 2px 10px rgba(0, 0, 0, 0.2), 0 0 20px rgba(0, 255, 157, 0.4)',
+      transition: 'all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55)',
       userSelect: 'none',
       touchAction: 'none'
     });
 
     // Add hover effects
     button.onmouseover = () => {
-      button.style.transform = 'scale(1.1)';
-      button.style.opacity = '0.9';
+      if (!menuOpen) {
+        button.style.transform = 'scale(1.1)';
+        button.style.boxShadow = '0 2px 15px rgba(0, 0, 0, 0.3), 0 0 30px rgba(0, 255, 157, 0.6)';
+      }
     };
     button.onmouseout = () => {
-      button.style.transform = 'scale(1)';
-      button.style.opacity = '1';
+      if (!menuOpen) {
+        button.style.transform = 'scale(1)';
+        button.style.boxShadow = '0 2px 10px rgba(0, 0, 0, 0.2), 0 0 20px rgba(0, 255, 157, 0.4)';
+      }
     };
 
-    // Add click handler to trigger scan
+    // Add click handler to toggle menu
     button.onclick = (e) => {
       e.preventDefault();
       e.stopPropagation();
-      
-      // Show a brief animation to indicate scanning
-      button.style.transform = 'scale(0.9)';
-      setTimeout(() => {
-        button.style.transform = 'scale(1)';
-      }, 200);
-      
-      // Clear existing buttons and state, then re-scan
-      STATE.buttonsAdded.clear();
-      document.querySelectorAll('.tknz-buy-button').forEach(btn => btn.remove());
-      scanElement(document.body);
+      toggleMenu();
     };
+
+    // Close menu when clicking outside
+    document.addEventListener('click', (e) => {
+      if (menuOpen && !button.contains(e.target as Node) && !menuContainer.contains(e.target as Node)) {
+        toggleMenu();
+      }
+    });
 
     // Make the button draggable with smooth gliding and inertia
     let isDragging = false;
@@ -712,6 +888,9 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
         newY = Math.max(0, Math.min(newY, maxY));
         button.style.left = `${newX}px`;
         button.style.top = `${newY}px`;
+        // Move menu container with button during inertia
+        menuContainer.style.left = `${newX}px`;
+        menuContainer.style.top = `${newY}px`;
         if (Math.abs(vx) > 20 || Math.abs(vy) > 20) {
           inertiaAnimationFrame = requestAnimationFrame(frame);
         } else {
@@ -751,6 +930,9 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
       button.style.bottom = 'auto';
       button.style.left = `${boundedX}px`;
       button.style.top = `${boundedY}px`;
+      // Move menu container with button
+      menuContainer.style.left = `${boundedX}px`;
+      menuContainer.style.top = `${boundedY}px`;
       // Track for inertia
       lastPositions.push({ x: boundedX, y: boundedY, time: Date.now() });
       if (lastPositions.length > 5) lastPositions.shift();
@@ -797,17 +979,25 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
         if (pos.left && pos.left !== 'auto') {
           button.style.left = pos.left;
           button.style.right = 'auto';
+          menuContainer.style.left = pos.left;
         } else if (pos.right && pos.right !== 'auto') {
           button.style.right = pos.right;
           button.style.left = 'auto';
+          // Calculate left position for menu container
+          const leftPos = window.innerWidth - 40 - parseInt(pos.right);
+          menuContainer.style.left = `${leftPos}px`;
         }
         // Vertical positioning
         if (pos.top && pos.top !== 'auto') {
           button.style.top = pos.top;
           button.style.bottom = 'auto';
+          menuContainer.style.top = pos.top;
         } else if (pos.bottom && pos.bottom !== 'auto') {
           button.style.bottom = pos.bottom;
           button.style.top = 'auto';
+          // Calculate top position for menu container
+          const topPos = window.innerHeight - 40 - parseInt(pos.bottom);
+          menuContainer.style.top = `${topPos}px`;
         }
       } else {
         // Default fallback
@@ -815,6 +1005,9 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
         button.style.left = 'auto';
         button.style.bottom = '100px';
         button.style.top = 'auto';
+        // Set menu container default position
+        menuContainer.style.left = `${window.innerWidth - 60}px`;
+        menuContainer.style.top = `${window.innerHeight - 140}px`;
       }
       setTimeout(ensureButtonVisible, 100);
     });
@@ -890,6 +1083,7 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
 
     // Add to document
     document.body.appendChild(button);
+    document.body.appendChild(menuContainer);
     
     // Observe DOM changes to reposition if needed
     const observer = new MutationObserver(() => {
@@ -929,13 +1123,13 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
   };
   // Wrap fetch to track network requests
   const originalFetch = window.fetch;
-  window.fetch = (...args: any[]) => {
+  window.fetch = function(...args) {
     activeRequests++;
-    return originalFetch.apply(this, args).finally(() => {
+    return originalFetch.apply(window, args as Parameters<typeof fetch>).finally(() => {
       activeRequests--;
       scheduleNetworkIdleScan();
     });
-  };
+  } as typeof fetch;
   // Wrap XMLHttpRequest to track network requests
   const originalXhrSend = XMLHttpRequest.prototype.send;
   XMLHttpRequest.prototype.send = function (...args: any[]) {
@@ -1209,30 +1403,41 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
 
   // Scan a subtree for text nodes
   function scanElement(root: Node) {
-    const walker = document.createTreeWalker(
-      root,
-      NodeFilter.SHOW_TEXT,
-      {
-        acceptNode(node) {
-          const text = node.textContent;
-          if (!text || !text.trim()) return NodeFilter.FILTER_REJECT;
-          const parent = (node as Node & { parentElement?: HTMLElement }).parentElement;
-          if (!parent) return NodeFilter.FILTER_REJECT;
-          const tag = parent.tagName.toLowerCase();
-          if (tag === 'script' || tag === 'style') return NodeFilter.FILTER_REJECT;
-          return NodeFilter.FILTER_ACCEPT;
+    // Check if domain is blocked before scanning
+    chrome.storage.local.get(['blockedDomains'], (result) => {
+      const blockedDomains = result.blockedDomains || [];
+      const currentDomain = window.location.hostname;
+      if (blockedDomains.includes(currentDomain)) {
+        console.log(`Buy buttons blocked on domain: ${currentDomain}`);
+        return;
+      }
+      
+      const walker = document.createTreeWalker(
+        root,
+        NodeFilter.SHOW_TEXT,
+        {
+          acceptNode(node) {
+            const text = node.textContent;
+            if (!text || !text.trim()) return NodeFilter.FILTER_REJECT;
+            const parent = (node as Node & { parentElement?: HTMLElement }).parentElement;
+            if (!parent) return NodeFilter.FILTER_REJECT;
+            const tag = parent.tagName.toLowerCase();
+            if (tag === 'script' || tag === 'style') return NodeFilter.FILTER_REJECT;
+            return NodeFilter.FILTER_ACCEPT;
+          }
         }
-      },
-      false
-    );
-    let node: Node | null;
-    while ((node = walker.nextNode())) {
-      handleTextNode(node);
-    }
+      );
+      let node: Node | null;
+      while ((node = walker.nextNode())) {
+        handleTextNode(node);
+      }
+    });
   }
 
-  // Initial scan of the whole document
-  scanElement(document.body);
+  // Initial scan of the whole document (skip if domain is blocked)
+  if (!isDomainBlocked) {
+    scanElement(document.body);
+  }
 
   // Observe dynamic content changes
   const observer = new MutationObserver(mutations => {
