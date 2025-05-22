@@ -33,6 +33,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
   // Token detection feature toggles
   const [buyEnabled, setBuyEnabled] = useState<boolean>(true);
   const [floatingScanButtonEnabled, setFloatingScanButtonEnabled] = useState<boolean>(true);
+  // Domain blocklist for buy buttons
+  const [blockedDomains, setBlockedDomains] = useState<string[]>([]);
+  const [domainInput, setDomainInput] = useState('');
   // Token validation feature toggle
   const [validationEnabled, setValidationEnabled] = useState<boolean>(true);
   const [blocklist, setBlocklist] = useState<string[]>([]);
@@ -91,15 +94,19 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
         // Get settings from storage
         const res = await storage.get('buyModeEnabled');
         const resScan = await storage.get('floatingScanButtonEnabled');
+        const resDomains = await storage.get('blockedDomains');
         const buyEnabled = res.buyModeEnabled;
         const floatingEnabled = resScan.floatingScanButtonEnabled;
+        const blocked = resDomains.blockedDomains;
         
         setBuyEnabled(buyEnabled === undefined ? true : buyEnabled);
         setFloatingScanButtonEnabled(floatingEnabled === undefined ? true : floatingEnabled);
+        setBlockedDomains(Array.isArray(blocked) ? blocked : []);
       } catch (err) {
         console.error('Failed to load button settings:', err);
         setBuyEnabled(true);
         setFloatingScanButtonEnabled(true);
+        setBlockedDomains([]);
       }
     })();
   }, []);
@@ -537,7 +544,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
               <div className="space-y-2 border-b border-cyber-green/10 pb-4">
                 <h3 className="text-cyber-green/90 text-sm font-terminal flex items-center">
                   <ShoppingCart className="w-4 h-4 mr-2" />
-                  Buy Button Feature
+                  Global Buy Button Toggle
                 </h3>
                 <label className="flex items-center space-x-2">
                   <input
@@ -556,10 +563,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
                       }
                     }}
                   />
-                  <span className="text-cyber-green text-sm font-terminal">Enable Buy Buttons on Webpages</span>
+                  <span className="text-cyber-green text-sm font-terminal">Enable Buy Buttons Globally</span>
                 </label>
                 <p className="text-cyber-green/50 text-xs font-terminal ml-6">
-                  Adds "Buy with TKNZ" buttons next to token addresses and cashtags on web pages.
+                  Master switch for "Buy with TKNZ" buttons on all websites.
                 </p>
               </div>
 
@@ -614,12 +621,97 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
                   </button>
                 </div>
               </div>
+
+              {/* Domain Blocklist */}
+              <div className="space-y-4 pt-1 border-b border-cyber-green/10 pb-4">
+                <h3 className={`text-cyber-green/90 text-sm font-terminal flex items-center ${!buyEnabled ? 'opacity-50' : ''}`}>
+                  <Ban className="w-4 h-4 mr-2" />
+                  Domain Blocklist
+                </h3>
+                <p className={`text-cyber-green/70 text-xs font-terminal ${!buyEnabled ? 'opacity-50' : ''}`}>
+                  Disable buy buttons on specific domains while keeping the global toggle on.
+                </p>
+                
+                {/* Add domain input */}
+                <div className="flex space-x-2">
+                  <input
+                    type="text"
+                    placeholder="example.com"
+                    value={domainInput}
+                    onChange={e => setDomainInput(e.target.value)}
+                    onKeyPress={e => {
+                      if (e.key === 'Enter' && domainInput.trim() && !blockedDomains.includes(domainInput.trim()) && buyEnabled) {
+                        const domain = domainInput.trim().toLowerCase();
+                        const updated = [...blockedDomains, domain];
+                        setBlockedDomains(updated);
+                        setDomainInput('');
+                        storage.set({ blockedDomains: updated });
+                      }
+                    }}
+                    disabled={!buyEnabled}
+                    className={`flex-1 bg-cyber-black border rounded-sm p-2 text-sm font-terminal focus:outline-none focus:ring-1 ${
+                      buyEnabled 
+                        ? 'border-cyber-green/30 text-cyber-green focus:border-cyber-green/70 focus:ring-cyber-green/30' 
+                        : 'border-cyber-green/20 text-cyber-green/50 cursor-not-allowed'
+                    }`}
+                  />
+                  <button
+                    onClick={() => {
+                      if (domainInput.trim() && !blockedDomains.includes(domainInput.trim()) && buyEnabled) {
+                        const domain = domainInput.trim().toLowerCase();
+                        const updated = [...blockedDomains, domain];
+                        setBlockedDomains(updated);
+                        setDomainInput('');
+                        storage.set({ blockedDomains: updated });
+                      }
+                    }}
+                    disabled={!buyEnabled || !domainInput.trim() || blockedDomains.includes(domainInput.trim())}
+                    className={`px-3 py-2 border rounded-sm font-terminal text-sm flex items-center transition-colors ${
+                      buyEnabled 
+                        ? 'bg-cyber-green/10 border-cyber-green/50 text-cyber-green hover:bg-cyber-green/20 disabled:opacity-50 disabled:cursor-not-allowed' 
+                        : 'bg-cyber-green/5 border-cyber-green/20 text-cyber-green/40 cursor-not-allowed'
+                    }`}
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    ADD
+                  </button>
+                </div>
+                
+                {/* Blocked domains list */}
+                <div className="space-y-1 max-h-[150px] overflow-y-auto pr-1">
+                  {blockedDomains.length === 0 ? (
+                    <p className="text-cyber-green/60 text-xs font-terminal">No domains blocked.</p>
+                  ) : (
+                    blockedDomains.map(domain => (
+                      <div key={domain} className="flex items-center justify-between p-2 border border-cyber-green/20 rounded-sm bg-cyber-green/5">
+                        <span className="text-cyber-green font-terminal text-sm">{domain}</span>
+                        <button
+                          onClick={() => {
+                            const updated = blockedDomains.filter(d => d !== domain);
+                            setBlockedDomains(updated);
+                            storage.set({ blockedDomains: updated });
+                          }}
+                          disabled={!buyEnabled}
+                          className={`p-1.5 rounded-sm transition-colors ${
+                            buyEnabled 
+                              ? 'text-cyber-orange hover:bg-cyber-orange/10' 
+                              : 'text-cyber-orange/50 cursor-not-allowed'
+                          }`}
+                          title="Remove from blocklist"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
               
               <p className="text-cyber-green/50 text-xs font-terminal italic">
-                Note: Changes to some settings may require page refresh to take effect.
+                Note: The global toggle disables all buy buttons. Domain blocklist only applies when globally enabled.
                 {!buyEnabled && (
                   <span className="block mt-1 text-cyber-orange/70">
-                    Enable Buy Buttons to access scanning features.
+                    Enable Buy Buttons globally to access all features.
                   </span>
                 )}
               </p>
