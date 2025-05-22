@@ -400,6 +400,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   // Add state for auto-preview
   const [isAutoPreviewLoading, setIsAutoPreviewLoading] = useState(false);
   const [formReady, setFormReady] = useState(false);
+  const [hasAutoScrolled, setHasAutoScrolled] = useState(false);
 
   // Create debounced values for auto-preview trigger
   const debouncedCoinName = useDebounce(coinName, 1000);
@@ -420,12 +421,55 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
     setFormReady(hasRequiredFields);
   }, [coinName, ticker, description, imageUrl, imageFile, investmentAmount]);
 
+  // Format SOL amount for display
+  const formatSolAmount = (value: string): string => {
+    // Remove non-numeric characters except decimal
+    const cleaned = value.replace(/[^\d.]/g, '');
+    
+    // Ensure only one decimal point
+    const parts = cleaned.split('.');
+    if (parts.length > 2) {
+      return parts[0] + '.' + parts.slice(1).join('');
+    }
+    
+    // Limit decimal places to 4
+    if (parts.length === 2 && parts[1].length > 4) {
+      parts[1] = parts[1].slice(0, 4);
+    }
+    
+    return parts.join('.');
+  };
+
+  const handleInvestmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawValue = e.target.value;
+    const formatted = formatSolAmount(rawValue);
+    const numValue = parseFloat(formatted);
+    
+    if (formatted === '' || formatted === '.') {
+      setInvestmentAmount(0);
+      return;
+    }
+    
+    if (!isNaN(numValue)) {
+      if (numValue > 85) {
+        setError('Maximum investment amount is 85 SOL');
+        setInvestmentAmount(85);
+      } else if (numValue < 0) {
+        setInvestmentAmount(0);
+      } else {
+        setError(null);
+        setInvestmentAmount(numValue);
+      }
+    }
+  };
+
   // Auto-preview effect
   useEffect(() => {
     if (!formReady) {
       // Clear preview if form becomes invalid
       if (previewData) {
         clearPreviewCreateCoin();
+        setHasAutoScrolled(false);
       }
       return;
     }
@@ -458,6 +502,30 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
     debouncedInvestmentAmount,
     formReady
   ]);
+
+  // Auto-scroll to preview when it appears
+  useEffect(() => {
+    if (formReady && previewData && !isAutoPreviewLoading && !hasAutoScrolled) {
+      setHasAutoScrolled(true);
+      
+      // Smooth scroll to bottom
+      setTimeout(() => {
+        if (mainContainerRef.current) {
+          mainContainerRef.current.scrollTo({
+            top: mainContainerRef.current.scrollHeight,
+            behavior: 'smooth'
+          });
+        }
+        
+        // Focus create button after scroll
+        setTimeout(() => {
+          if (createButtonRef.current) {
+            createButtonRef.current.focus();
+          }
+        }, 500);
+      }, 100);
+    }
+  }, [formReady, previewData, isAutoPreviewLoading, hasAutoScrolled]);
 
   // Handle close insufficient funds modal
   const handleCloseModal = () => {
@@ -557,21 +625,6 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   useEffect(() => {
     setInvestmentAmount(defaultInvestment);
   }, [defaultInvestment]);
-
-  const handleInvestmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseFloat(e.target.value);
-    if (!isNaN(value)) {
-      if (value > 85) {
-        setError('Maximum investment amount is 85 SOL');
-        setInvestmentAmount(85);
-      } else if (value < 0) {
-        setInvestmentAmount(0);
-      } else {
-        setError(null);
-        setInvestmentAmount(value);
-      }
-    }
-  };
 
   const generateSuggestions = async (article: ArticleData, level = memeLevel) => {
     // Skip AI suggestion generation when initialized via SDK params or SDK options
@@ -987,8 +1040,11 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   // Add a ref for the main container
   const mainContainerRef = useRef<HTMLDivElement>(null);
 
+  // Add ref for create button
+  const createButtonRef = useRef<HTMLButtonElement>(null);
+
   if (isLoading) {
-    return <Loader isSidebar={isSidebar} isChild={true} />;
+    return <Loader isSidebar={isSidebar} />;
   }
 
   return (
@@ -1257,25 +1313,31 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
               <span className="text-xs font-terminal text-cyber-purple">Pump.Fun Fee: 0.02 SOL</span>
             </div>
             
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center">
               <div className="relative flex-1">
-                <input
-                  type="number"
-                  min="0"
-                  max="85"
-                  step="0.01"
-                  value={investmentAmount}
-                  onChange={handleInvestmentChange}
-                  className={`input-field w-full font-terminal ${investmentAmount > 85 ? 'border-cyber-pink' : ''}`}
-                  placeholder="Enter SOL amount (max 85)"
-                />
-                {investmentAmount > 85 && (
-                  <div className="absolute right-0 top-1/2 -translate-y-1/2 mr-2">
-                    <AlertCircle className="w-5 h-5 text-cyber-pink" />
+                <div className="relative">
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={investmentAmount > 0 ? investmentAmount.toString() : ''}
+                    onChange={handleInvestmentChange}
+                    onWheel={(e) => e.currentTarget.blur()} // Prevent scroll
+                    className={`input-field w-full font-terminal pr-16 text-lg ${investmentAmount > 85 ? 'border-cyber-pink' : ''}`}
+                    placeholder="0.00"
+                  />
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center space-x-2 pointer-events-none">
+                    {investmentAmount > 85 && (
+                      <AlertCircle className="w-5 h-5 text-cyber-pink" />
+                    )}
+                    <span className="text-cyber-green font-terminal font-bold text-lg">SOL</span>
+                  </div>
+                </div>
+                {investmentAmount > 0 && (
+                  <div className="text-xs text-cyber-green/60 font-terminal mt-1">
+                    ≈ ${(investmentAmount * 200).toFixed(2)} USD
                   </div>
                 )}
               </div>
-              <span className="text-sm font-terminal text-white">SOL</span>
             </div>
 
             {balance < requiredBalance && (
@@ -1350,6 +1412,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
 
           {/* Single create button */}
           <button
+            ref={createButtonRef}
             onClick={handleCreateCoin}
             disabled={!formReady || isCreating || balance < requiredBalance}
             className={`w-full font-terminal text-lg uppercase tracking-wider border rounded-sm transition-all duration-300 relative overflow-hidden ${
@@ -1357,7 +1420,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
                 ? 'bg-cyber-dark border-cyber-green/30 text-cyber-green/50 py-4 cursor-not-allowed'
                 : isCreating
                   ? 'bg-cyber-dark border-cyber-green text-cyber-green py-2 opacity-90'
-                  : 'bg-cyber-black hover:bg-cyber-green/20 border-cyber-green text-cyber-green py-4 hover:shadow-neon-green'
+                  : 'bg-cyber-black hover:bg-cyber-green/20 border-cyber-green text-cyber-green py-4 hover:shadow-neon-green focus:outline-none focus:ring-2 focus:ring-cyber-green/50 focus:ring-offset-2 focus:ring-offset-cyber-black'
             }`}
           >
             {isCreating ? (
