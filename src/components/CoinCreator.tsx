@@ -322,10 +322,11 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   
   
   // Wallet and store hooks
-  const { nativeSolBalance: balance, error: walletError, investmentAmount: defaultInvestment } = useStore(state => ({
+  const { nativeSolBalance: balance, error: walletError, investmentAmount: defaultInvestment, totalPortfolioUsdValue } = useStore(state => ({
     nativeSolBalance: state.nativeSolBalance,
     error: state.error,
-    investmentAmount: state.investmentAmount
+    investmentAmount: state.investmentAmount,
+    totalPortfolioUsdValue: state.totalPortfolioUsdValue
   }));
   const previewData = useStore(state => state.previewData);
   const previewCreateCoinRemote = useStore(state => state.previewCreateCoinRemote);
@@ -405,6 +406,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   const [formReady, setFormReady] = useState(false);
   const [hasAutoScrolled, setHasAutoScrolled] = useState(false);
   const [investmentInputValue, setInvestmentInputValue] = useState('');
+  const [solPriceUsd, setSolPriceUsd] = useState<number>(0);
 
   // Create debounced values for auto-preview trigger
   const debouncedCoinName = useDebounce(coinName, 1000);
@@ -1066,6 +1068,30 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   // Add ref for create button
   const createButtonRef = useRef<HTMLButtonElement>(null);
 
+  // Fetch SOL price on mount and periodically
+  useEffect(() => {
+    const fetchSolPrice = async () => {
+      try {
+        const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd');
+        if (response.ok) {
+          const data = await response.json();
+          const price = data.solana?.usd || 0;
+          setSolPriceUsd(price);
+        }
+      } catch (error) {
+        console.error('Failed to fetch SOL price:', error);
+      }
+    };
+
+    // Fetch immediately
+    fetchSolPrice();
+
+    // Update every 60 seconds
+    const interval = setInterval(fetchSolPrice, 60000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   if (isLoading) {
     return <Loader isSidebar={isSidebar} />;
   }
@@ -1355,9 +1381,9 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
                     <span className="text-cyber-green font-terminal font-bold text-lg">SOL</span>
                   </div>
                 </div>
-                {investmentAmount > 0 && (
+                {investmentAmount > 0 && solPriceUsd > 0 && (
                   <div className="text-xs text-cyber-green/60 font-terminal mt-1">
-                    ≈ ${(investmentAmount * 200).toFixed(2)} USD
+                    ≈ ${(investmentAmount * solPriceUsd).toFixed(2)} USD
                   </div>
                 )}
               </div>
