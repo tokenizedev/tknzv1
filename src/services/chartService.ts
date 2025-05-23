@@ -90,7 +90,7 @@ export class ChartService {
   }
   
   // Calculate price statistics
-  calculateStats(bars: ChartBar[]) {
+  calculateStats(bars: ChartBar[], timeframe: ChartTimeframe) {
     if (bars.length === 0) return null;
     
     const prices = bars.map(b => b.c);
@@ -101,30 +101,56 @@ export class ChartService {
     const priceChange = lastBar.c - firstBar.c;
     const priceChangePercent = (priceChange / firstBar.c) * 100;
     
-    // Calculate how many bars represent 24 hours based on timeframe
-    // For proper 24h stats calculation
-    let bars24h: ChartBar[] = bars;
+    // Handle 24h stats based on timeframe
+    let high24h: number;
+    let low24h: number;
+    let volume24h: number | null;
+    let volume24hNote: string | undefined;
     
-    // Get the timestamp 24 hours ago
-    const now = lastBar.t * 1000; // Convert to milliseconds
-    const twentyFourHoursAgo = now - (24 * 60 * 60 * 1000);
-    
-    // Filter bars from the last 24 hours
-    bars24h = bars.filter(bar => (bar.t * 1000) >= twentyFourHoursAgo);
-    
-    // If we don't have any bars in the last 24h (e.g., for weekly timeframe), 
-    // use the most recent bar's data
-    if (bars24h.length === 0) {
-      bars24h = [lastBar];
+    if (timeframe === '1W') {
+      // Weekly bars use days as timestamps, not seconds
+      // Each bar represents a full week, so we can't get true 24h volume
+      high24h = lastBar.h; // Use last week's high
+      low24h = lastBar.l;  // Use last week's low
+      volume24h = null;    // Can't calculate 24h volume from weekly data
+      volume24hNote = 'Weekly';
+    } else {
+      // For other timeframes, timestamps are in seconds
+      const now = lastBar.t * 1000; // Convert to milliseconds
+      const twentyFourHoursAgo = now - (24 * 60 * 60 * 1000);
+      
+      // Filter bars from the last 24 hours
+      const bars24h = bars.filter(bar => (bar.t * 1000) >= twentyFourHoursAgo);
+      
+      if (bars24h.length === 0) {
+        // No data in the last 24h (shouldn't happen with current timeframes)
+        high24h = lastBar.h;
+        low24h = lastBar.l;
+        volume24h = lastBar.v;
+        volume24hNote = 'Limited data';
+      } else if (bars24h.length === bars.length && timeframe === '5m') {
+        // For 5m, if all bars are within 24h but we only have ~12h of data
+        // We should indicate this is partial data
+        high24h = Math.max(...bars24h.map(b => b.h));
+        low24h = Math.min(...bars24h.map(b => b.l));
+        volume24h = bars24h.reduce((acc, b) => acc + b.v, 0);
+        volume24hNote = '12h'; // Only 12 hours of data available
+      } else {
+        // We have proper 24h data
+        high24h = Math.max(...bars24h.map(b => b.h));
+        low24h = Math.min(...bars24h.map(b => b.l));
+        volume24h = bars24h.reduce((acc, b) => acc + b.v, 0);
+      }
     }
     
     return {
       currentPrice: lastBar.c,
       priceChange,
       priceChangePercent,
-      high24h: Math.max(...bars24h.map(b => b.h)),
-      low24h: Math.min(...bars24h.map(b => b.l)),
-      volume24h: bars24h.reduce((acc, b) => acc + b.v, 0),
+      high24h,
+      low24h,
+      volume24h,
+      volume24hNote,
       firstPrice: firstBar.c,
       lastPrice: lastBar.c,
     };
