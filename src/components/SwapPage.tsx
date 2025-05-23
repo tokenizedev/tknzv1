@@ -10,6 +10,8 @@ import {
   executeOrder,
   getPrices,
   getTokenInfo,
+  getAssetInfo,
+  type AssetInfo,
 } from '../services/jupiterService';
 import { storage } from '../utils/storage';
 import type { TokenInfoAPI, BalanceInfo } from '../services/jupiterService';
@@ -24,6 +26,9 @@ import { TokenList } from './swap/TokenList';
 import { SwapConfirmation } from './swap/SwapConfirmation';
 import { SwapStatus, SwapStatusType } from './swap/SwapStatus';
 import { FaInfoCircle } from 'react-icons/fa';
+import { chartService, ChartBar, ChartTimeframe } from '../services/chartService';
+import { CyberSparkline } from './swap/CyberSparkline';
+import { TokenStats } from './swap/TokenStats';
 const SYSTEM_TOKEN = 'AfyDiEptGHEDgD69y56XjNSbTs23LaF1YHANVKnWpump'
 // Native SOL mint address
 const NATIVE_MINT = 'So11111111111111111111111111111111111111112';
@@ -144,6 +149,11 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, 
   // Token states
   const [fromToken, setFromToken] = useState<TokenOption | null>(null);
   const [toToken, setToToken] = useState<TokenOption | null>(null);
+  
+  // Token stats state
+  const [toTokenStats, setToTokenStats] = useState<AssetInfo | null>(null);
+  const [isLoadingStats, setIsLoadingStats] = useState(false);
+  
   // Handle initial selection: allow contract-based tokens if not blocklisted
   // Handle initial selection: wait for tokenList, then allow address or symbol unless blocklisted
   useEffect(() => {
@@ -247,6 +257,8 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, 
   } | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
+  const [showChart, setShowChart] = useState(true);
+
   // Live preview: fetch quote whenever inputs change
   useEffect(() => {
     async function fetchPreview() {
@@ -468,7 +480,11 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, 
       // Deserialize and sign
       const txBuffer = Buffer.from(order.transaction, 'base64');
       const versionedTx = VersionedTransaction.deserialize(txBuffer);
-      versionedTx.sign([useStore.getState().wallet]);
+      const wallet = useStore.getState().wallet;
+      if (!wallet) {
+        throw new Error('Wallet not initialized');
+      }
+      versionedTx.sign([wallet]);
       const signedBase64 = Buffer.from(versionedTx.serialize()).toString('base64');
       // Execute order
       const exec = await executeOrder({ signedTransaction: signedBase64, requestId: order.requestId });
@@ -562,6 +578,49 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, 
       animation: fade-in 0.3s ease-out forwards;
     }
   `;
+
+  // Chart state
+  const [chartData, setChartData] = useState<ChartBar[]>([]);
+  const [chartTimeframe, setChartTimeframe] = useState<ChartTimeframe>('15m');
+  const [isLoadingChart, setIsLoadingChart] = useState(false);
+
+  // Load chart data when toToken changes or timeframe changes
+  useEffect(() => {
+    if (toToken) {
+      setIsLoadingChart(true);
+      chartService.getChartData(toToken.id, chartTimeframe)
+        .then(data => {
+          setChartData(data.bars);
+        })
+        .catch(err => console.error('Failed to load chart data:', err))
+        .finally(() => setIsLoadingChart(false));
+    }
+  }, [toToken, chartTimeframe]);
+
+  // Fetch token stats when "to" token changes
+  useEffect(() => {
+    if (!toToken) {
+      setToTokenStats(null);
+      return;
+    }
+
+    setIsLoadingStats(true);
+    getAssetInfo(toToken.id)
+      .then(assetInfo => {
+        if (assetInfo) {
+          setToTokenStats(assetInfo);
+        } else {
+          setToTokenStats(null);
+        }
+      })
+      .catch(err => {
+        console.error('Failed to fetch token stats:', err);
+        setToTokenStats(null);
+      })
+      .finally(() => {
+        setIsLoadingStats(false);
+      });
+  }, [toToken]);
 
   return (
     <div className="flex flex-col items-center justify-start h-full p-4 relative">
@@ -676,18 +735,123 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, 
 
           {/* To token section */}
           <div
-            className="bg-cyber-dark/70 rounded-md p-4 border border-cyber-green/30 mt-1 relative overflow-hidden transition-all duration-300 hover:border-cyber-green/60 hover:shadow-[0_0_10px_rgba(0,255,160,0.15)]"
+            className="bg-cyber-dark/70 rounded-md p-4 border border-cyber-green/30 mt-1 relative transition-all duration-300 hover:border-cyber-green/60 hover:shadow-[0_0_10px_rgba(0,255,160,0.15)]"
             style={{
               backgroundImage: 'linear-gradient(135deg, rgba(10, 10, 10, 0.9) 0%, rgba(15, 15, 15, 0.9) 100%)',
             }}
           >
             {/* Bottom highlight line animation */}
             <div
-              className="absolute bottom-0 left-0 right-0 h-[1px] bg-cyber-green/40"
+              className="absolute bottom-0 left-0 right-0 h-[1px] bg-cyber-green/40 rounded-b-md"
               style={{
                 boxShadow: '0 0 5px rgba(0, 255, 160, 0.5)'
               }}
             />
+
+            {/* Chart section */}
+            {toToken && showChart && (
+              <div 
+                className="absolute top-2 right-2 z-50"
+              >
+                <div className="relative group">
+                  {/* Always visible small chart */}
+                  <div className="transition-all duration-300 ease-out transform origin-top-right group-hover:scale-0 group-hover:opacity-0">
+                    {isLoadingChart ? (
+                      <div className="w-[100px] h-[32px] flex items-center justify-center">
+                        <div className="w-4 h-4 rounded-full border-2 border-transparent border-t-cyber-green border-l-cyber-green animate-spin"></div>
+                      </div>
+                    ) : (
+                      <CyberSparkline
+                        data={chartData}
+                        width={100}
+                        height={32}
+                        showGradient={true}
+                        showVolume={false}
+                      />
+                    )}
+                  </div>
+                  
+                  {/* Expanded chart that appears on hover */}
+                  <div 
+                    className="absolute top-0 right-0 bg-cyber-dark/95 border border-cyber-green/30 rounded-lg p-3 backdrop-blur-sm
+                               opacity-0 scale-95 origin-top-right pointer-events-none
+                               group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto
+                               transition-all duration-300 ease-out transform"
+                    style={{
+                      minWidth: '280px',
+                      boxShadow: '0 0 20px rgba(0, 255, 160, 0.2)',
+                    }}
+                  >
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-xs text-cyber-green/70 font-terminal">
+                        {toToken.symbol} / USDC
+                      </span>
+                      <div className="flex gap-1">
+                        {(['5m', '15m', '1h', '4h', '1d'] as ChartTimeframe[]).map(tf => (
+                          <button
+                            key={tf}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setChartTimeframe(tf);
+                            }}
+                            className={`text-xs px-1.5 py-0.5 rounded font-terminal transition-all ${
+                              chartTimeframe === tf 
+                                ? 'bg-cyber-green/20 text-cyber-green border border-cyber-green/50' 
+                                : 'text-cyber-green/50 hover:text-cyber-green/80'
+                            }`}
+                          >
+                            {tf}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    {isLoadingChart ? (
+                      <div className="w-[260px] h-[120px] flex items-center justify-center">
+                        <div className="w-6 h-6 rounded-full border-2 border-transparent border-t-cyber-green border-l-cyber-green animate-spin"></div>
+                      </div>
+                    ) : chartData.length > 0 ? (
+                      <>
+                        <CyberSparkline
+                          data={chartData}
+                          width={260}
+                          height={120}
+                          showGradient={true}
+                          showVolume={true}
+                        />
+                        {/* Price stats */}
+                        {(() => {
+                          const stats = chartService.calculateStats(chartData);
+                          if (!stats) return null;
+                          return (
+                            <div className="mt-2 grid grid-cols-2 gap-2 text-xs font-terminal">
+                              <div>
+                                <span className="text-cyber-green/50">24h High:</span>
+                                <span className="text-cyber-green ml-1">${stats.high24h.toFixed(6)}</span>
+                              </div>
+                              <div>
+                                <span className="text-cyber-green/50">24h Low:</span>
+                                <span className="text-cyber-green ml-1">${stats.low24h.toFixed(6)}</span>
+                              </div>
+                              <div className="col-span-2">
+                                <span className="text-cyber-green/50">24h Volume:</span>
+                                <span className="text-cyber-green ml-1">
+                                  ${(stats.volume24h / 1000000).toFixed(2)}M
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </>
+                    ) : (
+                      <div className="w-[260px] h-[120px] flex items-center justify-center text-cyber-green/50 text-xs">
+                        No chart data available
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
 
             <TokenSelector
               tokenSymbol={toToken?.symbol}
@@ -701,6 +865,26 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, 
               onClick={() => setShowToTokenList(true)}
               label="You receive"
             />
+            
+            {/* Token Stats - placed between TokenSelector and AmountInput */}
+            {toToken && (
+              <TokenStats
+                stats={toTokenStats ? {
+                  holderCount: toTokenStats.holderCount,
+                  topHoldersPercentage: toTokenStats.audit?.topHoldersPercentage,
+                  stats24h: toTokenStats.stats24h,
+                  stats1h: toTokenStats.stats1h,
+                  organicScore: toTokenStats.organicScore,
+                  organicScoreLabel: toTokenStats.organicScoreLabel,
+                  audit: toTokenStats.audit,
+                  fdv: toTokenStats.fdv,
+                  mcap: toTokenStats.mcap,
+                  liquidity: toTokenStats.liquidity,
+                } : undefined}
+                loading={isLoadingStats}
+              />
+            )}
+            
             <div className="mt-3">
               <AmountInput
                 value={toAmount}
