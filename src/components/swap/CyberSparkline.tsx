@@ -50,6 +50,11 @@ export const CyberSparkline: React.FC<CyberSparklineProps> = ({
       return (data as PricePoint[]).map(point => ({
         timestamp: point.timestamp,
         price: point.price,
+        open: undefined,
+        high: undefined,
+        low: undefined,
+        close: undefined,
+        volume: undefined,
       }));
     }
   }, [data, isOHLCV]);
@@ -78,8 +83,10 @@ export const CyberSparkline: React.FC<CyberSparklineProps> = ({
     
     // Create volume bars if OHLCV data
     const volumeBars = isOHLCV && showVolume ? chartData.map((point, index) => {
-      if (!point.volume) return null;
-      const maxVolume = Math.max(...chartData.map(d => d.volume || 0));
+      if (!point.volume || point.volume === undefined) return null;
+      const volumes = chartData.map(d => d.volume).filter((v): v is number => v !== undefined);
+      if (volumes.length === 0) return null;
+      const maxVolume = Math.max(...volumes);
       const x = padding + (index / (chartData.length - 1)) * chartWidth;
       const barWidth = Math.max(1, chartWidth / chartData.length - 1);
       const barHeight = (point.volume / maxVolume) * volumeHeight;
