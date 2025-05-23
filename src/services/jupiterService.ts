@@ -490,3 +490,90 @@ export async function searchToken(query: string) {
     throw new Error(`assetsSearch network error: ${err instanceof Error ? err.message : err}`);
   }
 }
+
+/**
+ * Asset info returned by Jupiter Data API
+ */
+export interface AssetInfo {
+  id: string;
+  name: string;
+  symbol: string;
+  icon?: string;
+  decimals: number;
+  holderCount?: number;
+  fdv?: number;
+  mcap?: number;
+  liquidity?: number;
+  usdPrice?: number;
+  stats1h?: {
+    priceChange?: number;
+    holderChange?: number;
+    liquidityChange?: number;
+    volumeChange?: number;
+    buyVolume?: number;
+    sellVolume?: number;
+    numBuys?: number;
+    numSells?: number;
+    numTraders?: number;
+  };
+  stats6h?: {
+    priceChange?: number;
+    holderChange?: number;
+    liquidityChange?: number;
+    volumeChange?: number;
+    buyVolume?: number;
+    sellVolume?: number;
+    numBuys?: number;
+    numSells?: number;
+    numTraders?: number;
+  };
+  stats24h?: {
+    priceChange?: number;
+    holderChange?: number;
+    liquidityChange?: number;
+    volumeChange?: number;
+    buyVolume?: number;
+    sellVolume?: number;
+    numBuys?: number;
+    numSells?: number;
+    numTraders?: number;
+  };
+  audit?: {
+    mintAuthorityDisabled?: boolean;
+    freezeAuthorityDisabled?: boolean;
+    topHoldersPercentage?: number;
+    devBalancePercentage?: number;
+    isSus?: boolean;
+  };
+  organicScore?: number;
+  organicScoreLabel?: string;
+  tags?: string[];
+}
+
+/**
+ * Fetches detailed asset information from Jupiter Data API
+ */
+export async function getAssetInfo(mintAddress: string): Promise<AssetInfo | undefined> {
+  try {
+    // First try exact match by mint address
+    const url = `https://datapi.jup.ag/v1/assets/search?query=${encodeURIComponent(mintAddress)}&limit=10`;
+    const response = await axios.get<AssetInfo[]>(url);
+    const data = response.data;
+    
+    if (!Array.isArray(data) || data.length === 0) {
+      return undefined;
+    }
+    
+    // Find exact match by ID
+    const exactMatch = data.find(asset => asset.id === mintAddress);
+    if (exactMatch) {
+      return exactMatch;
+    }
+    
+    // If no exact match, return first result (might be a symbol match)
+    return data[0];
+  } catch (err) {
+    console.error('getAssetInfo error:', err);
+    return undefined;
+  }
+}
