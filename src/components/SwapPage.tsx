@@ -821,7 +821,7 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, 
                         />
                         {/* Price stats */}
                         {(() => {
-                          const stats = chartService.calculateStats(chartData);
+                          const stats = chartService.calculateStats(chartData, chartTimeframe);
                           if (!stats) return null;
                           return (
                             <div className="mt-2 grid grid-cols-2 gap-2 text-xs font-terminal">
@@ -834,9 +834,13 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, 
                                 <span className="text-cyber-green ml-1">${stats.low24h.toFixed(6)}</span>
                               </div>
                               <div className="col-span-2">
-                                <span className="text-cyber-green/50">24h Volume:</span>
+                                <span className="text-cyber-green/50">
+                                  {stats.volume24hNote ? `${stats.volume24hNote} Volume:` : '24h Volume:'}
+                                </span>
                                 <span className="text-cyber-green ml-1">
-                                  {chartService.formatVolume(stats.volume24h)}
+                                  {stats.volume24h !== null 
+                                    ? chartService.formatVolume(stats.volume24h)
+                                    : 'N/A'}
                                 </span>
                               </div>
                             </div>
