@@ -19,25 +19,6 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 // Track content script status per tab
 const contentScriptStatus = new Map<number, boolean>();
 
-// Clean up when windows are closed
-chrome.windows.onRemoved.addListener(windowId => {
-  // Clean up any window-specific state if needed
-});
-
-// Helper validation functions
-function isValidCoinCreationPayload(obj: Record<string, any>): boolean {
-  return (
-    obj &&
-    typeof obj.name === 'string' &&
-    typeof obj.ticker === 'string' &&
-    typeof obj.imageUrl === 'string' &&
-    typeof obj.description === 'string' &&
-    typeof obj.websiteUrl === 'string' &&
-    typeof obj.investmentAmount === 'number' &&
-    obj.investmentAmount > 0.03
-  );
-}
-
 function isValidForCoinCreateTrigger(obj: Record<string, any>): boolean {
   return (
     obj &&
