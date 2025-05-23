@@ -1216,11 +1216,12 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
 
     // Make the button draggable with smooth gliding and inertia
     let isDragging = false;
-    let offsetX = 0;
-    let offsetY = 0;
-    // Track recent positions for inertia
-    let lastPositions: { x: number; y: number; time: number }[] = [];
-    let inertiaAnimationFrame: number | null = null;
+    let currentX = 0;
+    let currentY = 0;
+    let initialX = 0;
+    let initialY = 0;
+    let xOffset = 0;
+    let yOffset = 0;
     
     function saveScanButtonPosition() {
       chrome.storage.local.set({
@@ -1232,145 +1233,63 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
       ensureButtonVisible();
     }
 
-    function animateInertia(initialVx: number, initialVy: number) {
-      let vx = initialVx;
-      let vy = initialVy;
-      function frame() {
-        vx *= 0.9;
-        vy *= 0.9;
-        const currX = parseFloat(button.style.left || '0');
-        const currY = parseFloat(button.style.top || '0');
-        const deltaTime = 1 / 60;
-        let newX = currX + vx * deltaTime;
-        let newY = currY + vy * deltaTime;
-        const maxX = window.innerWidth - button.offsetWidth;
-        const maxY = window.innerHeight - button.offsetHeight;
-        newX = Math.max(0, Math.min(newX, maxX));
-        newY = Math.max(0, Math.min(newY, maxY));
-        button.style.left = `${newX}px`;
-        button.style.top = `${newY}px`;
-        // Move menu container with button during inertia
-        menuContainer.style.left = `${newX}px`;
-        menuContainer.style.top = `${newY}px`;
-        if (Math.abs(vx) > 20 || Math.abs(vy) > 20) {
-          inertiaAnimationFrame = requestAnimationFrame(frame);
-        } else {
-          if (inertiaAnimationFrame) {
-            cancelAnimationFrame(inertiaAnimationFrame);
-            inertiaAnimationFrame = null;
-          }
-          saveScanButtonPosition();
-        }
-      }
-      inertiaAnimationFrame = requestAnimationFrame(frame);
+    function setTranslate(xPos: number, yPos: number) {
+      // Ensure button stays within viewport bounds
+      const maxX = window.innerWidth - button.offsetWidth;
+      const maxY = window.innerHeight - button.offsetHeight;
+      
+      xPos = Math.max(0, Math.min(xPos, maxX));
+      yPos = Math.max(0, Math.min(yPos, maxY));
+      
+      button.style.left = `${xPos}px`;
+      button.style.top = `${yPos}px`;
+      button.style.right = 'auto';
+      button.style.bottom = 'auto';
+      
+      // Move menu container with button
+      menuContainer.style.left = `${xPos}px`;
+      menuContainer.style.top = `${yPos}px`;
     }
 
     button.addEventListener('mousedown', (e) => {
       isDragging = true;
-      offsetX = e.clientX - button.getBoundingClientRect().left;
-      offsetY = e.clientY - button.getBoundingClientRect().top;
-      // Initialize position tracking
-      lastPositions = [{ x: e.clientX - offsetX, y: e.clientY - offsetY, time: Date.now() }];
-      if (inertiaAnimationFrame) {
-        cancelAnimationFrame(inertiaAnimationFrame);
-        inertiaAnimationFrame = null;
-      }
+      
+      // Get the current position of the button
+      const rect = button.getBoundingClientRect();
+      currentX = rect.left;
+      currentY = rect.top;
+      
+      // Calculate offset from mouse position to button position
+      xOffset = e.clientX - currentX;
+      yOffset = e.clientY - currentY;
+      
       button.style.cursor = 'grabbing';
+      button.style.transition = 'none'; // Disable transitions during drag
       e.preventDefault();
     });
     
     document.addEventListener('mousemove', (e) => {
       if (!isDragging) return;
-      const x = e.clientX - offsetX;
-      const y = e.clientY - offsetY;
-      const maxX = window.innerWidth - button.offsetWidth;
-      const maxY = window.innerHeight - button.offsetHeight;
-      const boundedX = Math.max(0, Math.min(x, maxX));
-      const boundedY = Math.max(0, Math.min(y, maxY));
-      button.style.right = 'auto';
-      button.style.bottom = 'auto';
-      button.style.left = `${boundedX}px`;
-      button.style.top = `${boundedY}px`;
-      // Move menu container with button
-      menuContainer.style.left = `${boundedX}px`;
-      menuContainer.style.top = `${boundedY}px`;
-      // Track for inertia
-      lastPositions.push({ x: boundedX, y: boundedY, time: Date.now() });
-      if (lastPositions.length > 5) lastPositions.shift();
+      e.preventDefault();
+      
+      currentX = e.clientX - xOffset;
+      currentY = e.clientY - yOffset;
+      
+      setTranslate(currentX, currentY);
     });
     
     document.addEventListener('mouseup', () => {
       if (!isDragging) return;
       isDragging = false;
       button.style.cursor = 'pointer';
-      // Compute velocity for inertia
-      const now = Date.now();
-      const recent = lastPositions.filter(p => now - p.time < 100);
-      let usedInertia = false;
-      if (recent.length >= 2) {
-        const first = recent[0];
-        const last = recent[recent.length - 1];
-        const dt = (last.time - first.time) / 1000;
-        if (dt > 0) {
-          const vx = (last.x - first.x) / dt;
-          const vy = (last.y - first.y) / dt;
-          const speed = Math.sqrt(vx * vx + vy * vy);
-          if (speed > 200) {
-            usedInertia = true;
-            animateInertia(vx, vy);
-          }
-        }
-      }
-      if (!usedInertia) {
-        saveScanButtonPosition();
-      }
-    });
-    
-    // Restore previous position or default if unavailable
-    chrome.storage.local.get(['tknzScanButtonPosition'], (result) => {
-      const pos = result.tknzScanButtonPosition;
-      if (
-        pos &&
-        ((pos.left && pos.left !== 'auto') ||
-          (pos.right && pos.right !== 'auto') ||
-          (pos.top && pos.top !== 'auto') ||
-          (pos.bottom && pos.bottom !== 'auto'))
-      ) {
-        // Horizontal positioning
-        if (pos.left && pos.left !== 'auto') {
-          button.style.left = pos.left;
-          button.style.right = 'auto';
-          menuContainer.style.left = pos.left;
-        } else if (pos.right && pos.right !== 'auto') {
-          button.style.right = pos.right;
-          button.style.left = 'auto';
-          // Calculate left position for menu container
-          const leftPos = window.innerWidth - 40 - parseInt(pos.right);
-          menuContainer.style.left = `${leftPos}px`;
-        }
-        // Vertical positioning
-        if (pos.top && pos.top !== 'auto') {
-          button.style.top = pos.top;
-          button.style.bottom = 'auto';
-          menuContainer.style.top = pos.top;
-        } else if (pos.bottom && pos.bottom !== 'auto') {
-          button.style.bottom = pos.bottom;
-          button.style.top = 'auto';
-          // Calculate top position for menu container
-          const topPos = window.innerHeight - 40 - parseInt(pos.bottom);
-          menuContainer.style.top = `${topPos}px`;
-        }
-      } else {
-        // Default fallback
-        button.style.right = '20px';
-        button.style.left = 'auto';
-        button.style.bottom = '100px';
-        button.style.top = 'auto';
-        // Set menu container default position
-        menuContainer.style.left = `${window.innerWidth - 60}px`;
-        menuContainer.style.top = `${window.innerHeight - 140}px`;
-      }
-      setTimeout(ensureButtonVisible, 100);
+      button.style.transition = 'all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55)'; // Re-enable transitions
+      
+      // Update stored position for next drag
+      const rect = button.getBoundingClientRect();
+      currentX = rect.left;
+      currentY = rect.top;
+      
+      saveScanButtonPosition();
     });
 
     // Position intelligently to avoid the Grok button and other elements
@@ -1436,11 +1355,30 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
     });
     resizeObserver.observe(document.body);
     
-    // Position after a short delay to ensure page is loaded
-    setTimeout(() => {
-      positionButton();
-      ensureButtonVisible();
-    }, 1000);
+    // Position intelligently to avoid the Grok button and other elements
+    positionButton();
+    ensureButtonVisible();
+    
+    // Restore previous position or default if unavailable
+    chrome.storage.local.get(['tknzScanButtonPosition'], (result) => {
+      const pos = result.tknzScanButtonPosition;
+      if (pos && pos.left && pos.top) {
+        // Restore saved position
+        const savedX = parseInt(pos.left);
+        const savedY = parseInt(pos.top);
+        setTranslate(savedX, savedY);
+        currentX = savedX;
+        currentY = savedY;
+      } else {
+        // Default position
+        const defaultX = window.innerWidth - 60;
+        const defaultY = window.innerHeight - 140;
+        setTranslate(defaultX, defaultY);
+        currentX = defaultX;
+        currentY = defaultY;
+      }
+      setTimeout(ensureButtonVisible, 100);
+    });
 
     // Add to document
     document.body.appendChild(button);
