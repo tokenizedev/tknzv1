@@ -1420,7 +1420,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
                       <span>{previewData.pumpFeeAmount.toFixed(4)} SOL</span>
                     </p>
                     <p className="flex justify-between">
-                      <span>TKNZ Fee:</span> 
+                      <span>Platform Fee:</span> 
                       <span>{previewData.feeAmount.toFixed(4)} SOL</span>
                     </p>
                     <p className="flex justify-between border-t border-cyber-green/30 pt-1 mt-1">
