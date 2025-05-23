@@ -787,7 +787,7 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, 
                         {toToken.symbol} / USDC
                       </span>
                       <div className="flex gap-1">
-                        {(['5m', '15m', '1h', '4h', '1d'] as ChartTimeframe[]).map(tf => (
+                        {(['5m', '15m', '1H', '1W'] as ChartTimeframe[]).map(tf => (
                           <button
                             key={tf}
                             onClick={(e) => {
