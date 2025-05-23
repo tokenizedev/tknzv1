@@ -44,10 +44,41 @@ function App({ isSidebar = false }: AppProps = {}) {
     }
   }, [isSidebar]);
 
-  // Persist UI mode for content script to detect sidePanel vs popup
+  // Persist UI mode for content script to detect sidePanel vs popup with heartbeat
   useEffect(() => {
     if (chrome?.storage?.local) {
-      chrome.storage.local.set({ isSidebarMode: !!isSidebar });
+      // Set initial state
+      chrome.storage.local.set({ 
+        isSidebarMode: !!isSidebar,
+        sidebarLastHeartbeat: isSidebar ? Date.now() : 0
+      });
+      
+      // If sidebar, set up heartbeat to maintain state
+      if (isSidebar) {
+        // Update every 2 seconds to ensure state stays fresh
+        const heartbeatInterval = setInterval(() => {
+          chrome.storage.local.set({ 
+            isSidebarMode: true,
+            sidebarLastHeartbeat: Date.now()
+          });
+        }, 2000);
+        
+        // Clean up on unmount or when sidebar closes
+        return () => {
+          clearInterval(heartbeatInterval);
+          // Clear sidebar state when closing
+          chrome.storage.local.set({ 
+            isSidebarMode: false,
+            sidebarLastHeartbeat: 0
+          });
+        };
+      } else {
+        // Popup mode - ensure sidebar mode is false
+        chrome.storage.local.set({ 
+          isSidebarMode: false,
+          sidebarLastHeartbeat: 0
+        });
+      }
     }
   }, [isSidebar]);
 
