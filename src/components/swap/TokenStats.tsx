@@ -48,11 +48,12 @@ export const TokenStats: React.FC<TokenStatsProps> = ({ stats, loading }) => {
 
   if (!stats) return null;
 
-  const formatNumber = (num: number | undefined): string => {
+
+  const formatNumber = (num: number | undefined, decimals: number = 2): string => {
     if (num === undefined) return 'N/A';
-    if (num >= 1000000) return `${(num / 1000000).toFixed(2)}M`;
-    if (num >= 1000) return `${(num / 1000).toFixed(2)}K`;
-    return num.toFixed(2);
+    if (num >= 1000000) return `${(num / 1000000).toFixed(decimals)}M`;
+    if (num >= 1000) return `${(num / 1000).toFixed(decimals)}K`;
+    return num.toFixed(decimals);
   };
 
   const formatPercent = (num: number | undefined): string => {
@@ -117,7 +118,7 @@ export const TokenStats: React.FC<TokenStatsProps> = ({ stats, loading }) => {
             <div className="pl-4 space-y-1">
               <div className="flex justify-between text-xs">
                 <span className="text-cyber-green/50">Total Holders:</span>
-                <span className="text-cyber-green font-mono">{formatNumber(stats.holderCount)}</span>
+                <span className="text-cyber-green font-mono">{formatNumber(stats.holderCount, 0)}</span>
               </div>
               <div className="flex justify-between text-xs">
                 <span className="text-cyber-green/50">24h Change:</span>
