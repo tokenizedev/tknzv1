@@ -930,10 +930,38 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
     button.id = 'tknz-floating-scan-btn';
     button.setAttribute('title', 'TKNZ Actions');
     button.innerHTML = `
-      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
-      </svg>
+      <img src="${chrome.runtime.getURL('assets/logo-01.png')}" alt="TKNZ" style="width: 22px; height: 22px; object-fit: contain;">
     `;
+    
+    // Add animation styles - create a style element for the bounce-in animation
+    if (!document.querySelector('#tknz-float-btn-styles')) {
+      const styles = document.createElement('style');
+      styles.id = 'tknz-float-btn-styles';
+      styles.textContent = `
+        @keyframes tknz-bounce-in {
+          0% {
+            opacity: 0;
+            transform: scale(0.3);
+          }
+          50% {
+            transform: scale(1.1);
+          }
+          100% {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+        
+        #tknz-floating-scan-btn {
+          animation: tknz-bounce-in 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+        }
+        
+        #tknz-floating-scan-btn img {
+          /* Logo displays in original colors - no filter applied */
+        }
+      `;
+      document.head.appendChild(styles);
+    }
     
     // Create menu container
     const menuContainer = document.createElement('div');
@@ -1145,14 +1173,14 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
       width: '40px',
       height: '40px',
       borderRadius: '50%',
-      backgroundColor: '#00ff9d',
+      backgroundColor: '#00cc7a',  // Darker green for better contrast
       color: 'black',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       cursor: 'pointer',
       zIndex: '9999',
-      boxShadow: '0 2px 10px rgba(0, 0, 0, 0.2), 0 0 20px rgba(0, 255, 157, 0.4)',
+      boxShadow: '0 2px 10px rgba(0, 0, 0, 0.3), 0 0 20px rgba(0, 204, 122, 0.4)',  // Updated shadow
       transition: 'all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55)',
       userSelect: 'none',
       touchAction: 'none'
@@ -1162,13 +1190,13 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
     button.onmouseover = () => {
       if (!menuOpen) {
         button.style.transform = 'scale(1.1)';
-        button.style.boxShadow = '0 2px 15px rgba(0, 0, 0, 0.3), 0 0 30px rgba(0, 255, 157, 0.6)';
+        button.style.boxShadow = '0 2px 15px rgba(0, 0, 0, 0.3), 0 0 30px rgba(0, 204, 122, 0.6)';
       }
     };
     button.onmouseout = () => {
       if (!menuOpen) {
         button.style.transform = 'scale(1)';
-        button.style.boxShadow = '0 2px 10px rgba(0, 0, 0, 0.2), 0 0 20px rgba(0, 255, 157, 0.4)';
+        button.style.boxShadow = '0 2px 10px rgba(0, 0, 0, 0.3), 0 0 20px rgba(0, 204, 122, 0.4)';
       }
     };
 
