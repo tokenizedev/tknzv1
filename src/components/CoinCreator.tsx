@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Image, Type, FileText, Send, Loader2, AlertCircle, Globe, Sparkles, DollarSign, Hand as BrandX, GitBranch as BrandTelegram, Terminal, Zap, Target, X, Upload, ChevronLeft, ChevronRight, CheckCircle, Copy, ExternalLink, Hash } from 'lucide-react';
 import { useStore } from '../store';
 import type { CoinCreationParams } from '../types';
@@ -40,164 +40,183 @@ interface CoinCreatorProps {
   onCreationError?: (errorMessage: string) => void;
 }
 
-// CSS for animations
-const carouselAnimationStyles = `
-  @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
-  
-  @keyframes fadeInUp {
-    from { 
-      opacity: 0;
-      transform: translateY(10px);
+// Pre-inject CSS for animations to avoid runtime injection
+const animationStyleEl = typeof document !== 'undefined' ? document.createElement('style') : null;
+if (animationStyleEl) {
+  animationStyleEl.textContent = `
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
     }
-    to { 
-      opacity: 1;
-      transform: translateY(0);
+    
+    @keyframes fadeInUp {
+      from { 
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to { 
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
-  }
-  
-  @keyframes fadeInOut {
-    0% { opacity: 0; }
-    10% { opacity: 1; }
-    90% { opacity: 1; }
-    100% { opacity: 0; }
-  }
-  
-  @keyframes glitchIn {
-    0% {
-      opacity: 0;
-      clip-path: inset(40% 0 61% 0);
-      transform: translate(-2px, 0);
+    
+    @keyframes fadeInOut {
+      0% { opacity: 0; }
+      10% { opacity: 1; }
+      90% { opacity: 1; }
+      100% { opacity: 0; }
     }
-    20% {
-      clip-path: inset(92% 0 1% 0);
-      transform: translate(3px, 0);
+    
+    @keyframes glitchIn {
+      0% {
+        opacity: 0;
+        clip-path: inset(40% 0 61% 0);
+        transform: translate(-2px, 0);
+      }
+      20% {
+        clip-path: inset(92% 0 1% 0);
+        transform: translate(3px, 0);
+      }
+      40% {
+        clip-path: inset(43% 0 1% 0);
+        transform: translate(-3px, 0);
+      }
+      60% {
+        clip-path: inset(25% 0 58% 0);
+        transform: translate(2px, 0);
+      }
+      80% {
+        clip-path: inset(54% 0 7% 0);
+        transform: translate(-2px, 0);
+      }
+      100% {
+        opacity: 1;
+        clip-path: inset(0 0 0 0);
+        transform: translate(0, 0);
+      }
     }
-    40% {
-      clip-path: inset(43% 0 1% 0);
-      transform: translate(-3px, 0);
+    
+    @keyframes scanline {
+      0% {
+        transform: translateY(-100%);
+      }
+      100% {
+        transform: translateY(100%);
+      }
     }
-    60% {
-      clip-path: inset(25% 0 58% 0);
-      transform: translate(2px, 0);
+    
+    @keyframes blink {
+      0% { opacity: 1; }
+      5% { opacity: 0.3; }
+      10% { opacity: 1; }
+      15% { opacity: 0.5; }
+      20% { opacity: 1; }
+      100% { opacity: 1; }
     }
-    80% {
-      clip-path: inset(54% 0 7% 0);
-      transform: translate(-2px, 0);
-    }
-    100% {
-      opacity: 1;
-      clip-path: inset(0 0 0 0);
-      transform: translate(0, 0);
-    }
-  }
-  
-  @keyframes scanline {
-    0% {
-      transform: translateY(-100%);
-    }
-    100% {
-      transform: translateY(100%);
-    }
-  }
-  
-  @keyframes blink {
-    0% { opacity: 1; }
-    5% { opacity: 0.3; }
-    10% { opacity: 1; }
-    15% { opacity: 0.5; }
-    20% { opacity: 1; }
-    100% { opacity: 1; }
-  }
 
-  @keyframes pulse {
-    0%, 100% { 
-      box-shadow: 0 0 4px 1px rgba(0, 255, 65, 0.2); 
+    @keyframes pulse {
+      0%, 100% { 
+        box-shadow: 0 0 4px 1px rgba(0, 255, 65, 0.2); 
+      }
+      50% { 
+        box-shadow: 0 0 10px 2px rgba(0, 255, 65, 0.4); 
+      }
     }
-    50% { 
-      box-shadow: 0 0 10px 2px rgba(0, 255, 65, 0.4); 
+    
+    @keyframes shimmer {
+      0% {
+        background-position: -200px 0;
+      }
+      100% {
+        background-position: calc(200px + 100%) 0;
+      }
     }
-  }
-  
-  .animate-fadeIn {
-    animation: fadeIn 0.2s ease-out forwards;
-  }
-  
-  .animate-fadeInUp {
-    animation: fadeInUp 0.3s ease-out forwards;
-  }
-  
-  .animate-fadeInOut {
-    animation: fadeInOut 2s ease-out forwards;
-  }
-  
-  .animate-glitchIn {
-    animation: glitchIn 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-  }
-  
-  .animate-scanline {
-    animation: scanline 2s linear infinite;
-  }
-  
-  .animate-blink {
-    animation: blink 1.5s step-end infinite;
-  }
-  
-  .animate-pulse-border {
-    animation: pulse 1.5s ease-in-out infinite;
-  }
-  
-  .cyber-transition {
-    position: relative;
-    overflow: hidden;
-    transform: translateZ(0);
-  }
-  
-  .cyber-transition::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: rgba(0, 255, 65, 0.5);
-    transform: translateX(-100%);
-    transition: transform 0.3s ease-out;
-    z-index: 1;
-  }
-  
-  .cyber-transition.active::before {
-    transform: translateX(100%);
-    transition: transform 0.6s ease-in;
-  }
-  
-  .terminal-appear {
-    position: relative;
-    overflow: hidden;
-  }
-  
-  .terminal-appear::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(
-      to bottom,
-      rgba(0, 255, 65, 0.15),
-      transparent 3px,
-      transparent 5px,
-      rgba(0, 255, 65, 0.05) 5px
-    );
-    background-size: 100% 8px;
-    animation: scanline 3s linear infinite;
-    opacity: 0.3;
-    pointer-events: none;
-  }
-`;
+    
+    .animate-fadeIn {
+      animation: fadeIn 0.2s ease-out forwards;
+    }
+    
+    .animate-fadeInUp {
+      animation: fadeInUp 0.3s ease-out forwards;
+    }
+    
+    .animate-fadeInOut {
+      animation: fadeInOut 2s ease-out forwards;
+    }
+    
+    .animate-glitchIn {
+      animation: glitchIn 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+    }
+    
+    .animate-scanline {
+      animation: scanline 2s linear infinite;
+    }
+    
+    .animate-blink {
+      animation: blink 1.5s step-end infinite;
+    }
+    
+    .animate-pulse-border {
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+    
+    .skeleton-shimmer {
+      background: linear-gradient(90deg, rgba(0, 255, 65, 0.05) 25%, rgba(0, 255, 65, 0.1) 50%, rgba(0, 255, 65, 0.05) 75%);
+      background-size: 200px 100%;
+      animation: shimmer 1.5s ease-in-out infinite;
+    }
+    
+    .cyber-transition {
+      position: relative;
+      overflow: hidden;
+      transform: translateZ(0);
+    }
+    
+    .cyber-transition::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: rgba(0, 255, 65, 0.5);
+      transform: translateX(-100%);
+      transition: transform 0.3s ease-out;
+      z-index: 1;
+    }
+    
+    .cyber-transition.active::before {
+      transform: translateX(100%);
+      transition: transform 0.6s ease-in;
+    }
+    
+    .terminal-appear {
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .terminal-appear::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(
+        to bottom,
+        rgba(0, 255, 65, 0.15),
+        transparent 3px,
+        transparent 5px,
+        rgba(0, 255, 65, 0.05) 5px
+      );
+      background-size: 100% 8px;
+      animation: scanline 3s linear infinite;
+      opacity: 0.3;
+      pointer-events: none;
+    }
+  `;
+  document.head.appendChild(animationStyleEl);
+}
 
 const useDebounce = (value: any, delay: number) => {
   const [debouncedValue, setDebouncedValue] = useState(value);
@@ -214,6 +233,106 @@ const useDebounce = (value: any, delay: number) => {
 
   return debouncedValue;
 };
+
+// Skeleton loader for form fields
+const FieldSkeleton: React.FC<{ label: string; icon: React.ReactNode }> = React.memo(({ label, icon }) => (
+  <div className="space-y-2">
+    <label className="flex items-center text-sm font-terminal text-cyber-pink">
+      {icon}
+      {label}
+    </label>
+    <div className="h-10 bg-cyber-dark/50 border border-cyber-green/20 rounded-sm skeleton-shimmer"></div>
+  </div>
+));
+
+// Memoized header actions component
+const HeaderActions = React.memo<{
+  onSelectContent: () => void;
+  onGenerateSuggestions: () => void;
+  onClearForm: () => void;
+  isSuggestionsLoading: boolean;
+  websiteUrl: string;
+}>(({ onSelectContent, onGenerateSuggestions, onClearForm, isSuggestionsLoading, websiteUrl }) => (
+  <div className="inline-flex rounded-sm overflow-hidden">
+    <button
+      onClick={onSelectContent}
+      title="Select content to tokenize"
+      className="bg-black border border-cyber-green/70 hover:bg-cyber-green/10 text-cyber-green px-3 py-1 font-terminal text-xs flex items-center border-r-0"
+    >
+      <Target className="w-3 h-3 mr-1" />
+      <span className="uppercase">Select</span>
+    </button>
+    <button
+      onClick={onGenerateSuggestions}
+      disabled={isSuggestionsLoading || websiteUrl.includes('tknz.fun')}
+      title="Memier"
+      className="bg-black border border-cyber-green/70 hover:bg-cyber-green/10 text-cyber-green px-2 py-1 font-terminal text-xs flex items-center disabled:opacity-50 disabled:cursor-not-allowed border-r-0"
+    >
+      {isSuggestionsLoading ? (
+        <Terminal className="w-3 h-3 animate-pulse" />
+      ) : (
+        <Sparkles className="w-3 h-3" />
+      )}
+      <span className="sr-only">MEMIER</span>
+    </button>
+    <button
+      onClick={onClearForm}
+      title="Clear form and start fresh"
+      className="bg-black border border-cyber-green/70 hover:bg-cyber-green/10 text-cyber-green px-2 py-1 font-terminal text-xs flex items-center"
+    >
+      <X className="w-3 h-3" />
+      <span className="sr-only">Clear</span>
+    </button>
+  </div>
+));
+
+// Memoized cost breakdown component
+const CostBreakdown = React.memo<{
+  previewData: any;
+  isAutoPreviewLoading: boolean;
+}>(({ previewData, isAutoPreviewLoading }) => (
+  <div 
+    className={`crypto-card p-4 space-y-3 border border-cyber-green/20 relative transition-all duration-300 ${
+      isAutoPreviewLoading ? 'opacity-60' : 'opacity-100'
+    }`}
+  >
+    <h3 className="text-sm font-terminal text-cyber-green uppercase">
+      Cost Breakdown
+      {isAutoPreviewLoading && (
+        <span className="ml-2 text-cyber-green/60">
+          <Loader2 className="w-3 h-3 inline animate-spin" />
+        </span>
+      )}
+    </h3>
+    
+    {previewData && !isAutoPreviewLoading ? (
+      <div className="space-y-1 font-terminal text-xs text-white">
+        <p className="flex justify-between">
+          <span>Pump Fee:</span> 
+          <span>{previewData.pumpFeeAmount.toFixed(4)} SOL</span>
+        </p>
+        <p className="flex justify-between">
+          <span>TKNZ Fee:</span> 
+          <span>{previewData.feeAmount.toFixed(4)} SOL</span>
+        </p>
+        <p className="flex justify-between border-t border-cyber-green/30 pt-1 mt-1">
+          <span>Investment:</span> 
+          <span>{previewData.totalAmount.toFixed(4)} SOL</span>
+        </p>
+        <p className="flex justify-between border-t border-cyber-green/30 pt-1 mt-1">
+          <span>Total:</span> 
+          <span className="text-cyber-green">{previewData.totalCost.toFixed(4)} SOL</span>
+        </p>
+      </div>
+    ) : (
+      <div className="space-y-1">
+        <div className="h-4 bg-cyber-green/10 rounded skeleton-shimmer"></div>
+        <div className="h-4 bg-cyber-green/10 rounded skeleton-shimmer"></div>
+        <div className="h-4 bg-cyber-green/10 rounded skeleton-shimmer"></div>
+      </div>
+    )}
+  </div>
+));
 
 export const CoinCreator: React.FC<CoinCreatorProps> = ({ 
   isSidebar = false, 
@@ -253,19 +372,6 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
     setIsDeployTransitioning(false);
   };
 
-
-  useEffect(() => {
-    // Add animation styles
-    const styleEl = document.createElement('style');
-    styleEl.textContent = carouselAnimationStyles;
-    document.head.appendChild(styleEl);
-    
-    return () => {
-      document.head.removeChild(styleEl);
-    };
-  }, []);
-  
-  
   // Wallet and store hooks
   const { nativeSolBalance: balance, error: walletError, investmentAmount: defaultInvestment } = useStore(state => ({
     nativeSolBalance: state.nativeSolBalance,
@@ -279,26 +385,8 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   const clearPreviewCreateCoin = useStore(state => state.clearPreviewCreateCoin);
   
   const refreshPortfolioData = useStore(state => state.refreshPortfolioData);
-  // Already combined above: sdkParams includes sdkOptions or store.initialTokenCreateParams
 
-  // Pre-populate form if SDK params are provided
-  useEffect(() => {
-    if (!sdkParams) return;
-    if (sdkParams.name) setCoinName(sdkParams.name);
-    if (sdkParams.ticker) setTicker(sdkParams.ticker);
-    if (sdkParams.description) setDescription(sdkParams.description);
-    if (sdkParams.imageUrl) { setImageUrl(sdkParams.imageUrl); setImageFile(null); }
-    if (sdkParams.websiteUrl) setWebsiteUrl(sdkParams.websiteUrl);
-    if (sdkParams.twitter) setXUrl(sdkParams.twitter);
-    if (sdkParams.telegram) setTelegramUrl(sdkParams.telegram);
-    if (sdkParams.investmentAmount != null) {
-      setInvestmentAmount(sdkParams.investmentAmount);
-      setInvestmentInputValue(sdkParams.investmentAmount.toString());
-    }
-    // Clear store-based params if any
-    clearInitialParams();
-  }, [sdkParams, clearInitialParams]);
-
+  // Form state - initialize immediately
   const [articleData, setArticleData] = useState<ArticleData>({
     title: '',
     primaryImage: '',
@@ -315,7 +403,6 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   const [websiteUrl, setWebsiteUrl] = useState('');
   const [xUrl, setXUrl] = useState('');
   const [telegramUrl, setTelegramUrl] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [investmentAmount, setInvestmentAmount] = useState(defaultInvestment);
@@ -330,6 +417,10 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Separate loading states for progressive loading
+  const [isInitialDataLoading, setIsInitialDataLoading] = useState(true);
+  const [isSuggestionsLoading, setIsSuggestionsLoading] = useState(false);
 
   // State for image carousel
   const [isCarouselOpen, setIsCarouselOpen] = useState(false);
@@ -350,11 +441,31 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   const [solPriceUsd, setSolPriceUsd] = useState<number>(0);
 
   // Create debounced values for auto-preview trigger
-  const debouncedCoinName = useDebounce(coinName, 1000);
-  const debouncedTicker = useDebounce(ticker, 1000);
-  const debouncedDescription = useDebounce(description, 1000);
-  const debouncedImageUrl = useDebounce(imageUrl, 1000);
-  const debouncedInvestmentAmount = useDebounce(investmentAmount, 1000);
+  const debouncedCoinName = useDebounce(coinName, 1500); // Increased from 1000ms
+  const debouncedTicker = useDebounce(ticker, 1500);
+  const debouncedDescription = useDebounce(description, 1500);
+  const debouncedImageUrl = useDebounce(imageUrl, 1500);
+  const debouncedInvestmentAmount = useDebounce(investmentAmount, 1500);
+
+  // Pre-populate form if SDK params are provided - do this immediately
+  useEffect(() => {
+    if (!sdkParams) return;
+    if (sdkParams.name) setCoinName(sdkParams.name);
+    if (sdkParams.ticker) setTicker(sdkParams.ticker);
+    if (sdkParams.description) setDescription(sdkParams.description);
+    if (sdkParams.imageUrl) { setImageUrl(sdkParams.imageUrl); setImageFile(null); }
+    if (sdkParams.websiteUrl) setWebsiteUrl(sdkParams.websiteUrl);
+    if (sdkParams.twitter) setXUrl(sdkParams.twitter);
+    if (sdkParams.telegram) setTelegramUrl(sdkParams.telegram);
+    if (sdkParams.investmentAmount != null) {
+      setInvestmentAmount(sdkParams.investmentAmount);
+      setInvestmentInputValue(sdkParams.investmentAmount.toString());
+    }
+    // If SDK params exist, we're not loading initial data
+    setIsInitialDataLoading(false);
+    // Clear store-based params if any
+    clearInitialParams();
+  }, [sdkParams, clearInitialParams]);
 
   // Check if form has minimum required fields
   useEffect(() => {
@@ -369,7 +480,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   }, [coinName, ticker, description, imageUrl, imageFile, investmentAmount]);
 
   // Format SOL amount for display
-  const formatSolAmount = (value: string): string => {
+  const formatSolAmount = useCallback((value: string): string => {
     // Remove non-numeric characters except decimal
     const cleaned = value.replace(/[^\d.]/g, '');
     
@@ -385,9 +496,9 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
     }
     
     return parts.join('.');
-  };
+  }, []);
 
-  const handleInvestmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInvestmentChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const rawValue = e.target.value;
     const formatted = formatSolAmount(rawValue);
     
@@ -413,7 +524,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
       setError(null);
       setInvestmentAmount(numValue);
     }
-  };
+  }, [formatSolAmount]);
 
   // Sync input value with investment amount on mount and when defaultInvestment changes
   useEffect(() => {
@@ -494,12 +605,12 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   }, [formReady, previewData, isAutoPreviewLoading, hasAutoScrolled]);
 
   // Handle close insufficient funds modal
-  const handleCloseModal = () => {
+  const handleCloseModal = useCallback(() => {
     setInsufficientFunds(false);
-  };
+  }, []);
 
   // Handle content selection toggle: directly ask content script to start selection mode
-  const handleSelectContent = async () => {
+  const handleSelectContent = useCallback(async () => {
     try {
       const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
       const tabId = tabs[0]?.id;
@@ -515,7 +626,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
     if (!isSidebar) {
       window.close();
     }
-  };
+  }, [isSidebar]);
 
   function getLocalStorageData() {
     return new Promise((resolve, _reject) => {
@@ -568,7 +679,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
     };
   };
   const PUMP_FEE = 0.03;
-  const requiredBalance = investmentAmount + PUMP_FEE;
+  const requiredBalance = useMemo(() => investmentAmount + PUMP_FEE, [investmentAmount]);
 
   // Progress animation effect for the terminal loading
   useEffect(() => {
@@ -588,17 +699,13 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
     }
   }, [isCreating]);
 
-  useEffect(() => {
-    setInvestmentAmount(defaultInvestment);
-  }, [defaultInvestment]);
-
-  const generateSuggestions = async (article: ArticleData, level = memeLevel) => {
+  const generateSuggestions = useCallback(async (article: ArticleData, level = memeLevel) => {
     // Skip AI suggestion generation when initialized via SDK params or SDK options
     if (sdkParams) {
-      setIsGenerating(false);
+      setIsSuggestionsLoading(false);
       return;
     }
-    setIsGenerating(true);
+    setIsSuggestionsLoading(true);
     setError(null);
     try {
       console.error('Generating suggestions for:', article);
@@ -611,7 +718,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
         setCoinName('TKNZ.FUN');
         setTicker('TKNZ');
         setDescription('TKNZ -- Tokenize Anything, Tokenize Everything. TKNZ empowers users to create their own tokens on Pump.fun directly from any web page or social media post. With this tool, the friction of launching a token is removed. No need to copy paste links or images. Just one click and the content is tokenized onto the blockchain forever!');
-        setIsGenerating(false);
+        setIsSuggestionsLoading(false);
         setImageUrl('https://tknz.fun/assets/hero.png');
         setWebsiteUrl(article.url);
         setXUrl('https://x.com/tknzfun');
@@ -649,16 +756,18 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
       console.error('Error generating suggestions:', error);
       setError(errorMessage);
     } finally {
-      setIsGenerating(false);
+      setIsSuggestionsLoading(false);
     }
-  };
+  }, [sdkParams, memeLevel]);
 
+  // Optimize initial data loading
   useEffect(() => {
-    // If SDK params are provided, skip AI suggestion/extraction on mount
+    // If SDK params are provided, skip article extraction
     if (sdkParams) {
-      setIsLoading(false);
+      setIsInitialDataLoading(false);
       return;
     }
+    
     const getArticleData = async () => {
       try {
         setError(null);
@@ -669,39 +778,61 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
           setArticleData(data);
           setWebsiteUrl(data.url);
           setImageUrl(data.primaryImage);
-          await generateSuggestions(data, 0);
+          // Don't await - let it run in background
+          generateSuggestions(data, 0);
         } else {
-          const rawData = await getLocalStorageData() || await useStore.getState().getArticleData();
+          // Start fetching article data
+          const fetchArticlePromise = getLocalStorageData().then(async (rawData) => {
+            if (!rawData) {
+              return await useStore.getState().getArticleData();
+            }
+            return rawData;
+          });
+
+          // Set initial data loading to false quickly to show form
+          setIsInitialDataLoading(false);
+
+          // Process article data when ready
+          const rawData = await fetchArticlePromise;
           const articleData = ensureArticleData(rawData);
-          await generateSuggestions(articleData, 0);
+          
+          // Don't await - let suggestions generate in background
+          generateSuggestions(articleData, 0);
         }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Failed to extract page data';
         console.error('Error getting article data:', error);
         setError(errorMessage);
         
+        // Still try to get URL from current tab
         if (!DEV_MODE && chrome?.tabs) {
-          const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-          if (tabs[0]?.url) {
-            const isTwitterUrl = tabs[0].url.includes('twitter.com') || tabs[0].url.includes('x.com');
-            if (isTwitterUrl) {
-              setXUrl(tabs[0].url);
-            } else {
-              setWebsiteUrl(tabs[0].url);
+          try {
+            const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+            if (tabs[0]?.url) {
+              const isTwitterUrl = tabs[0].url.includes('twitter.com') || tabs[0].url.includes('x.com');
+              if (isTwitterUrl) {
+                setXUrl(tabs[0].url);
+              } else {
+                setWebsiteUrl(tabs[0].url);
+              }
             }
+          } catch (e) {
+            console.error('Failed to get tab URL:', e);
           }
         }
       } finally {
-        setIsLoading(false);
+        setIsInitialDataLoading(false);
       }
     };
 
+    // Start data fetching immediately
     getArticleData().catch(err => {
       console.error('Unhandled error in getArticleData:', err);
       setError('An unexpected error occurred. Please try again.');
-      setIsLoading(false);
+      setIsInitialDataLoading(false);
     });
   }, [sdkParams]);
+
   // Subscribe to active tab changes in side panel to re-fetch article data
   useEffect(() => {
     // Only in side panel environment
@@ -711,7 +842,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
     const fetchForActiveTab = async () => {
       try {
         setError(null);
-        setIsLoading(true);
+        setIsSuggestionsLoading(true);
         const rawData = await useStore.getState().getArticleData();
         const article = ensureArticleData(rawData);
         await generateSuggestions(article, 0);
@@ -728,7 +859,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
           setWebsiteUrl(url);
         }
       } finally {
-        setIsLoading(false);
+        setIsSuggestionsLoading(false);
       }
     };
     const handleActivated = async ({ tabId }: { tabId: number }) => {
@@ -777,8 +908,9 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
     chrome.storage.onChanged.addListener(handleStorageChange);
     return () => chrome.storage.onChanged.removeListener(handleStorageChange);
   }, [isSidebar]);
+
   // Build parameters object from form state
-  const buildParams = () => {
+  const buildParams = useCallback(() => {
     const params: any = {
       name: coinName,
       ticker,
@@ -791,10 +923,10 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
     if (imageFile) params.imageFile = imageFile;
     else params.imageUrl = imageUrl;
     return params;
-  };
+  }, [coinName, ticker, description, websiteUrl, xUrl, telegramUrl, investmentAmount, imageFile, imageUrl]);
   
   // Modify the handleSubmit to handle both preview and creation in one step
-  const handleCreateCoin = async () => {
+  const handleCreateCoin = useCallback(async () => {
     // Refresh wallet balance before submitting
     await refreshPortfolioData();
     const currentBalance = useStore.getState().nativeSolBalance;
@@ -837,9 +969,9 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
     } catch (err: any) {
       handleError(err);
     }
-  };
+  }, [onCreationStart, previewData, previewCreateCoinRemote, confirmPreviewCreateCoin, onCreationComplete, onCreationError, handleError, buildParams, investmentAmount, previewData, requiredBalance, refreshPortfolioData]);
 
-  const clearForm = () => {
+  const clearForm = useCallback(() => {
     setArticleData({
       title: '',
       primaryImage: '',
@@ -857,10 +989,10 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
     setXUrl('');
     setTelegramUrl('');
     setError(null);
-  };
+  }, []);
 
   // Handle local image upload: convert to data URL for preview
-  const handleImageUpload = async (file: File) => {
+  const handleImageUpload = useCallback(async (file: File) => {
     if (!file) return;
     
     setImageFile(file);
@@ -895,10 +1027,10 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
       setError('Failed to process image file. Please try again.');
       // Keep isUploading false as we removed the upload step
     }
-  };
+  }, []);
 
   // Copy image URL to clipboard
-  const copyImageUrl = (url: string) => {
+  const copyImageUrl = useCallback((url: string) => {
     navigator.clipboard.writeText(url).then(() => {
       setCopySuccess('URL copied to clipboard!');
       setTimeout(() => {
@@ -911,9 +1043,8 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
         setCopySuccess(null);
       }, 2000);
     });
-  };
+  }, []);
 
-  // Add this at the very end of the file, just before the export statement
   // Add keydown handler for carousel
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -941,7 +1072,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   // Add ref for create button
   const createButtonRef = useRef<HTMLButtonElement>(null);
 
-  // Fetch SOL price on mount and periodically
+  // Fetch SOL price on mount with lower priority
   useEffect(() => {
     const fetchSolPrice = async () => {
       try {
@@ -956,19 +1087,21 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
       }
     };
 
-    // Fetch immediately
-    fetchSolPrice();
+    // Delay initial fetch to prioritize form rendering
+    const initialTimeout = setTimeout(() => {
+      fetchSolPrice();
+    }, 2000);
 
     // Update every 60 seconds
     const interval = setInterval(fetchSolPrice, 60000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearTimeout(initialTimeout);
+      clearInterval(interval);
+    };
   }, []);
 
-  if (isLoading) {
-    return <Loader isSidebar={isSidebar} />;
-  }
-
+  // Remove the full-screen loader. Form shows immediately now
   return (
     <div className="relative h-full overflow-y-auto p-2" ref={mainContainerRef}>
       {/* Overlay content (will blur when modal is open) */}  
@@ -976,37 +1109,13 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
         <div>
           {/* Compact header with logo, address dropdown, and action buttons */}
           <div className="flex items-center justify-between my-2">
-            <div className="inline-flex rounded-sm overflow-hidden">
-              <button
-                onClick={handleSelectContent}
-                title="Select content to tokenize"
-                className="bg-black border border-cyber-green/70 hover:bg-cyber-green/10 text-cyber-green px-3 py-1 font-terminal text-xs flex items-center border-r-0"
-              >
-                <Target className="w-3 h-3 mr-1" />
-                <span className="uppercase">Select</span>
-              </button>
-              <button
-                onClick={() => generateSuggestions(articleData)}
-                disabled={isGenerating || websiteUrl.includes('tknz.fun')}
-                title="Memier"
-                className="bg-black border border-cyber-green/70 hover:bg-cyber-green/10 text-cyber-green px-2 py-1 font-terminal text-xs flex items-center disabled:opacity-50 disabled:cursor-not-allowed border-r-0"
-              >
-                {isGenerating ? (
-                  <Terminal className="w-3 h-3 animate-pulse" />
-                ) : (
-                  <Sparkles className="w-3 h-3" />
-                )}
-                <span className="sr-only">MEMIER</span>
-              </button>
-              <button
-                onClick={clearForm}
-                title="Clear form and start fresh"
-                className="bg-black border border-cyber-green/70 hover:bg-cyber-green/10 text-cyber-green px-2 py-1 font-terminal text-xs flex items-center"
-              >
-                <X className="w-3 h-3" />
-                <span className="sr-only">Clear</span>
-              </button>
-            </div>
+            <HeaderActions
+              onSelectContent={handleSelectContent}
+              onGenerateSuggestions={() => generateSuggestions(articleData)}
+              onClearForm={clearForm}
+              isSuggestionsLoading={isSuggestionsLoading}
+              websiteUrl={websiteUrl}
+            />
             <VersionBadge className="ml-auto mt-1" />
           </div>
           
@@ -1020,167 +1129,189 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
             </div>
           )}
 
-          {/* Token details section - directly start form */}
+          {/* Show loading hint only if suggestions are being generated */}
+          {isSuggestionsLoading && !error && (
+            <div className="terminal-window p-2 mb-3 border-cyber-green/30">
+              <p className="text-xs text-cyber-green font-terminal flex items-center">
+                <Loader2 className="w-3 h-3 animate-spin mr-2" />
+                Generating AI suggestions...
+              </p>
+            </div>
+          )}
+
+          {/* Token details section - shows immediately */}
           <div className="space-y-4">
             <div className="flex items-center justify-between border-b border-cyber-green/30 pb-1 mb-3">
               <h3 className="font-terminal text-cyber-green text-base uppercase tracking-wide">Token Details</h3>
             </div>
 
             <div className="space-y-4">
-              <div className="space-y-2">
-                <label className="flex items-center text-sm font-terminal text-cyber-pink">
-                  <Type className="w-4 h-4 mr-2" />
-                  Coin Name
-                </label>
-                <input
-                  type="text"
-                  value={coinName}
-                  onChange={(e) => setCoinName(e.target.value)}
-                  className="input-field font-terminal"
-                  maxLength={32}
-                  placeholder="Enter coin name"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="flex items-center text-sm font-terminal text-cyber-pink">
-                  <Type className="w-4 h-4 mr-2" />
-                  Ticker
-                </label>
-                <input
-                  type="text"
-                  value={ticker}
-                  onChange={(e) => setTicker(e.target.value.toUpperCase())}
-                  className="input-field font-terminal"
-                  maxLength={10}
-                  placeholder="Enter ticker (max 10 chars)"
-                />
-              </div>
-            
-              <div className="space-y-2">
-                <label className="flex items-center text-sm font-terminal text-cyber-pink">
-                  <Image className="w-4 h-4 mr-2" />
-                  Image Upload / URL
-                </label>
-                <div className="flex flex-col space-y-2">
-                  <div className="relative">
+              {/* Show skeleton loaders while AI is generating suggestions */}
+              {isInitialDataLoading ? (
+                <>
+                  <FieldSkeleton label="Coin Name" icon={<Type className="w-4 h-4 mr-2" />} />
+                  <FieldSkeleton label="Ticker" icon={<Type className="w-4 h-4 mr-2" />} />
+                  <FieldSkeleton label="Image Upload / URL" icon={<Image className="w-4 h-4 mr-2" />} />
+                  <FieldSkeleton label="Description" icon={<FileText className="w-4 h-4 mr-2" />} />
+                </>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <label className="flex items-center text-sm font-terminal text-cyber-pink">
+                      <Type className="w-4 h-4 mr-2" />
+                      Coin Name
+                    </label>
                     <input
-                      type="url"
-                      value={imageUrl}
-                      onChange={(e) => {
-                        setImageUrl(e.target.value);
-                        setImageFile(null);
-                      }}
-                      className="input-field font-terminal pr-10"
-                      placeholder="Enter image URL or upload file"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="absolute right-2 top-1/2 transform -translate-y-1/2 text-cyber-green hover:text-cyber-purple"
-                      title="Upload an image"
-                    >
-                      <Upload className="w-4 h-4" />
-                    </button>
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      className="hidden"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          handleImageUpload(file);
-                        }
-                      }}
+                      type="text"
+                      value={coinName}
+                      onChange={(e) => setCoinName(e.target.value)}
+                      className="input-field font-terminal"
+                      maxLength={32}
+                      placeholder={isSuggestionsLoading ? "Loading..." : "Enter coin name"}
                     />
                   </div>
-                  
-                  {/* Image preview and upload progress */}
-                  {imageUrl && (
-                    <div className="mt-2 relative group">
-                      <div className="border border-cyber-green/30 rounded-sm overflow-hidden bg-black/20" style={{ maxHeight: '120px' }}>
-                        <img 
-                          src={imageUrl} 
-                          alt="Token preview" 
-                          className="object-contain w-full max-h-[120px]"
-                          onError={(e) => {
-                            e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0yNCAxaDtgTWFnZSBub3QgZm91bmQiIHN0eWxlPSJmaWxsOiMwMGZmNDE7Zm9udC1mYW1pbHk6bW9ub3NwYWNlO2ZvbnQtc2l6ZToxMHB4OyIvPjwvc3ZnPg==';
+
+                  <div className="space-y-2">
+                    <label className="flex items-center text-sm font-terminal text-cyber-pink">
+                      <Type className="w-4 h-4 mr-2" />
+                      Ticker
+                    </label>
+                    <input
+                      type="text"
+                      value={ticker}
+                      onChange={(e) => setTicker(e.target.value.toUpperCase())}
+                      className="input-field font-terminal"
+                      maxLength={10}
+                      placeholder={isSuggestionsLoading ? "Loading..." : "Enter ticker (max 10 chars)"}
+                    />
+                  </div>
+                
+                  <div className="space-y-2">
+                    <label className="flex items-center text-sm font-terminal text-cyber-pink">
+                      <Image className="w-4 h-4 mr-2" />
+                      Image Upload / URL
+                    </label>
+                    <div className="flex flex-col space-y-2">
+                      <div className="relative">
+                        <input
+                          type="url"
+                          value={imageUrl}
+                          onChange={(e) => {
+                            setImageUrl(e.target.value);
+                            setImageFile(null);
+                          }}
+                          className="input-field font-terminal pr-10"
+                          placeholder={isSuggestionsLoading ? "Loading..." : "Enter image URL or upload file"}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="absolute right-2 top-1/2 transform -translate-y-1/2 text-cyber-green hover:text-cyber-purple"
+                          title="Upload an image"
+                        >
+                          <Upload className="w-4 h-4" />
+                        </button>
+                        <input
+                          type="file"
+                          ref={fileInputRef}
+                          className="hidden"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              handleImageUpload(file);
+                            }
                           }}
                         />
                       </div>
                       
-                      {/* Hover overlay with actions */}
-                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-200">
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => copyImageUrl(imageUrl)}
-                            className="bg-black/70 hover:bg-cyber-green/20 text-cyber-green p-1.5 rounded transition-all duration-200"
-                            title="Copy image URL"
-                          >
-                            <Copy className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => {
-                              // Find current image index, or default to 0
-                              const currentIndex = articleData.images.findIndex(img => img === imageUrl);
-                              setCarouselIndex(currentIndex !== -1 ? currentIndex : 0);
-                              setIsCarouselOpen(true);
-                            }}
-                            className="bg-black/70 hover:bg-cyber-green/20 text-cyber-green p-1.5 rounded transition-all duration-200"
-                            title="Browse all images"
-                          >
-                            <Image className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                      
-                      {/* Upload progress overlay */}
-                      {isUploading && (
-                        <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
-                          <div className="w-full max-w-[80%] text-center">
-                            <div className="font-terminal text-xs text-cyber-green mb-1">Uploading: {uploadProgress}%</div>
-                            <div className="w-full bg-cyber-green/20 h-1 rounded-sm overflow-hidden">
-                              <div 
-                                className="bg-cyber-green h-full transition-all duration-200"
-                                style={{ width: `${uploadProgress}%` }}
-                              ></div>
+                      {/* Image preview and upload progress */}
+                      {imageUrl && (
+                        <div className="mt-2 relative group">
+                          <div className="border border-cyber-green/30 rounded-sm overflow-hidden bg-black/20" style={{ maxHeight: '120px' }}>
+                            <img 
+                              src={imageUrl} 
+                              alt="Token preview" 
+                              className="object-contain w-full max-h-[120px]"
+                              onError={(e) => {
+                                e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0yNCAxaDtgTWFnZSBub3QgZm91bmQiIHN0eWxlPSJmaWxsOiMwMGZmNDE7Zm9udC1mYW1pbHk6bW9ub3NwYWNlO2ZvbnQtc2l6ZToxMHB4OyIvPjwvc3ZnPg==';
+                              }}
+                            />
+                          </div>
+                          
+                          {/* Hover overlay with actions */}
+                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-200">
+                            <div className="flex space-x-2">
+                              <button
+                                onClick={() => copyImageUrl(imageUrl)}
+                                className="bg-black/70 hover:bg-cyber-green/20 text-cyber-green p-1.5 rounded transition-all duration-200"
+                                title="Copy image URL"
+                              >
+                                <Copy className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  // Find current image index, or default to 0
+                                  const currentIndex = articleData.images.findIndex(img => img === imageUrl);
+                                  setCarouselIndex(currentIndex !== -1 ? currentIndex : 0);
+                                  setIsCarouselOpen(true);
+                                }}
+                                className="bg-black/70 hover:bg-cyber-green/20 text-cyber-green p-1.5 rounded transition-all duration-200"
+                                title="Browse all images"
+                              >
+                                <Image className="w-4 h-4" />
+                              </button>
                             </div>
                           </div>
+                          
+                          {/* Upload progress overlay */}
+                          {isUploading && (
+                            <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
+                              <div className="w-full max-w-[80%] text-center">
+                                <div className="font-terminal text-xs text-cyber-green mb-1">Uploading: {uploadProgress}%</div>
+                                <div className="w-full bg-cyber-green/20 h-1 rounded-sm overflow-hidden">
+                                  <div 
+                                    className="bg-cyber-green h-full transition-all duration-200"
+                                    style={{ width: `${uploadProgress}%` }}
+                                  ></div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Multiple images indicator */}
+                          {!isUploading && articleData.images.length > 1 && (
+                            <div className="absolute bottom-1 right-1 bg-black/70 text-cyber-green text-xs font-terminal px-1.5 py-0.5 rounded border border-cyber-green/40 flex items-center opacity-70 group-hover:opacity-0 transition-opacity duration-200">
+                              <Image className="w-3 h-3 mr-1" />
+                              {articleData.images.length} images
+                            </div>
+                          )}
                         </div>
                       )}
                       
-                      {/* Multiple images indicator */}
-                      {!isUploading && articleData.images.length > 1 && (
-                        <div className="absolute bottom-1 right-1 bg-black/70 text-cyber-green text-xs font-terminal px-1.5 py-0.5 rounded border border-cyber-green/40 flex items-center opacity-70 group-hover:opacity-0 transition-opacity duration-200">
-                          <Image className="w-3 h-3 mr-1" />
-                          {articleData.images.length} images
+                      {imageFile && !isUploading && (
+                        <div className="text-xs text-cyber-green font-terminal">
+                          {imageFile.name} ({Math.round(imageFile.size / 1024)} KB)
                         </div>
                       )}
                     </div>
-                  )}
-                  
-                  {imageFile && !isUploading && (
-                    <div className="text-xs text-cyber-green font-terminal">
-                      {imageFile.name} ({Math.round(imageFile.size / 1024)} KB)
-                    </div>
-                  )}
-                </div>
-              </div>
+                  </div>
 
-              <div className="space-y-2">
-                <label className="flex items-center text-sm font-terminal text-cyber-pink">
-                  <FileText className="w-4 h-4 mr-2" />
-                  Description
-                </label>
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="input-field font-terminal min-h-[100px]"
-                  rows={3}
-                  placeholder="Enter coin description"
-                />
-              </div>
+                  <div className="space-y-2">
+                    <label className="flex items-center text-sm font-terminal text-cyber-pink">
+                      <FileText className="w-4 h-4 mr-2" />
+                      Description
+                    </label>
+                    <textarea
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      className="input-field font-terminal min-h-[100px]"
+                      rows={3}
+                      placeholder={isSuggestionsLoading ? "Loading..." : "Enter coin description"}
+                    />
+                  </div>
+                </>
+              )}
 
               <div className="space-y-4">
                 <div className="space-y-2">
@@ -1272,47 +1403,10 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
 
             {/* Auto-preview section - shows right after investment amount */}
             {formReady && (previewData || isAutoPreviewLoading) && (
-              <div 
-                className={`crypto-card p-4 space-y-3 border border-cyber-green/20 relative transition-all duration-300 ${
-                  isAutoPreviewLoading ? 'opacity-60' : 'opacity-100'
-                }`}
-              >
-                <h3 className="text-sm font-terminal text-cyber-green uppercase">
-                  Cost Breakdown
-                  {isAutoPreviewLoading && (
-                    <span className="ml-2 text-cyber-green/60">
-                      <Loader2 className="w-3 h-3 inline animate-spin" />
-                    </span>
-                  )}
-                </h3>
-                
-                {previewData && !isAutoPreviewLoading ? (
-                  <div className="space-y-1 font-terminal text-xs text-white">
-                    <p className="flex justify-between">
-                      <span>Pump Fee:</span> 
-                      <span>{previewData.pumpFeeAmount.toFixed(4)} SOL</span>
-                    </p>
-                    <p className="flex justify-between">
-                      <span>TKNZ Fee:</span> 
-                      <span>{previewData.feeAmount.toFixed(4)} SOL</span>
-                    </p>
-                    <p className="flex justify-between border-t border-cyber-green/30 pt-1 mt-1">
-                      <span>Investment:</span> 
-                      <span>{previewData.totalAmount.toFixed(4)} SOL</span>
-                    </p>
-                    <p className="flex justify-between border-t border-cyber-green/30 pt-1 mt-1">
-                      <span>Total:</span> 
-                      <span className="text-cyber-green">{previewData.totalCost.toFixed(4)} SOL</span>
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-1">
-                    <div className="h-4 bg-cyber-green/10 rounded animate-pulse"></div>
-                    <div className="h-4 bg-cyber-green/10 rounded animate-pulse"></div>
-                    <div className="h-4 bg-cyber-green/10 rounded animate-pulse"></div>
-                  </div>
-                )}
-              </div>
+              <CostBreakdown
+                previewData={previewData}
+                isAutoPreviewLoading={isAutoPreviewLoading}
+              />
             )}
 
             {createdCoin && (
@@ -1361,165 +1455,161 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
           </div>
         </div>
       </div>
+
       {/* Modal */}
       {insufficientFunds &&
         <InsufficientFundsModal
           balance={balance}
           onClose={handleCloseModal}
-          tryAgain={async () => {
-            if (onCreationStart) {
-              await onCreationStart(handleCreateCoin);
-            } else {
-              await handleCreateCoin();
-            }
-          }}
+          tryAgain={handleCreateCoin}
         />
       }
     
-
-      {/* Image Carousel Modal */}
+      {/* Lazy load Image Carousel Modal */}
       {isCarouselOpen && articleData.images.length > 0 && (
-        <div 
-          className="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4 font-terminal animate-fadeIn"
-          onClick={() => setIsCarouselOpen(false)}
-        >
+        <React.Suspense fallback={<div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-cyber-green" /></div>}>
           <div 
-            ref={carouselRef}
-            className="bg-cyber-dark border border-cyber-green/50 rounded-md max-w-2xl w-full relative shadow-lg shadow-cyber-green/20 overflow-hidden animate-fadeInUp"
-            onClick={e => e.stopPropagation()}
+            className="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4 font-terminal animate-fadeIn"
+            onClick={() => setIsCarouselOpen(false)}
           >
-            {/* Header with counter and controls */}
-            <div className="flex items-center justify-between bg-black/60 p-3 border-b border-cyber-green/30">
-              <div className="flex items-center space-x-3">
-                <span className="text-cyber-green flex items-center">
-                  <Hash className="w-4 h-4 mr-1" />
-                  <span>{carouselIndex + 1}/{articleData.images.length}</span>
-                </span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={() => copyImageUrl(articleData.images[carouselIndex])}
-                  className="bg-black/50 hover:bg-cyber-green/20 text-cyber-green p-1.5 rounded-sm transition-all duration-200 flex items-center"
-                  title="Copy image URL"
-                >
-                  <Copy className="w-4 h-4" />
-                </button>
-                <a
-                  href={articleData.images[carouselIndex]}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="bg-black/50 hover:bg-cyber-green/20 text-cyber-green p-1.5 rounded-sm transition-all duration-200 flex items-center"
-                  title="Open image in new tab"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                </a>
-                <button
-                  onClick={() => setIsCarouselOpen(false)}
-                  className="bg-black/50 hover:bg-cyber-pink/20 text-cyber-pink p-1.5 rounded-sm transition-all duration-200"
-                  title="Close carousel"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-
-            {/* Image container */}
-            <div className="relative">
-              <div className="bg-black/40 flex items-center justify-center w-full aspect-video p-4 min-h-[300px] overflow-hidden">
-                <div className="flex items-center justify-center w-full h-full">
-                  <img 
-                    src={articleData.images[carouselIndex]} 
-                    alt={`Image option ${carouselIndex + 1}`}
-                    className="max-h-[60vh] max-w-[90%] h-auto w-auto object-contain shadow-lg shadow-black/20"
-                    onError={(e) => {
-                      e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0yNCAxaDtgTWFnZSBub3QgZm91bmQiIHN0eWxlPSJmaWxsOiMwMGZmNDE7Zm9udC1mYW1pbHk6bW9ub3NwYWNlO2ZvbnQtc2l6ZToxMHB4OyIvPjwvc3ZnPg=='; 
-                    }} 
-                  />
+            <div 
+              ref={carouselRef}
+              className="bg-cyber-dark border border-cyber-green/50 rounded-md max-w-2xl w-full relative shadow-lg shadow-cyber-green/20 overflow-hidden animate-fadeInUp"
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Header with counter and controls */}
+              <div className="flex items-center justify-between bg-black/60 p-3 border-b border-cyber-green/30">
+                <div className="flex items-center space-x-3">
+                  <span className="text-cyber-green flex items-center">
+                    <Hash className="w-4 h-4 mr-1" />
+                    <span>{carouselIndex + 1}/{articleData.images.length}</span>
+                  </span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => copyImageUrl(articleData.images[carouselIndex])}
+                    className="bg-black/50 hover:bg-cyber-green/20 text-cyber-green p-1.5 rounded-sm transition-all duration-200 flex items-center"
+                    title="Copy image URL"
+                  >
+                    <Copy className="w-4 h-4" />
+                  </button>
+                  <a
+                    href={articleData.images[carouselIndex]}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-black/50 hover:bg-cyber-green/20 text-cyber-green p-1.5 rounded-sm transition-all duration-200 flex items-center"
+                    title="Open image in new tab"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                  </a>
+                  <button
+                    onClick={() => setIsCarouselOpen(false)}
+                    className="bg-black/50 hover:bg-cyber-pink/20 text-cyber-pink p-1.5 rounded-sm transition-all duration-200"
+                    title="Close carousel"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
-              
-              {/* Navigation controls */}
+
+              {/* Image container */}
+              <div className="relative">
+                <div className="bg-black/40 flex items-center justify-center w-full aspect-video p-4 min-h-[300px] overflow-hidden">
+                  <div className="flex items-center justify-center w-full h-full">
+                    <img 
+                      src={articleData.images[carouselIndex]} 
+                      alt={`Image option ${carouselIndex + 1}`}
+                      className="max-h-[60vh] max-w-[90%] h-auto w-auto object-contain shadow-lg shadow-black/20"
+                      onError={(e) => {
+                        e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0yNCAxaDtgTWFnZSBub3QgZm91bmQiIHN0eWxlPSJmaWxsOiMwMGZmNDE7Zm9udC1mYW1pbHk6bW9ub3NwYWNlO2ZvbnQtc2l6ZToxMHB4OyIvPjwvc3ZnPg=='; 
+                      }} 
+                    />
+                  </div>
+                </div>
+                
+                {/* Navigation controls */}
+                {articleData.images.length > 1 && (
+                  <>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCarouselIndex(prev => (prev - 1 + articleData.images.length) % articleData.images.length);
+                      }}
+                      className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/70 text-cyber-green hover:bg-black/90 hover:text-cyber-purple p-2 rounded-full transition-all duration-200 border border-cyber-green/30"
+                    >
+                      <ChevronLeft className="w-5 h-5" />
+                    </button>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCarouselIndex(prev => (prev + 1) % articleData.images.length);
+                      }}
+                      className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/70 text-cyber-green hover:bg-black/90 hover:text-cyber-purple p-2 rounded-full transition-all duration-200 border border-cyber-green/30"
+                    >
+                      <ChevronRight className="w-5 h-5" />
+                    </button>
+                  </>
+                )}
+              </div>
+
+              {/* Thumbnail strip */}
               {articleData.images.length > 1 && (
-                <>
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setCarouselIndex(prev => (prev - 1 + articleData.images.length) % articleData.images.length);
-                    }}
-                    className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/70 text-cyber-green hover:bg-black/90 hover:text-cyber-purple p-2 rounded-full transition-all duration-200 border border-cyber-green/30"
-                  >
-                    <ChevronLeft className="w-5 h-5" />
-                  </button>
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setCarouselIndex(prev => (prev + 1) % articleData.images.length);
-                    }}
-                    className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/70 text-cyber-green hover:bg-black/90 hover:text-cyber-purple p-2 rounded-full transition-all duration-200 border border-cyber-green/30"
-                  >
-                    <ChevronRight className="w-5 h-5" />
-                  </button>
-                </>
+                <div className="bg-black/80 border-t border-cyber-green/20 p-2 overflow-x-auto">
+                  <div className="flex justify-center space-x-2 mx-auto">
+                    {articleData.images.map((img, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setCarouselIndex(idx)}
+                        className={`relative flex-shrink-0 w-16 h-16 border-2 transition-all duration-200 ${
+                          idx === carouselIndex 
+                            ? 'border-cyber-green shadow-lg shadow-cyber-green/30' 
+                            : 'border-cyber-green/30 hover:border-cyber-green/60'
+                        }`}
+                      >
+                        <img 
+                          src={img} 
+                          alt={`Thumbnail ${idx + 1}`}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0yNCAxaDtgTWFnZSBub3QgZm91bmQiIHN0eWxlPSJmaWxsOiMwMGZmNDE7Zm9udC1mYW1pbHk6bW9ub3NwYWNlO2ZvbnQtc2l6ZToxMHB4OyIvPjwvc3ZnPg=='; 
+                          }}
+                        />
+                        {idx === carouselIndex && (
+                          <div className="absolute inset-0 border-2 border-cyber-green/70 bg-cyber-green/10" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Footer with actions */}
+              <div className="flex justify-between items-center bg-black/60 p-3 border-t border-cyber-green/30">
+                <button
+                  onClick={() => {
+                    setImageUrl(articleData.images[carouselIndex]);
+                    setIsCarouselOpen(false);
+                  }}
+                  className="bg-cyber-green text-black font-medium py-2 px-6 rounded transition-all duration-200 flex items-center space-x-2 hover:bg-cyber-green/90 shadow-md shadow-cyber-green/20"
+                >
+                  <CheckCircle className="w-4 h-4" />
+                  <span>Use This Image</span>
+                </button>
+                <div className="flex-1 text-xs text-cyber-green/80 text-center truncate max-w-[250px] ml-4">
+                  {articleData.images[carouselIndex]?.slice(0, 30)}...
+                </div>
+              </div>
+
+              {/* Copy success toast */}
+              {copySuccess && (
+                <div className="absolute top-2 left-1/2 transform -translate-x-1/2 bg-black/90 text-cyber-green text-sm py-2 px-4 rounded border border-cyber-green/50 animate-fadeInOut flex items-center">
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  {copySuccess}
+                </div>
               )}
             </div>
-
-            {/* Thumbnail strip */}
-            {articleData.images.length > 1 && (
-              <div className="bg-black/80 border-t border-cyber-green/20 p-2 overflow-x-auto">
-                <div className="flex justify-center space-x-2 mx-auto">
-                  {articleData.images.map((img, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => setCarouselIndex(idx)}
-                      className={`relative flex-shrink-0 w-16 h-16 border-2 transition-all duration-200 ${
-                        idx === carouselIndex 
-                          ? 'border-cyber-green shadow-lg shadow-cyber-green/30' 
-                          : 'border-cyber-green/30 hover:border-cyber-green/60'
-                      }`}
-                    >
-                      <img 
-                        src={img} 
-                        alt={`Thumbnail ${idx + 1}`}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0yNCAxaDtgTWFnZSBub3QgZm91bmQiIHN0eWxlPSJmaWxsOiMwMGZmNDE7Zm9udC1mYW1pbHk6bW9ub3NwYWNlO2ZvbnQtc2l6ZToxMHB4OyIvPjwvc3ZnPg=='; 
-                        }}
-                      />
-                      {idx === carouselIndex && (
-                        <div className="absolute inset-0 border-2 border-cyber-green/70 bg-cyber-green/10" />
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Footer with actions */}
-            <div className="flex justify-between items-center bg-black/60 p-3 border-t border-cyber-green/30">
-              <button
-                onClick={() => {
-                  setImageUrl(articleData.images[carouselIndex]);
-                  setIsCarouselOpen(false);
-                }}
-                className="bg-cyber-green text-black font-medium py-2 px-6 rounded transition-all duration-200 flex items-center space-x-2 hover:bg-cyber-green/90 shadow-md shadow-cyber-green/20"
-              >
-                <CheckCircle className="w-4 h-4" />
-                <span>Use This Image</span>
-              </button>
-              <div className="flex-1 text-xs text-cyber-green/80 text-center truncate max-w-[250px] ml-4">
-                {articleData.images[carouselIndex]?.slice(0, 30)}...
-              </div>
-            </div>
-
-            {/* Copy success toast */}
-            {copySuccess && (
-              <div className="absolute top-2 left-1/2 transform -translate-x-1/2 bg-black/90 text-cyber-green text-sm py-2 px-4 rounded border border-cyber-green/50 animate-fadeInOut flex items-center">
-                <CheckCircle className="w-4 h-4 mr-2" />
-                {copySuccess}
-              </div>
-            )}
           </div>
-        </div>
+        </React.Suspense>
       )}
 
       {/* Copy success toast outside the modal */}
