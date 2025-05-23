@@ -1,5 +1,6 @@
 import { searchToken } from './services/jupiterService';
 import { CoinCreationParams } from './types';
+
 // Background service worker
 chrome.runtime.onInstalled.addListener(() => {
   console.log('Extension installed');
@@ -17,21 +18,13 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 
 // Track content script status per tab
 const contentScriptStatus = new Map<number, boolean>();
-// Track side panel visibility per window (requires Chrome 117+ sidePanel API)
-const sidePanelOpenWindows = new Set<number>();
 
-// Listen for side panel visibility changes (available in Chrome 117+)
-if ((chrome as any).sidePanel?.onVisibilityChanged) {
-  (chrome as any).sidePanel.onVisibilityChanged.addListener((info: any) => {
-    const { windowId, visible } = info;
-    if (visible) {
-      sidePanelOpenWindows.add(windowId);
-    } else {
-      sidePanelOpenWindows.delete(windowId);
-    }
-  });
-}
+// Clean up when windows are closed
+chrome.windows.onRemoved.addListener(windowId => {
+  // Clean up any window-specific state if needed
+});
 
+// Helper validation functions
 function isValidCoinCreationPayload(obj: Record<string, any>): boolean {
   return (
     obj &&
@@ -58,17 +51,10 @@ function isValidForCoinCreateTrigger(obj: Record<string, any>): boolean {
   );
 }
 
-// Clean up when windows are closed
-chrome.windows.onRemoved.addListener(windowId => {
-  sidePanelOpenWindows.delete(windowId);
-});
-
-let lastMessage: any = null;
 // Handle messages from content script
 chrome.runtime.onMessage.addListener((message: any, sender, sendResponse) => {
   // Determine target tab: provided in message or from sender.tab
   const targetTabId = message.tabId ?? sender.tab?.id;
-  // (Legacy) ignore SIDEBAR_READY messages; using onVisibilityChanged for robust tracking
   if (!targetTabId) return;
 
   // Messages from content script to background
@@ -98,10 +84,11 @@ chrome.runtime.onMessage.addListener((message: any, sender, sendResponse) => {
     const isSidebarMsg = message.isSidebar === true;
     // Store selected content for UI
     chrome.storage.local.set({ selectedContent: JSON.stringify(content) }, () => {
-      // Only open popup when not in sidebar context
+      // Only open popup when not in sidebar context - sidebar should already be open if active
       if (!isSidebarMsg) {
         chrome.action.openPopup().catch(err => console.error('Failed to open popup:', err));
       }
+      // If sidebar is active, it will automatically pick up the new content from storage
     });
   }
   // Handle token buy button clicks from content script
@@ -150,45 +137,26 @@ chrome.runtime.onMessage.addListener((message: any, sender, sendResponse) => {
           }
         }
         console.log('token', token);
+        
         // Store the last buy token for UI
         chrome.storage.local.set({ lastBuyToken: JSON.stringify(token) });
-        // Use context flag from content script to decide mode
+        
+        // Use context flag from content script
         const isSidebarMsg = message.isSidebar === true;
-        // Notify UI to show swap page in correct context
 
-        // If sidebar UI is active, update it; otherwise open popup
-        if (isSidebarMsg) {
-          try {
-            await (chrome as any).sidePanel.setOptions({ tabId: targetTabId, path: 'sidebar.html', enabled: true });
-          } catch (err) {
-            console.error('Failed to update side panel:', err);
-            // Fallback: attempt to open side panel then set options
-            try {
-              await (chrome as any).sidePanel.open({ tabId: targetTabId });
-              await (chrome as any).sidePanel.setOptions({ tabId: targetTabId, path: 'sidebar.html', enabled: true });
-            } catch (err2) {
-              console.error('Fallback side panel open failed:', err2);
-              sendResponse({ success: false, reason: 'sidePanel' });
-              return;
-            }
-          }
-        } else {
+        // If sidebar is already active, just send the message
+        // Otherwise open popup - never programmatically open sidebar
+        if (!isSidebarMsg) {
           try {
             await chrome.action.openPopup();
           } catch (err) {
             console.error('Failed to open popup:', err);
-            // Fallback: open side panel if popup fails
-            try {
-              await (chrome as any).sidePanel.open({ tabId: targetTabId });
-              await (chrome as any).sidePanel.setOptions({ tabId: targetTabId, path: 'sidebar.html', enabled: true });
-            } catch (err2) {
-              console.error('Fallback side panel open failed:', err2);
-            }
             sendResponse({ success: false, reason: 'popup' });
             return;
           }
         }
 
+        // Notify UI to show swap page
         chrome.runtime.sendMessage({ type: 'SHOW_SWAP', token, isSidebar: isSidebarMsg });
 
         // Everything succeeded
@@ -210,41 +178,19 @@ chrome.runtime.onMessage.addListener((message: any, sender, sendResponse) => {
     const options = message.options || {};
     const isSidebarMsg = message.isSidebar === true;
     (async () => {
-      // Determine window of the tab to check side panel status
       try {
         chrome.storage.local.set({ initCoinData: JSON.stringify(message.options) });
       } catch (e) {
         console.error('Failed to populate token:', e);
       }
 
-
-
-      if (isSidebarMsg) {
-        try {
-          await (chrome as any).sidePanel.setOptions({ tabId: targetTabId, path: 'sidebar.html', enabled: true });
-        } catch (err) {
-          console.error('Failed to update side panel:', err);
-          // Fallback: attempt to open side panel then set options
-          try {
-            await (chrome as any).sidePanel.open({ tabId: targetTabId });
-            await (chrome as any).sidePanel.setOptions({ tabId: targetTabId, path: 'sidebar.html', enabled: true });
-          } catch (err2) {
-            console.error('Fallback side panel open failed:', err2);
-            sendResponse({ success: false, reason: 'sidePanel' });
-            return;
-          }
-        }
-      } else {
+      // If sidebar is already active, just send the message
+      // Otherwise open popup - never programmatically open sidebar
+      if (!isSidebarMsg) {
         try {
           await chrome.action.openPopup();
         } catch (err) {
-          // Fallback: open side panel if popup fails
-          try {
-            await (chrome as any).sidePanel.open({ tabId: targetTabId });
-            await (chrome as any).sidePanel.setOptions({ tabId: targetTabId, path: 'sidebar.html', enabled: true });
-          } catch (err2) {
-            console.error('Fallback side panel open failed:', err2);
-          }
+          console.error('Failed to open popup:', err);
           sendResponse({ success: false, reason: 'popup' });
           return;
         }
@@ -253,7 +199,6 @@ chrome.runtime.onMessage.addListener((message: any, sender, sendResponse) => {
       chrome.runtime.sendMessage({ type: 'SDK_TOKEN_CREATE', options, isSidebar: isSidebarMsg });
       // Respond to sender that initialization succeeded
       sendResponse({ success: true });
-
     })();
 
     return true;
@@ -262,6 +207,7 @@ chrome.runtime.onMessage.addListener((message: any, sender, sendResponse) => {
   return true;
 });
 
+// Inject SDK into page context
 chrome.runtime.onMessage.addListener((message, sender) => {
   if (message.type === 'INJECT_SDK' && sender.tab?.id) {
     chrome.scripting.executeScript({
@@ -279,9 +225,7 @@ chrome.runtime.onMessage.addListener((message, sender) => {
   }
 });
 
-// Clean up when tabs are closed
-// Clean up status when tabs are closed
 // Clean up content script status when tabs are closed
 chrome.tabs.onRemoved.addListener((tabId) => {
   contentScriptStatus.delete(tabId);
-});
+}); 
