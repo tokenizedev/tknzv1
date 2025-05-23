@@ -11,7 +11,9 @@ export interface ChartData {
   bars: ChartBar[];
 }
 
-export type ChartTimeframe = '5m' | '15m' | '1h' | '4h' | '1d' | '1w';
+// Only include timeframes that are actually supported by Jupiter API
+// Note: 5m and 15m use lowercase, 1H and 1W use uppercase
+export type ChartTimeframe = '5m' | '15m' | '1H' | '1W';
 
 const CHART_API_BASE = 'https://fe-api.jup.ag/api/v1/charts';
 
@@ -38,10 +40,8 @@ export class ChartService {
       const timeRanges: Record<ChartTimeframe, number> = {
         '5m': 12 * 60 * 60,    // 12 hours
         '15m': 24 * 60 * 60,   // 24 hours
-        '1h': 7 * 24 * 60 * 60, // 7 days
-        '4h': 30 * 24 * 60 * 60, // 30 days
-        '1d': 90 * 24 * 60 * 60, // 90 days
-        '1w': 365 * 24 * 60 * 60, // 1 year
+        '1H': 7 * 24 * 60 * 60, // 7 days
+        '1W': 365 * 24 * 60 * 60, // 1 year
       };
       
       const timeFrom = customTimeRange?.from || (now - timeRanges[timeframe]);
@@ -89,13 +89,18 @@ export class ChartService {
     const priceChange = lastBar.c - firstBar.c;
     const priceChangePercent = (priceChange / firstBar.c) * 100;
     
+    // Calculate 24h stats based on timeframe
+    // For 15m bars: 96 bars = 24 hours
+    // For other timeframes, use all available data
+    const bars24h = bars.length > 96 ? bars.slice(-96) : bars;
+    
     return {
       currentPrice: lastBar.c,
       priceChange,
       priceChangePercent,
-      high24h: Math.max(...bars.slice(-96).map(b => b.h)), // Last 96 15min bars = 24h
-      low24h: Math.min(...bars.slice(-96).map(b => b.l)),
-      volume24h: volumes.slice(-96).reduce((a, b) => a + b, 0),
+      high24h: Math.max(...bars24h.map(b => b.h)),
+      low24h: Math.min(...bars24h.map(b => b.l)),
+      volume24h: bars24h.reduce((acc, b) => acc + b.v, 0),
       firstPrice: firstBar.c,
       lastPrice: lastBar.c,
     };
