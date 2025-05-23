@@ -408,6 +408,21 @@ function startSelectionMode(isSidebar: boolean) {
       50% { opacity: 0.5; }
       100% { opacity: 1; }
     }
+    
+    /* Smooth transition for menu item hover effects */
+    .tknz-menu-item {
+      transition: background-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    /* Prevent interaction during animation */
+    .tknz-menu-item[style*="animation"] {
+      pointer-events: none !important;
+    }
+    
+    /* Re-enable pointer events after animation */
+    .tknz-menu-item[style*="forwards"] {
+      pointer-events: auto !important;
+    }
   `;
   document.head.appendChild(styleEl);
   
@@ -980,12 +995,36 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
           }
         }
         
+        @keyframes tknz-collect-icon {
+          0% {
+            opacity: 1;
+            transform: var(--final-transform) scale(1) rotate(0deg);
+          }
+          80% {
+            opacity: 1;
+            transform: translate(0, -10px) scale(0.8) rotate(-90deg);
+          }
+          100% {
+            opacity: 0;
+            transform: translate(0, 0) scale(0) rotate(-180deg);
+          }
+        }
+        
         @keyframes tknz-logo-spin {
           0% {
             transform: rotate(0deg);
           }
           100% {
             transform: rotate(360deg);
+          }
+        }
+        
+        @keyframes tknz-logo-spin-reverse {
+          0% {
+            transform: rotate(0deg);
+          }
+          100% {
+            transform: rotate(-360deg);
           }
         }
         
@@ -1210,11 +1249,19 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
         if (img) {
           img.style.animation = 'none';
           setTimeout(() => {
-            img.style.animation = '';
+            img.style.animation = 'tknz-logo-spin 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55)';
           }, 10);
         }
       } else {
         button.classList.remove('menu-open');
+        // Reverse logo rotation when closing
+        const img = button.querySelector('img');
+        if (img) {
+          img.style.animation = 'none';
+          setTimeout(() => {
+            img.style.animation = 'tknz-logo-spin-reverse 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55)';
+          }, 10);
+        }
       }
       
       // Get button position to determine best menu layout
@@ -1262,15 +1309,21 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
             menuBtn.style.transform = 'translate(0, 0) scale(0)';
             
             setTimeout(() => {
-              menuBtn.style.animation = '';
+              menuBtn.style.animation = `tknz-emit-icon 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards`;
               menuBtn.style.opacity = '1';
               menuBtn.style.pointerEvents = 'auto';
             }, 10);
           } else {
-            menuBtn.style.opacity = '0';
-            menuBtn.style.transform = 'translate(0, 0) scale(0.3)';
-            menuBtn.style.pointerEvents = 'none';
-            menuBtn.style.animation = 'none';
+            // Closing animation - collect icons back to button
+            // Keep the same final transform position for the reverse animation
+            menuBtn.style.animation = `tknz-collect-icon 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards`;
+            menuBtn.style.animationDelay = `${(menuItems.length - 1 - index) * 0.05}s`; // Reverse order
+            
+            setTimeout(() => {
+              menuBtn.style.opacity = '0';
+              menuBtn.style.transform = 'translate(0, 0) scale(0)';
+              menuBtn.style.pointerEvents = 'none';
+            }, 400 + ((menuItems.length - 1 - index) * 50)); // Wait for animation to complete
           }
         }
       });
@@ -1332,7 +1385,14 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
     button.onclick = (e) => {
       e.preventDefault();
       e.stopPropagation();
-      toggleMenu();
+      
+      // Only toggle menu if we haven't moved (dragged) the button
+      if (!hasMoved) {
+        toggleMenu();
+      }
+      
+      // Reset hasMoved for next interaction
+      hasMoved = false;
     };
 
     // Close menu when clicking outside
@@ -1467,6 +1527,9 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
       if (!hasMoved) {
         toggleMenu();
       }
+      
+      // Reset hasMoved for next interaction
+      hasMoved = false;
     };
 
     // Position intelligently to avoid the Grok button and other elements
