@@ -51,8 +51,10 @@ export const TokenStats: React.FC<TokenStatsProps> = ({ stats, loading }) => {
 
   const formatNumber = (num: number | undefined, decimals: number = 2): string => {
     if (num === undefined) return 'N/A';
-    if (num >= 1000000) return `${(num / 1000000).toFixed(decimals)}M`;
-    if (num >= 1000) return `${(num / 1000).toFixed(decimals)}K`;
+    if (num >= 1_000_000_000_000) return `${(num / 1_000_000_000_000).toFixed(decimals)}T`;
+    if (num >= 1_000_000_000) return `${(num / 1_000_000_000).toFixed(decimals)}B`;
+    if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(decimals)}M`;
+    if (num >= 1_000) return `${(num / 1_000).toFixed(decimals)}K`;
     return num.toFixed(decimals);
   };
 
