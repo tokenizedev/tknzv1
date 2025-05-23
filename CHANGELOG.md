@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.17.0](https://tokenizedev///compare/v0.16.0...v0.17.0) (2025-05-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* **components:** Update text from 'Platform Fee' to 'TKNZ Fee' in Coin Preview section
+* **contentScript:** Method `animateInertia` removed in favor of `setTranslate` that handles button movement and position calculation.
+
+### Features
+
+* Add validation function isValidCoinCreationPayload for coin creation payload ([acd07a5](https://tokenizedev///commit/acd07a5e92c6bac43e6fa118d27df946f7269ad8))
+* **background:** add logic to clean up when windows are closed ([29f5340](https://tokenizedev///commit/29f53408a580896fdffe0fbb3ba8eaff29d0c8e7))
+* **components:** Add new features and improvements to CoinCreator ([091b6ea](https://tokenizedev///commit/091b6ea02ddbc0efb27cbea55d9813dca78946b5))
+* **components:** update CoinCreator component UI ([391c716](https://tokenizedev///commit/391c716914554282d9f604b73c875fcc7bb44d9d))
+* **components:** update CoinCreator UI and functionality ([5a1a75a](https://tokenizedev///commit/5a1a75a19dfa7e4fecbb717245626efcd8704477))
+* **components:** Update label for platform fee in CoinCreator component ([35d68f4](https://tokenizedev///commit/35d68f4b716fe3327c67481461af121186bfa793))
+* **contentScript:** Add draggable functionality to button ([ee7ead8](https://tokenizedev///commit/ee7ead855d761297a82d0e04056389ea60ba714f))
+* **contentScript:** introduce isSidebarActive function ([8f4858d](https://tokenizedev///commit/8f4858de8c41402d46d5a232656e702d6e49820a))
+* **src:** add heartbeat functionality to persist sidebar state ([681ae9c](https://tokenizedev///commit/681ae9c9e73e049248f1b62ef94a359607a9e0fc))
+
 ## [0.16.0](https://tokenizedev///compare/v0.15.1...v0.16.0) (2025-05-23)
 
 
