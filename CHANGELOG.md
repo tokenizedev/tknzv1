@@ -2,6 +2,33 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.16.0](https://tokenizedev///compare/v0.15.1...v0.16.0) (2025-05-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* **contentScript:** The visual behavior of the floating scan button has been updated with a new animation and logo styling for improved aesthetics.
+* **components:** The Loader component now includes an additional animated logo for better visual appeal.
+* **components:** This feature introduces changes to the user interaction by automatically scrolling to the preview when it appears, enhancing the user experience.
+* **services:** The `searchToken`
+
+### Features
+
+* **background:** add token validation feature ([99d1704](https://tokenizedev///commit/99d1704ec06ed7961d716203219318aedecf1f5d))
+* **background:** implement token search functionality for validation ([6c9c201](https://tokenizedev///commit/6c9c2014e701e0f1dd48ca818221fc63799e15f8))
+* **CoinCreator:** Implement fetching and displaying SOL price in USD ([814f1d7](https://tokenizedev///commit/814f1d75aa4c0f7699bbd2a6d0533e9f6b300990))
+* **components:** Add animated logo to Loader component ([7faaca6](https://tokenizedev///commit/7faaca64a3a0df5fc3ec0f4838c61266cb1804d1))
+* **components:** add auto-preview functionality to CoinCreator ([d654ad4](https://tokenizedev///commit/d654ad4f4ac4f75b680e8e04a27705a86fcd16de))
+* **components:** Add auto-scroll feature to CoinCreator form ([b016b08](https://tokenizedev///commit/b016b086527738a4a7a7bbdf72b62fb187c2cd32))
+* **components:** Add functionality to update investment input value ([18a0d8d](https://tokenizedev///commit/18a0d8deed3f780670e6f9bc42e74162cdc70ebb))
+* **contentScript:** Add bounce-in animation and update logo styling ([d314996](https://tokenizedev///commit/d314996a4304f0bf1c9562c86bc3dff958dfef27))
+* **contentScript:** Add check to skip injection in input fields ([a2b9e5c](https://tokenizedev///commit/a2b9e5cc28f48d19b6c2e7c89e2ae615844e484f))
+* **contentScript:** Add image extraction support for meta image selectors, picture elements, CSS background images, video poster images, SVG images, canvas elements, image inputs, special attributes, and JSON-LD structured data ([a56b3f7](https://tokenizedev///commit/a56b3f7680d27403d14287a36e80d71412026f07))
+* **contentScript:** Add menu for TKNZ Actions ([627f744](https://tokenizedev///commit/627f744020d5c68591bd48c509178f5259cfd28b))
+* **contentScript:** Update selection mode to include images for direct selection ([279d4f8](https://tokenizedev///commit/279d4f88fe5aa308141adb90932e2adf95111a20))
+* **services:** add new function to search for token asset by query string ([ebc7aeb](https://tokenizedev///commit/ebc7aeb6d553e593fd98cb971710b2935ce5d23a))
+* **settings:** Add domain blocklist feature and global buy button toggle ([3562770](https://tokenizedev///commit/3562770f5e3a905fb4500599a4180f589f507f15))
+
 ## [0.15.1](https://tokenizedev///compare/v0.15.0...v0.15.1) (2025-05-21)
 
 
