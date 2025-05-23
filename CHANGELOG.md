@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.19.0](https://tokenizedev///compare/v0.18.0...v0.19.0) (2025-05-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* **components:** This change affects how the 24h volume is displayed on the SwapPage. Users will now see the volume displayed in a more consistent and formatted way.
+
+### Features
+
+* **chart:** Add formatVolume method and improve 24h stats calculation in chartService ([00dd8bb](https://tokenizedev///commit/00dd8bba4d2fbbb3853fc8dfec25baefef4e0c14))
+* **chartService:** Add timeframe parameter to calculateStats method ([b50d192](https://tokenizedev///commit/b50d192edc20721f8fe3ab16f152d7b2547e3dea))
+* **components:** Add optional chartTimeframe parameter to calculateStats function ([122b49b](https://tokenizedev///commit/122b49b723ae46043e7a980dd8a1e47d996e0a8c))
+* **components:** improve display of 24h volume on SwapPage ([0b4dc37](https://tokenizedev///commit/0b4dc37faf27091e0b7c933802190e1d352e34ab))
+* **swap:** update formatNumber function to accept decimal precision ([1143acd](https://tokenizedev///commit/1143acdae83bfc7ee237fb6d89738a29e99d05ef))
+* **swap:** update TokenStats formatNumber function to support trillion values ([842b923](https://tokenizedev///commit/842b9232d1bcb37e75dcdc2b525952db41188dd4))
+
 ## [0.18.0](https://tokenizedev///compare/v0.17.0...v0.18.0) (2025-05-23)
 
 
