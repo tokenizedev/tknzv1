@@ -253,12 +253,18 @@ export const extractImages = (baseElement: HTMLElement = document.body): string[
   return Array.from(images);
 }
 
-// Selection mode: highlight divs and allow user to select content
+// Selection mode: highlight divs and allow user to select content including images
 function startSelectionMode(isSidebar: boolean) {
   const highlightMap = new WeakMap();
   const buttonMap = new WeakMap();
   const isXPost = getIsXPost();
-  const selectors = (isXPost ? ['article[data-testid="tweet"]'] : ['div, p']).join(',');
+  
+  // Updated selectors to include images as directly selectable
+  const selectors = isXPost 
+    ? ['article[data-testid="tweet"]'] 
+    : ['div:not(.tknz-highlight):not(.tknz-select-btn):not(.tknz-overlay):not(.tknz-instructions)', 'p', 'article', 'section', 'img:not([width="0"]):not([height="0"]):not([style*="display: none"])'];
+  
+  const selectorsString = selectors.join(',');
 
   // Add stylesheet for better styling
   const styleEl = document.createElement('style');
@@ -272,10 +278,47 @@ function startSelectionMode(isSidebar: boolean) {
       position: relative !important;
       z-index: 999 !important;
     }
+    
+    img.tknz-highlight {
+      filter: drop-shadow(0 0 8px rgba(0, 255, 144, 0.7)) !important;
+      cursor: pointer !important;
+      position: relative !important;
+      z-index: 1000 !important;
+    }
+    
+    .tknz-selectable-image {
+      cursor: pointer !important;
+      transition: all 0.2s ease-out !important;
+      position: relative !important;
+    }
+    
+    .tknz-selectable-image:hover {
+      filter: drop-shadow(0 0 8px rgba(0, 255, 144, 0.7)) !important;
+      transform: scale(1.01) !important;
+      z-index: 1001 !important;
+    }
+    
+    .tknz-image-badge {
+      position: absolute !important;
+      top: 8px !important;
+      right: 8px !important;
+      background: rgba(0, 0, 0, 0.9) !important;
+      color: rgb(0, 255, 144) !important;
+      border: 1px solid rgba(0, 255, 144, 0.7) !important;
+      border-radius: 4px !important;
+      padding: 3px 6px !important;
+      font-family: 'Courier New', monospace !important;
+      font-size: 10px !important;
+      z-index: 2147483645 !important;
+      pointer-events: none !important;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5) !important;
+      opacity: 0.9 !important;
+    }
+    
     .tknz-select-btn {
       position: absolute !important;
       z-index: 2147483647 !important;
-      background: linear-gradient(135deg, rgba(0, 0, 0, 0.8) 0%, rgba(20, 20, 20, 0.9) 100%) !important;
+      background: linear-gradient(135deg, rgba(0, 0, 0, 0.9) 0%, rgba(20, 20, 20, 0.95) 100%) !important;
       color: rgb(0, 255, 144) !important;
       border: 1px solid rgba(0, 255, 144, 0.7) !important;
       border-radius: 4px !important;
@@ -288,17 +331,19 @@ function startSelectionMode(isSidebar: boolean) {
       cursor: pointer !important;
       transition: all 0.2s ease !important;
       text-shadow: 0 0 5px rgba(0, 255, 144, 0.7) !important;
-      box-shadow: 0 0 10px rgba(0, 0, 0, 0.5), 0 0 5px rgba(0, 255, 144, 0.3) !important;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.8), 0 0 5px rgba(0, 255, 144, 0.3) !important;
       backdrop-filter: blur(4px) !important;
       display: flex !important;
       align-items: center !important;
       gap: 4px !important;
     }
+    
     .tknz-select-btn:hover {
       background: rgba(0, 255, 144, 0.2) !important;
       box-shadow: 0 0 15px rgba(0, 255, 144, 0.5) !important;
       transform: translateY(-1px) !important;
     }
+    
     .tknz-select-btn::before {
       content: "" !important;
       display: inline-block !important;
@@ -308,6 +353,7 @@ function startSelectionMode(isSidebar: boolean) {
       border-radius: 50% !important;
       animation: tknz-pulse 1.5s infinite !important;
     }
+    
     .tknz-overlay {
       position: fixed !important;
       top: 0 !important;
@@ -319,6 +365,7 @@ function startSelectionMode(isSidebar: boolean) {
       pointer-events: none !important;
       backdrop-filter: blur(1px) !important;
     }
+    
     .tknz-instructions {
       position: fixed !important;
       top: 20px !important;
@@ -337,10 +384,12 @@ function startSelectionMode(isSidebar: boolean) {
       pointer-events: none !important;
       max-width: 80% !important;
     }
+    
     /* Hide injected buy buttons during selection mode */
     .tknz-buy-button {
       display: none !important;
     }
+    
     @keyframes tknz-pulse {
       0% { opacity: 1; }
       50% { opacity: 0.5; }
@@ -357,8 +406,51 @@ function startSelectionMode(isSidebar: boolean) {
   // Add instructions
   const instructions = document.createElement('div');
   instructions.className = 'tknz-instructions';
-  instructions.textContent = 'Hover over content to select for tokenization. Press ESC to cancel.';
+  instructions.textContent = 'Hover over content or click images to select for tokenization. Press ESC to cancel.';
   document.body.appendChild(instructions);
+
+  // Add image click handler for direct selection
+  const handleImageClick = (e: Event) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const img = e.currentTarget as HTMLImageElement;
+    selectElement(img, isSidebar);
+  };
+
+  // Test if an image is big enough to be directly selectable
+  const isSelectableImage = (img: HTMLImageElement): boolean => {
+    // Try to get accurate dimensions
+    const width = img.naturalWidth || img.width || parseInt(getComputedStyle(img).width) || 0;
+    const height = img.naturalHeight || img.height || parseInt(getComputedStyle(img).height) || 0;
+    
+    // Size thresholds
+    const MIN_DIMENSION = 100; // Minimum width/height
+    const MIN_AREA = 10000; // Minimum area (roughly 100x100)
+    
+    // Check if image has sufficient dimensions or is an article figure/gallery image
+    const isLargeEnough = 
+      (width >= MIN_DIMENSION && height >= MIN_DIMENSION) || 
+      (width * height >= MIN_AREA);
+    
+    // Additional context-based checks
+    const isInArticleContext = 
+      img.closest('article') !== null || 
+      img.closest('figure') !== null || 
+      img.closest('.gallery') !== null || 
+      img.closest('[role="img"]') !== null;
+    
+    // Skip likely icons or decorative images
+    const isLikelyIcon = 
+      img.src.includes('logo') || 
+      img.src.includes('icon') ||
+      img.className.includes('icon') || 
+      img.className.includes('avatar') ||
+      img.alt.includes('icon') ||
+      img.width < 48 ||
+      img.height < 48;
+    
+    return (isLargeEnough || isInArticleContext) && !isLikelyIcon;
+  };
 
   const onMouseEnter = (e: Event) => {
     const el = e.currentTarget as HTMLElement;
@@ -379,10 +471,20 @@ function startSelectionMode(isSidebar: boolean) {
     
     // Position button at the top right corner of the element
     const rect = el.getBoundingClientRect();
-    Object.assign(btn.style, {
-      top: `${rect.top + window.scrollY}px`,
-      right: `${window.innerWidth - rect.right - window.scrollX}px`,
-    });
+    
+    // Special handling for images - position centered for smaller images
+    if (el instanceof HTMLImageElement) {
+      Object.assign(btn.style, {
+        top: `${rect.top + window.scrollY + 10}px`,
+        left: `${rect.left + window.scrollX + (rect.width / 2) - 40}px`,
+        right: 'auto'
+      });
+    } else {
+      Object.assign(btn.style, {
+        top: `${rect.top + window.scrollY}px`,
+        right: `${window.innerWidth - rect.right - window.scrollX}px`,
+      });
+    }
     
     document.body.appendChild(btn);
     buttonMap.set(el, btn);
@@ -425,10 +527,27 @@ function startSelectionMode(isSidebar: boolean) {
       const s = document.getElementById('tknz-hide-buy-buttons');
       if (s) s.remove();
     }, 1000);
-    // Extract the content and notify background
-    extractContent(el).then(async content => {
-      chrome.runtime.sendMessage({ type: 'CONTENT_SELECTED', content, isSidebar });
-    });
+    
+    // Special handling for direct image selection
+    if (el instanceof HTMLImageElement) {
+      // For images, create a special extraction that focuses on the image
+      const imgData = {
+        title: el.alt || document.title || "Image",
+        description: el.alt || el.title || document.querySelector('meta[name="description"]')?.getAttribute('content') || "",
+        url: window.location.href,
+        isXPost: false,
+        primaryImage: el.src,
+        image: el.src,
+        images: [el.src],
+      };
+      
+      chrome.runtime.sendMessage({ type: 'CONTENT_SELECTED', content: imgData, isSidebar });
+    } else {
+      // Regular content extraction
+      extractContent(el).then(async content => {
+        chrome.runtime.sendMessage({ type: 'CONTENT_SELECTED', content, isSidebar });
+      });
+    }
   };
 
   const cleanup = () => {
@@ -436,16 +555,25 @@ function startSelectionMode(isSidebar: boolean) {
     document.querySelectorAll('#tknz-selection-style, .tknz-overlay, .tknz-instructions').forEach(el => el.remove());
     
     // Remove event listeners and classes
-    document.querySelectorAll(selectors).forEach(el => {
+    document.querySelectorAll(selectorsString).forEach(el => {
       el.removeEventListener('mouseenter', onMouseEnter);
       el.removeEventListener('mouseleave', onMouseLeave);
       el.classList.remove('tknz-highlight');
+      el.classList.remove('tknz-selectable-image');
+      if (el instanceof HTMLImageElement) {
+        el.removeEventListener('click', handleImageClick);
+        // Remove associated badge
+        const badgeId = el.getAttribute('data-tknz-badge-id');
+        if (badgeId) {
+          document.getElementById(badgeId)?.remove();
+        }
+      }
       const btn = buttonMap.get(el as HTMLElement);
       if (btn) btn.remove();
     });
     
-    // WeakMap doesn't have a clear method, but we can set references to null
-    // which will allow garbage collection when no longer referenced
+    // Remove all badge containers
+    document.querySelectorAll('[id^="tknz-badge-"]').forEach(el => el.remove());
   };
 
   // Add escape key handler
@@ -457,8 +585,52 @@ function startSelectionMode(isSidebar: boolean) {
   };
   document.addEventListener('keydown', handleEscape);
 
-  // Attach listeners to all divs with sufficient text
-  document.querySelectorAll(selectors).forEach(el => {
+  // Get all images first for special handling
+  const allImages = document.querySelectorAll('img');
+  const selectableImages: HTMLImageElement[] = [];
+  
+  // Filter images by size/context and make them directly selectable
+  allImages.forEach(img => {
+    if (img instanceof HTMLImageElement && isSelectableImage(img)) {
+      selectableImages.push(img);
+      
+      // Make the image directly selectable
+      img.classList.add('tknz-selectable-image');
+      img.addEventListener('click', handleImageClick);
+      
+      // Add badge for larger images only
+      const rect = img.getBoundingClientRect();
+      
+      // Only add badge if image is big enough and visible
+      if (rect.width > 150 && rect.height > 100 && rect.width > 0 && rect.height > 0) {
+        const badge = document.createElement('div');
+        badge.className = 'tknz-image-badge';
+        badge.textContent = 'Click to tokenize';
+        
+        // Create a container for the badge positioned absolutely
+        const badgeContainer = document.createElement('div');
+        badgeContainer.style.position = 'absolute';
+        badgeContainer.style.top = `${rect.top + window.scrollY + 8}px`;
+        badgeContainer.style.left = `${rect.right + window.scrollX - 90}px`; // Adjust based on badge width
+        badgeContainer.style.zIndex = '2147483645';
+        badgeContainer.appendChild(badge);
+        
+        document.body.appendChild(badgeContainer);
+        
+        // Store reference for cleanup
+        img.setAttribute('data-tknz-badge-id', badgeContainer.id = `tknz-badge-${Date.now()}-${Math.random()}`);
+      }
+    }
+  });
+
+  // Attach listeners to all elements with sufficient text
+  document.querySelectorAll(selectorsString).forEach(el => {
+    // Skip already processed images
+    if (el instanceof HTMLImageElement && selectableImages.includes(el)) {
+      return;
+    }
+    
+    // For text elements, use hover selection
     if ((el.textContent || '').trim().length > 20) {
       el.addEventListener('mouseenter', onMouseEnter);
       el.addEventListener('mouseleave', onMouseLeave);
