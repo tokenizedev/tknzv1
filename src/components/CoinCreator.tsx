@@ -1415,20 +1415,20 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
               {previewData && !isAutoPreviewLoading ? (
                 <div className="space-y-1 font-terminal text-xs text-white">
                   <p className="flex justify-between">
-                    <span>Total Cost:</span> 
-                    <span className="text-cyber-green">{previewData.totalCost.toFixed(4)} SOL</span>
-                  </p>
-                  <p className="flex justify-between">
                     <span>Pump Fee:</span> 
                     <span>{previewData.pumpFeeAmount.toFixed(4)} SOL</span>
                   </p>
                   <p className="flex justify-between">
-                    <span>Platform Fee:</span> 
+                    <span>TKNZ Fee:</span> 
                     <span>{previewData.feeAmount.toFixed(4)} SOL</span>
                   </p>
                   <p className="flex justify-between border-t border-cyber-green/30 pt-1 mt-1">
                     <span>Investment:</span> 
-                    <span className="text-cyber-green">{previewData.totalAmount.toFixed(4)} SOL</span>
+                    <span>{previewData.totalAmount.toFixed(4)} SOL</span>
+                  </p>
+                  <p className="flex justify-between border-t border-cyber-green/30 pt-1 mt-1">
+                    <span>Total:</span> 
+                    <span className="text-cyber-green">{previewData.totalCost.toFixed(4)} SOL</span>
                   </p>
                 </div>
               ) : (
