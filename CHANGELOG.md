@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.18.0](https://tokenizedev///compare/v0.17.0...v0.18.0) (2025-05-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* **swap:** The data processing logic in CyberSparkline component has been updated to include open, high, low, close, and volume fields. Users relying on the previous data structure may need to adjust their implementations.
+
+### Features
+
+* **charts:** add tokenstats component ([f15000c](https://tokenizedev///commit/f15000c359e0ca58838d2a1d1cd3230dd5d6cc85))
+* **chartService:** add support for '1H' and '1W' timeframes ([d6f63fa](https://tokenizedev///commit/d6f63fa652f9ec602d40cea8aa3fc4a77df4f55e))
+* **charts:** init charts lib ([dc269ec](https://tokenizedev///commit/dc269ec4e3e0b4291a3c9cfb98dfbbdf2fc5c67e))
+* **services:** Add functionality to fetch detailed asset information ([b245d47](https://tokenizedev///commit/b245d47ab8b8e6ddf39737fe49f4a0b3369bbbb4))
+* **swap:** add ability to show/hide chart with token stats ([3b4e91b](https://tokenizedev///commit/3b4e91b8489102087801319b83d1feb7a24fdac0))
+* **swap:** add support for more data fields in CyberSparkline ([de0cdce](https://tokenizedev///commit/de0cdce56d4c3a4e83bc176a442e4d9b0de46d42))
+
+
+### Bug Fixes
+
+* **components:** correct timeframes in SwapPage ([e27d0a8](https://tokenizedev///commit/e27d0a8a60a203284feb1200b86786763cb88e2d))
+
 ## [0.17.0](https://tokenizedev///compare/v0.16.0...v0.17.0) (2025-05-23)
 
 
