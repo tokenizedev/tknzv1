@@ -77,6 +77,18 @@ export class ChartService {
     }));
   }
   
+  // Format volume with appropriate suffix (K, M, B)
+  formatVolume(volume: number): string {
+    if (volume >= 1_000_000_000) {
+      return `$${(volume / 1_000_000_000).toFixed(2)}B`;
+    } else if (volume >= 1_000_000) {
+      return `$${(volume / 1_000_000).toFixed(2)}M`;
+    } else if (volume >= 1_000) {
+      return `$${(volume / 1_000).toFixed(2)}K`;
+    }
+    return `$${volume.toFixed(2)}`;
+  }
+  
   // Calculate price statistics
   calculateStats(bars: ChartBar[]) {
     if (bars.length === 0) return null;
@@ -89,10 +101,22 @@ export class ChartService {
     const priceChange = lastBar.c - firstBar.c;
     const priceChangePercent = (priceChange / firstBar.c) * 100;
     
-    // Calculate 24h stats based on timeframe
-    // For 15m bars: 96 bars = 24 hours
-    // For other timeframes, use all available data
-    const bars24h = bars.length > 96 ? bars.slice(-96) : bars;
+    // Calculate how many bars represent 24 hours based on timeframe
+    // For proper 24h stats calculation
+    let bars24h: ChartBar[] = bars;
+    
+    // Get the timestamp 24 hours ago
+    const now = lastBar.t * 1000; // Convert to milliseconds
+    const twentyFourHoursAgo = now - (24 * 60 * 60 * 1000);
+    
+    // Filter bars from the last 24 hours
+    bars24h = bars.filter(bar => (bar.t * 1000) >= twentyFourHoursAgo);
+    
+    // If we don't have any bars in the last 24h (e.g., for weekly timeframe), 
+    // use the most recent bar's data
+    if (bars24h.length === 0) {
+      bars24h = [lastBar];
+    }
     
     return {
       currentPrice: lastBar.c,
