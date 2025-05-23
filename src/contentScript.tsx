@@ -3,6 +3,19 @@ import html2canvas from 'html2canvas';
 
 const getIsXPost = () => window.location.hostname === 'x.com' || window.location.hostname === 'twitter.com';
 
+// Helper function to check if sidebar is actively open based on heartbeat
+const isSidebarActive = async (): Promise<boolean> => {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(['isSidebarMode', 'sidebarLastHeartbeat'], (result) => {
+      const HEARTBEAT_TIMEOUT = 5000; // 5 seconds - longer than the 2s heartbeat interval
+      const isActive = result.isSidebarMode === true && 
+                      result.sidebarLastHeartbeat && 
+                      (Date.now() - result.sidebarLastHeartbeat) < HEARTBEAT_TIMEOUT;
+      resolve(isActive);
+    });
+  });
+};
+
 // Function to extract multiple images from an element or page
 export const extractImages = (baseElement: HTMLElement = document.body): string[] => {
   const images: Set<string> = new Set(); // Use a Set to avoid duplicates
@@ -638,24 +651,24 @@ function startSelectionMode(isSidebar: boolean) {
   });
 }
 
-window.addEventListener('message', (event) => {
+window.addEventListener('message', async (event) => {
   if (event.data?.source !== 'tknz' || event.data?.type !== 'INIT_TOKEN_CREATE') return;
 
-  chrome.storage.local.get(['isSidebarMode'], ({ isSidebarMode }) => {
-    chrome.runtime.sendMessage({
-      type: 'INIT_TOKEN_CREATE',
-      options: event.data.options,
-      isSidebar: !!isSidebarMode
-    }).then((response) => {
-      if (chrome.runtime.lastError) {
-        console.error('Messaging error:', chrome.runtime.lastError.message);
-        return;
-      }
+  const sidebarActive = await isSidebarActive();
+  
+  chrome.runtime.sendMessage({
+    type: 'INIT_TOKEN_CREATE',
+    options: event.data.options,
+    isSidebar: sidebarActive
+  }).then((response) => {
+    if (chrome.runtime.lastError) {
+      console.error('Messaging error:', chrome.runtime.lastError.message);
+      return;
+    }
 
-      if (!response?.success) {
-        console.error('Failed: ', response.error);
-      }
-    });
+    if (!response?.success) {
+      console.error('Failed: ', response.error);
+    }
   });
 });
 
@@ -1063,10 +1076,9 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
           <polyline points="21 15 16 10 5 21"></polyline>
         </svg>`,
         tooltip: 'Select content to tokenize',
-        action: () => {
-          chrome.storage.local.get(['isSidebarMode'], ({ isSidebarMode }) => {
-            startSelectionMode(!!isSidebarMode);
-          });
+        action: async () => {
+          const sidebarActive = await isSidebarActive();
+          startSelectionMode(sidebarActive);
           toggleMenu();
         }
       }
@@ -1602,10 +1614,10 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
       btn.style.opacity = '0.7';
       
       // Determine UI context (sidebar vs popup) persisted by extension UI
-      chrome.storage.local.get(['isSidebarMode'], ({ isSidebarMode }) => {
+      isSidebarActive().then(sidebarActive => {
         // Send message to background script and handle response
         chrome.runtime.sendMessage(
-          { type: 'TKNZ_TOKEN_CLICKED', token, isSidebar: !!isSidebarMode }, 
+          { type: 'TKNZ_TOKEN_CLICKED', token, isSidebar: sidebarActive }, 
           (response) => {
             //console.log('TKNZ_TOKEN_CLICKED --> response', response);
             const error = chrome.runtime.lastError;
