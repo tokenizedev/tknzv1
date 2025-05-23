@@ -226,46 +226,6 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   const initialParams = useStore(state => state.initialTokenCreateParams);
   const clearInitialParams = useStore(state => state.clearInitialTokenCreateParams);
   const sdkParams = sdkOptions ?? initialParams;
-  /**
-   * Handles the Preview Confirm button click: invokes wrapper or local flow.
-   */
-  const handleConfirm = async () => {
-    if (isCreating || isDeployTransitioning) return;
-    
-    setIsDeployTransitioning(true);
-    // Reset error and prep for transition
-    setError(null);
-    
-    setTimeout(() => {
-      setIsCreating(true);
-      setIsDeployTransitioning(false);
-    }, 300);
-    
-    // core confirmation logic
-    const confirmCallback = async () => {
-      try {
-        const res = await confirmPreviewCreateCoin();
-        setCreatedCoin(res);
-        if (onCreationComplete) {
-          onCreationComplete(res.address);
-        }
-      } catch (err) {
-        handleError(err);
-      } finally {
-        setIsCreating(false);
-      }
-    };
-    
-    try {
-      if (onCreationStart) {
-        await onCreationStart(confirmCallback);
-      } else {
-        await confirmCallback();
-      }
-    } catch (err: any) {
-      handleError(err);
-    }
-  };
 
   // New helper function to handle errors consistently
   const handleError = (err: any) => {
@@ -293,21 +253,6 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
     setIsDeployTransitioning(false);
   };
 
-  // Add function to handle cancellation with transition
-  const handleCancelPreview = () => {
-    if (isCancelTransitioning) return;
-    
-    setIsCancelTransitioning(true);
-    
-    setTimeout(() => {
-      clearPreviewCreateCoin();
-      
-      setTimeout(() => {
-        setIsCancelTransitioning(false);
-        setIsPreviewing(false);
-      }, 300);
-    }, 150);
-  };
 
   useEffect(() => {
     // Add animation styles
@@ -322,7 +267,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   
   
   // Wallet and store hooks
-  const { nativeSolBalance: balance, error: walletError, investmentAmount: defaultInvestment, totalPortfolioUsdValue } = useStore(state => ({
+  const { nativeSolBalance: balance, error: walletError, investmentAmount: defaultInvestment } = useStore(state => ({
     nativeSolBalance: state.nativeSolBalance,
     error: state.error,
     investmentAmount: state.investmentAmount,
@@ -332,8 +277,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   const previewCreateCoinRemote = useStore(state => state.previewCreateCoinRemote);
   const confirmPreviewCreateCoin = useStore(state => state.confirmPreviewCreateCoin);
   const clearPreviewCreateCoin = useStore(state => state.clearPreviewCreateCoin);
-  // const refreshPortfolioData = useStore(state => state.refreshPortfolioData); // duplicate, already declared above
-  const [isPreviewing, setIsPreviewing] = useState(false);
+  
   const refreshPortfolioData = useStore(state => state.refreshPortfolioData);
   // Already combined above: sdkParams includes sdkOptions or store.initialTokenCreateParams
 
@@ -377,7 +321,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   const [investmentAmount, setInvestmentAmount] = useState(defaultInvestment);
   const [memeLevel, setMemeLevel] = useState(0);
   const [isCreating, setIsCreating] = useState(false);
-  const [loadingProgress, setLoadingProgress] = useState(0);
+  const [_loadingProgress, setLoadingProgress] = useState(0);
   const [createdCoin, setCreatedCoin] = useState<{
     address: string;
     pumpUrl: string;
@@ -396,10 +340,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   // State for insufficient funds notice
   const [insufficientFunds, setInsufficientFunds] = useState(false)
 
-  // Add state for smooth transitions between form, preview, and creation
-  const [isPreviewTransitioning, setIsPreviewTransitioning] = useState(false);
-  const [isDeployTransitioning, setIsDeployTransitioning] = useState(false);
-  const [isCancelTransitioning, setIsCancelTransitioning] = useState(false);
+  const [_isDeployTransitioning, setIsDeployTransitioning] = useState(false);
 
   // Add state for auto-preview
   const [isAutoPreviewLoading, setIsAutoPreviewLoading] = useState(false);
@@ -794,7 +735,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
       await fetchForActiveTab();
     };
     const handleUpdated = async (
-      tabId: number,
+      _tabId: number,
       changeInfo: chrome.tabs.TabChangeInfo,
       tab: chrome.tabs.Tab
     ) => {
@@ -851,75 +792,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
     else params.imageUrl = imageUrl;
     return params;
   };
-  // Add a ref for the preview container and deploy button
-  const previewContainerRef = useRef<HTMLDivElement>(null);
-  const deployButtonRef = useRef<HTMLButtonElement>(null);
-
-  // Update handlePreview function to improve scrolling and button focus behavior
-  const handlePreview = async () => {
-    if (isPreviewing || isPreviewTransitioning) return;
-    
-    setIsPreviewTransitioning(true);
-    setError(null);
-    
-    setTimeout(() => {
-      setIsPreviewing(true);
-    }, 50);
-    
-    try {
-      const params = buildParams();
-      await previewCreateCoinRemote(params);
-      
-      setTimeout(() => {
-        setIsPreviewTransitioning(false);
-        
-        // Use requestAnimationFrame to ensure the UI has updated before scrolling
-        requestAnimationFrame(() => {
-          // First ensure the outer container is scrolled to show the preview
-          if (mainContainerRef.current) {
-            mainContainerRef.current.scrollTo({
-              top: mainContainerRef.current.scrollHeight,
-              behavior: 'smooth'
-            });
-          }
-          
-          // Then scroll the preview into view for precise positioning
-          setTimeout(() => {
-            if (previewContainerRef.current) {
-              previewContainerRef.current.scrollIntoView({ 
-                behavior: 'smooth', 
-                block: 'center'
-              });
-              
-              // Focus the deploy button with certainty after animations complete
-              setTimeout(() => {
-                if (deployButtonRef.current) {
-                  // Add a slight visual effect to highlight the button
-                  deployButtonRef.current.classList.add('focus-highlight');
-                  deployButtonRef.current.focus();
-                  
-                  // Remove the highlight class after a short time
-                  setTimeout(() => {
-                    if (deployButtonRef.current) {
-                      deployButtonRef.current.classList.remove('focus-highlight');
-                    }
-                  }, 1000);
-                }
-              }, 400);
-            }
-          }, 100);
-        });
-      }, 500);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Unknown error';
-      setError(`Preview failed: ${msg}`);
-      setTimeout(() => {
-        setIsPreviewing(false);
-        setIsPreviewTransitioning(false);
-      }, 300);
-    }
-  };
-
+  
   // Modify the handleSubmit to handle both preview and creation in one step
   const handleCreateCoin = async () => {
     // Refresh wallet balance before submitting
@@ -1420,7 +1293,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
                       <span>{previewData.pumpFeeAmount.toFixed(4)} SOL</span>
                     </p>
                     <p className="flex justify-between">
-                      <span>Platform Fee:</span> 
+                      <span>TKNZ Fee:</span> 
                       <span>{previewData.feeAmount.toFixed(4)} SOL</span>
                     </p>
                     <p className="flex justify-between border-t border-cyber-green/30 pt-1 mt-1">
