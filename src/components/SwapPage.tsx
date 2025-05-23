@@ -836,7 +836,7 @@ export const SwapPage: React.FC<SwapPageProps> = ({ initialMint, initialToMint, 
                               <div className="col-span-2">
                                 <span className="text-cyber-green/50">24h Volume:</span>
                                 <span className="text-cyber-green ml-1">
-                                  ${(stats.volume24h / 1000000).toFixed(2)}M
+                                  {chartService.formatVolume(stats.volume24h)}
                                 </span>
                               </div>
                             </div>
