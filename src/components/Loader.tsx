@@ -47,7 +47,14 @@ export const Loader: React.FC<LoaderProps> = ({ isSidebar = false, isChild = fal
                     {/* Main loading container */}
                     <div className="relative z-10 flex flex-col items-center gap-6 opacity-0 animate-fade-in-delayed">
                         {/* Logo */}
-                        <div className="text-cyber-green font-bold text-4xl font-terminal tracking-widest mb-2">TKNZ</div>
+                        <div className="relative mb-2">
+                            <img 
+                                src="/assets/logo-01.png" 
+                                alt="TKNZ" 
+                                className="w-24 h-24 object-contain animate-pulse"
+                                style={{ filter: 'drop-shadow(0 0 10px rgba(0, 255, 157, 0.5))' }}
+                            />
+                        </div>
                         
                         {/* Animated loading ring */}
                         <div className="relative">
