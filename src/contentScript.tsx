@@ -408,21 +408,6 @@ function startSelectionMode(isSidebar: boolean) {
       50% { opacity: 0.5; }
       100% { opacity: 1; }
     }
-    
-    /* Smooth transition for menu item hover effects */
-    .tknz-menu-item {
-      transition: background-color 0.2s ease, box-shadow 0.2s ease;
-    }
-    
-    /* Prevent interaction during animation */
-    .tknz-menu-item[style*="animation"] {
-      pointer-events: none !important;
-    }
-    
-    /* Re-enable pointer events after animation */
-    .tknz-menu-item[style*="forwards"] {
-      pointer-events: auto !important;
-    }
   `;
   document.head.appendChild(styleEl);
   
@@ -958,7 +943,7 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
     button.id = 'tknz-floating-scan-btn';
     button.setAttribute('title', 'TKNZ Actions');
     button.innerHTML = `
-      <img src="${chrome.runtime.getURL('assets/logo-01.png')}" alt="TKNZ" style="width: 22px; height: 22px; object-fit: contain; transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);">
+      <img src="${chrome.runtime.getURL('assets/logo-01.png')}" alt="TKNZ" style="width: 22px; height: 22px; object-fit: contain;">
     `;
     
     // Add animation styles - create a style element for the bounce-in animation
@@ -980,85 +965,12 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
           }
         }
         
-        @keyframes tknz-emit-icon {
-          0% {
-            opacity: 0;
-            transform: translate(0, 0) scale(0) rotate(0deg);
-          }
-          20% {
-            opacity: 1;
-            transform: translate(0, -10px) scale(0.8) rotate(90deg);
-          }
-          100% {
-            opacity: 1;
-            transform: var(--final-transform) scale(1) rotate(360deg);
-          }
-        }
-        
-        @keyframes tknz-collect-icon {
-          0% {
-            opacity: 1;
-            transform: var(--final-transform) scale(1) rotate(0deg);
-          }
-          80% {
-            opacity: 1;
-            transform: translate(0, -10px) scale(0.8) rotate(-90deg);
-          }
-          100% {
-            opacity: 0;
-            transform: translate(0, 0) scale(0) rotate(-180deg);
-          }
-        }
-        
-        @keyframes tknz-logo-spin {
-          0% {
-            transform: rotate(0deg);
-          }
-          100% {
-            transform: rotate(360deg);
-          }
-        }
-        
-        @keyframes tknz-logo-spin-reverse {
-          0% {
-            transform: rotate(0deg);
-          }
-          100% {
-            transform: rotate(-360deg);
-          }
-        }
-        
         #tknz-floating-scan-btn {
           animation: tknz-bounce-in 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
         }
         
-        #tknz-floating-scan-btn.pressed {
-          transform: scale(0.95);
-          box-shadow: 0 1px 5px rgba(0, 0, 0, 0.3), 0 0 10px rgba(0, 204, 122, 0.3);
-        }
-        
-        #tknz-floating-scan-btn.menu-open img {
-          animation: tknz-logo-spin 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-        }
-        
         #tknz-floating-scan-btn img {
           /* Logo displays in original colors - no filter applied */
-        }
-        
-        .tknz-menu-item {
-          animation: tknz-emit-icon 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-        }
-        
-        .tknz-menu-item:nth-child(1) {
-          animation-delay: 0s;
-        }
-        
-        .tknz-menu-item:nth-child(2) {
-          animation-delay: 0.1s;
-        }
-        
-        .tknz-menu-item:nth-child(3) {
-          animation-delay: 0.2s;
         }
       `;
       document.head.appendChild(styles);
@@ -1071,10 +983,13 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
       position: 'fixed',
       bottom: '100px',
       right: '20px',
-      width: '40px',
-      height: '40px',
+      width: '200px',  // Increased to accommodate tooltips
+      height: '200px', // Increased to accommodate tooltips
       pointerEvents: 'none',
-      zIndex: '9998'
+      zIndex: '9998',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
     });
 
     // Create menu items
@@ -1105,7 +1020,7 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
             </svg>`
           : `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="10"></circle>
-              <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+              <path d="M5 5l14 14"></path>
             </svg>`,
         tooltip: isDomainBlocked ? 'Enable buy buttons on this site' : 'Disable buy buttons on this site',
         action: () => {
@@ -1123,12 +1038,17 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
                 // Update button icon and tooltip
                 const blockBtn = document.getElementById('tknz-menu-block');
                 if (blockBtn) {
-                  blockBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <path d="M9 9l6 6"></path>
-                    <path d="M15 9l-6 6"></path>
-                  </svg>`;
+                  // Save tooltip before updating innerHTML
                   const tooltip = blockBtn.querySelector('.tknz-menu-tooltip') as HTMLElement;
+                  // Update only the SVG, not the entire innerHTML
+                  const svg = blockBtn.querySelector('svg');
+                  if (svg) {
+                    svg.outerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <path d="M9 9l6 6"></path>
+                      <path d="M15 9l-6 6"></path>
+                    </svg>`;
+                  }
                   if (tooltip) tooltip.innerText = 'Enable buy buttons on this site';
                 }
               });
@@ -1143,11 +1063,16 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
                 // Update button icon and tooltip
                 const blockBtn = document.getElementById('tknz-menu-block');
                 if (blockBtn) {
-                  blockBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
-                  </svg>`;
+                  // Save tooltip before updating innerHTML
                   const tooltip = blockBtn.querySelector('.tknz-menu-tooltip') as HTMLElement;
+                  // Update only the SVG, not the entire innerHTML
+                  const svg = blockBtn.querySelector('svg');
+                  if (svg) {
+                    svg.outerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <path d="M5 5l14 14"></path>
+                    </svg>`;
+                  }
                   if (tooltip) tooltip.innerText = 'Disable buy buttons on this site';
                 }
               });
@@ -1195,10 +1120,11 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
         opacity: '0',
         transition: 'opacity 0.2s',
         pointerEvents: 'none',
-        right: '40px',
         top: '50%',
         transform: 'translateY(-50%)',
-        zIndex: '10001'
+        zIndex: '10001',
+        border: '1px solid rgba(0, 255, 157, 0.3)',
+        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.5)'
       });
       menuBtn.appendChild(itemTooltip);
       
@@ -1215,20 +1141,39 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
         justifyContent: 'center',
         cursor: 'pointer',
         opacity: '0',
-        transform: 'translate(0, 0) scale(0)',
+        transform: 'scale(0.3)',
+        transition: 'all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55)',
         pointerEvents: 'none',
-        boxShadow: '0 2px 8px rgba(0, 255, 157, 0.3)'
+        boxShadow: '0 2px 8px rgba(0, 255, 157, 0.3)',
+        // Center in the container initially
+        left: '50%',
+        top: '50%',
+        marginLeft: '-16px',
+        marginTop: '-16px'
       });
 
       menuBtn.onmouseenter = () => {
+        // Get button position to determine tooltip placement
+        const buttonRect = button.getBoundingClientRect();
+        const isNearRight = buttonRect.left > window.innerWidth / 2;
+        
+        // Position tooltip dynamically
+        if (isNearRight) {
+          // Button on right side - show tooltip to the left
+          itemTooltip.style.right = '40px';
+          itemTooltip.style.left = 'auto';
+        } else {
+          // Button on left side - show tooltip to the right
+          itemTooltip.style.left = '40px';
+          itemTooltip.style.right = 'auto';
+        }
+        
         itemTooltip.style.opacity = '1';
         menuBtn.style.backgroundColor = 'rgba(0, 255, 157, 0.2)';
-        menuBtn.style.boxShadow = '0 2px 12px rgba(0, 255, 157, 0.5)';
       };
       menuBtn.onmouseleave = () => {
         itemTooltip.style.opacity = '0';
         menuBtn.style.backgroundColor = 'rgba(0, 0, 0, 0.85)';
-        menuBtn.style.boxShadow = '0 2px 8px rgba(0, 255, 157, 0.3)';
       };
 
       menuBtn.onclick = (e) => {
@@ -1241,28 +1186,7 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
 
     const toggleMenu = () => {
       menuOpen = !menuOpen;
-      
-      if (menuOpen) {
-        button.classList.add('menu-open');
-        // Trigger logo rotation animation
-        const img = button.querySelector('img');
-        if (img) {
-          img.style.animation = 'none';
-          setTimeout(() => {
-            img.style.animation = 'tknz-logo-spin 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55)';
-          }, 10);
-        }
-      } else {
-        button.classList.remove('menu-open');
-        // Reverse logo rotation when closing
-        const img = button.querySelector('img');
-        if (img) {
-          img.style.animation = 'none';
-          setTimeout(() => {
-            img.style.animation = 'tknz-logo-spin-reverse 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55)';
-          }, 10);
-        }
-      }
+      button.style.transform = menuOpen ? 'scale(1.1) rotate(180deg)' : 'scale(1) rotate(0deg)';
       
       // Get button position to determine best menu layout
       const buttonRect = button.getBoundingClientRect();
@@ -1273,10 +1197,7 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
         const menuBtn = document.getElementById(`tknz-menu-${item.id}`);
         if (menuBtn) {
           if (menuOpen) {
-            // Calculate orbital position based on button location
-            // 1/4 inch is approximately 24 pixels from the button edge
-            const orbitRadius = 60; // 40px (button width) / 2 + 24px (1/4 inch) + 16px (half menu button)
-            
+            // Calculate position based on button location
             let baseAngle: number;
             if (isNearLeft && isNearTop) {
               // Button in top-left: emit icons to the right and down
@@ -1297,33 +1218,17 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
             const angle = baseAngle + (index - 1) * spreadAngle;
             const angleRad = (angle * Math.PI) / 180;
             
-            const x = orbitRadius * Math.cos(angleRad);
-            const y = orbitRadius * Math.sin(angleRad);
+            const radius = 60; // Distance from button center
+            const x = radius * Math.cos(angleRad);
+            const y = radius * Math.sin(angleRad);
             
-            // Set CSS variable for final transform
-            menuBtn.style.setProperty('--final-transform', `translate(${x}px, ${y}px)`);
-            
-            // Reset animation
-            menuBtn.style.animation = 'none';
-            menuBtn.style.opacity = '0';
-            menuBtn.style.transform = 'translate(0, 0) scale(0)';
-            
-            setTimeout(() => {
-              menuBtn.style.animation = `tknz-emit-icon 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards`;
-              menuBtn.style.opacity = '1';
-              menuBtn.style.pointerEvents = 'auto';
-            }, 10);
+            menuBtn.style.opacity = '1';
+            menuBtn.style.transform = `translate(${x}px, ${y}px) scale(1)`;
+            menuBtn.style.pointerEvents = 'auto';
           } else {
-            // Closing animation - collect icons back to button
-            // Keep the same final transform position for the reverse animation
-            menuBtn.style.animation = `tknz-collect-icon 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards`;
-            menuBtn.style.animationDelay = `${(menuItems.length - 1 - index) * 0.05}s`; // Reverse order
-            
-            setTimeout(() => {
-              menuBtn.style.opacity = '0';
-              menuBtn.style.transform = 'translate(0, 0) scale(0)';
-              menuBtn.style.pointerEvents = 'none';
-            }, 400 + ((menuItems.length - 1 - index) * 50)); // Wait for animation to complete
+            menuBtn.style.opacity = '0';
+            menuBtn.style.transform = 'scale(0.3)';
+            menuBtn.style.pointerEvents = 'none';
           }
         }
       });
@@ -1360,39 +1265,17 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
       }
     };
     button.onmouseout = () => {
-      if (!menuOpen && !button.classList.contains('pressed')) {
+      if (!menuOpen) {
         button.style.transform = 'scale(1)';
         button.style.boxShadow = '0 2px 10px rgba(0, 0, 0, 0.3), 0 0 20px rgba(0, 204, 122, 0.4)';
       }
-    };
-
-    // Add pressed state handlers
-    button.onmousedown = (e) => {
-      if (e.button === 0) { // Left click only
-        button.classList.add('pressed');
-      }
-    };
-    
-    button.onmouseup = () => {
-      button.classList.remove('pressed');
-    };
-    
-    button.onmouseleave = () => {
-      button.classList.remove('pressed');
     };
 
     // Add click handler to toggle menu
     button.onclick = (e) => {
       e.preventDefault();
       e.stopPropagation();
-      
-      // Only toggle menu if we haven't moved (dragged) the button
-      if (!hasMoved) {
-        toggleMenu();
-      }
-      
-      // Reset hasMoved for next interaction
-      hasMoved = false;
+      toggleMenu();
     };
 
     // Close menu when clicking outside
@@ -1404,14 +1287,12 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
 
     // Make the button draggable with smooth gliding and inertia
     let isDragging = false;
-    let hasMoved = false;
     let currentX = 0;
     let currentY = 0;
     let initialX = 0;
     let initialY = 0;
     let xOffset = 0;
     let yOffset = 0;
-    let dragStartTime = 0;
     
     function saveScanButtonPosition() {
       chrome.storage.local.set({
@@ -1436,18 +1317,14 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
       button.style.right = 'auto';
       button.style.bottom = 'auto';
       
-      // Move menu container with button
-      menuContainer.style.left = `${xPos}px`;
-      menuContainer.style.top = `${yPos}px`;
+      // Move menu container with button (centered on button)
+      menuContainer.style.left = `${xPos - 80}px`; // Center 200px container on 40px button
+      menuContainer.style.top = `${yPos - 80}px`;
       menuContainer.style.right = 'auto';
       menuContainer.style.bottom = 'auto';
     }
 
-    const dragMouseDown = (e: MouseEvent) => {
-      if (e.button !== 0) return; // Only left click
-      
-      dragStartTime = Date.now();
-      hasMoved = false;
+    button.addEventListener('mousedown', (e) => {
       isDragging = true;
       
       // Get the current position of the button
@@ -1462,45 +1339,23 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
       button.style.cursor = 'grabbing';
       button.style.transition = 'none'; // Disable transitions during drag
       e.preventDefault();
-      
-      // Add global mouse event listeners
-      document.addEventListener('mousemove', dragMouseMove);
-      document.addEventListener('mouseup', dragMouseUp);
-    };
+    });
     
-    const dragMouseMove = (e: MouseEvent) => {
+    document.addEventListener('mousemove', (e) => {
       if (!isDragging) return;
       e.preventDefault();
-      
-      const deltaX = Math.abs(e.clientX - (currentX + xOffset));
-      const deltaY = Math.abs(e.clientY - (currentY + yOffset));
-      
-      // Only consider it a drag if moved more than 5 pixels
-      if (deltaX > 5 || deltaY > 5) {
-        hasMoved = true;
-      }
       
       currentX = e.clientX - xOffset;
       currentY = e.clientY - yOffset;
       
       setTranslate(currentX, currentY);
-    };
+    });
     
-    const dragMouseUp = () => {
+    document.addEventListener('mouseup', () => {
       if (!isDragging) return;
       isDragging = false;
       button.style.cursor = 'pointer';
       button.style.transition = 'all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55)'; // Re-enable transitions
-      
-      // Remove global mouse event listeners
-      document.removeEventListener('mousemove', dragMouseMove);
-      document.removeEventListener('mouseup', dragMouseUp);
-      
-      // If it was a quick click without movement, don't save position
-      const clickDuration = Date.now() - dragStartTime;
-      if (!hasMoved && clickDuration < 200) {
-        return;
-      }
       
       // Update stored position for next drag
       const rect = button.getBoundingClientRect();
@@ -1508,29 +1363,7 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
       currentY = rect.top;
       
       saveScanButtonPosition();
-    };
-    
-    // Override the previous mousedown handler with drag-aware version
-    button.onmousedown = (e) => {
-      if (e.button === 0) { // Left click only
-        button.classList.add('pressed');
-        dragMouseDown(e);
-      }
-    };
-    
-    // Update click handler to only fire if not dragged
-    button.onclick = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      
-      // Only toggle menu if we haven't moved (dragged) the button
-      if (!hasMoved) {
-        toggleMenu();
-      }
-      
-      // Reset hasMoved for next interaction
-      hasMoved = false;
-    };
+    });
 
     // Position intelligently to avoid the Grok button and other elements
     function positionButton() {
@@ -1617,6 +1450,12 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
         currentX = defaultX;
         currentY = defaultY;
       }
+      
+      // Also set initial menu container position
+      const rect = button.getBoundingClientRect();
+      menuContainer.style.left = `${rect.left - 80}px`;
+      menuContainer.style.top = `${rect.top - 80}px`;
+      
       setTimeout(ensureButtonVisible, 100);
     });
 
