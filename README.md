@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/logo.png" alt="TKNZ Logo" width="200" />
+  <img src="public/icon.svg" alt="TKNZ Logo" width="200" />
 </div>
 
 [![CI](https://github.com/tokenizedev/tknzv1/actions/workflows/ci.yml/badge.svg)](https://github.com/tokenizedev/tknzv1/actions/workflows/ci.yml)
