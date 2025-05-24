@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.19.1](https://tokenizedev///compare/v0.19.0...v0.19.1) (2025-05-24)
+
+
+### Features
+
+* **contentScript:** add animations and styles for TKNZ Actions ([25f6cfc](https://tokenizedev///commit/25f6cfc06583ab910bd85ee2da881fa29ae3d5f3))
+* **contentScript:** Add smooth transition for menu item hover effects ([6e4b6e3](https://tokenizedev///commit/6e4b6e326b720f1902213ffe07bfee89544ecc4b))
+* **contentScript:** Update floating scan button style and behavior ([a5d658d](https://tokenizedev///commit/a5d658dda082ca5bd5a71d126b3ba97155e01689))
+
 ## [0.19.0](https://tokenizedev///compare/v0.18.0...v0.19.0) (2025-05-23)
 
 
