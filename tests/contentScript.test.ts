@@ -1,4 +1,4 @@
-import { vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest';
 // Mock html2canvas for tweet screenshot
 vi.mock('html2canvas', () => ({
   __esModule: true,
