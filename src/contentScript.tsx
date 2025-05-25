@@ -75,17 +75,20 @@ export const extractImages = (baseElement: HTMLElement = document.body): string[
   const imgElements = baseElement.querySelectorAll('img');
   imgElements.forEach(img => {
     if (!(img instanceof HTMLImageElement)) return;
-    
-    // Regular src
-    if (img.src) {
-      // For data URIs, only include if reasonably sized
-      if (img.src.startsWith('data:')) {
-        if (img.src.length < 50000) { // ~37KB base64
-          addImageUrl(img.src, 'img data-uri');
+
+    // Regular src attribute (use attribute to resolve against window.location)
+    const srcAttr = img.getAttribute('src');
+    if (srcAttr) {
+      if (srcAttr.startsWith('data:')) {
+        if (srcAttr.length < 50000) {
+          addImageUrl(srcAttr, 'img data-uri');
         }
       } else {
-        addImageUrl(img.src, 'img src');
+        addImageUrl(srcAttr, 'img src');
       }
+    } else if (img.src) {
+      // Fallback to property if attribute missing
+      addImageUrl(img.src, 'img src');
     }
     
     // Srcset for responsive images
@@ -672,7 +675,10 @@ window.addEventListener('message', async (event) => {
   });
 });
 
-chrome.runtime.sendMessage({ type: 'INJECT_SDK' });
+// Notify to inject SDK if available (avoid errors when chrome is undefined)
+if (typeof chrome !== 'undefined' && chrome.runtime && typeof chrome.runtime.sendMessage === 'function') {
+  chrome.runtime.sendMessage({ type: 'INJECT_SDK' });
+}
 
 // Flag to track initialization
 let isInitialized = false;
