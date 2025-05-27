@@ -1,5 +1,8 @@
 import { searchToken } from './services/jupiterService';
 import { CoinCreationParams } from './types';
+// Retrieve content script loader file paths from manifest for dynamic injection
+const _manifest = chrome.runtime.getManifest() as any;
+const _contentScriptFiles: string[] = (_manifest.content_scripts?.[0]?.js as string[]) || [];
 
 // Background service worker
 chrome.runtime.onInstalled.addListener(() => {
@@ -11,7 +14,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.status === 'complete' && tab.url) {
     chrome.scripting.executeScript({
       target: { tabId },
-      files: ['src/contentScript.tsx']
+      files: _contentScriptFiles
     }).catch(err => console.error('Failed to inject content script:', err));
   }
 });
@@ -47,7 +50,7 @@ chrome.runtime.onMessage.addListener((message: any, sender, sendResponse) => {
     if (!contentScriptStatus.get(targetTabId)) {
       chrome.scripting.executeScript({
         target: { tabId: targetTabId },
-        files: ['src/contentScript.tsx']
+        files: _contentScriptFiles
       })
       .then(() => {
         console.log('Re-injecting content script and starting selection mode');
