@@ -1196,32 +1196,30 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
       
       // Get button position to determine best menu layout
       const buttonRect = button.getBoundingClientRect();
-      const isNearLeft = buttonRect.left < window.innerWidth / 2;
-      const isNearTop = buttonRect.top < window.innerHeight / 2;
       
       menuItems.forEach((item, index) => {
         const menuBtn = document.getElementById(`tknz-menu-${item.id}`);
         if (menuBtn) {
           if (menuOpen) {
-            // Calculate position based on button location
-            let baseAngle: number;
-            if (isNearLeft && isNearTop) {
-              // Button in top-left: emit icons to the right and down
-              baseAngle = 0; // Start from right
-            } else if (!isNearLeft && isNearTop) {
-              // Button in top-right: emit icons to the left and down
-              baseAngle = 90; // Start from bottom
-            } else if (isNearLeft && !isNearTop) {
-              // Button in bottom-left: emit icons to the right and up
-              baseAngle = 270; // Start from top
-            } else {
-              // Button in bottom-right: emit icons to the left and up
-              baseAngle = 180; // Start from left
-            }
+            // Determine best direction based on available space
+            const space = {
+              top: buttonRect.top,
+              bottom: window.innerHeight - buttonRect.bottom,
+              left: buttonRect.left,
+              right: window.innerWidth - buttonRect.right
+            };
+            const directions = [
+              { angle: 0, space: space.right },
+              { angle: 90, space: space.bottom },
+              { angle: 180, space: space.left },
+              { angle: 270, space: space.top }
+            ];
+            directions.sort((a, b) => b.space - a.space);
+            const baseAngle = directions[0].angle;
             
-            // Spread icons in a 120-degree arc for better visibility
+            // Spread icons evenly in a 120-degree arc centered on the base angle
             const spreadAngle = 60; // Degrees between icons
-            const angle = baseAngle + (index - 1) * spreadAngle;
+            const angle = baseAngle + (index - (menuItems.length - 1) / 2) * spreadAngle;
             const angleRad = (angle * Math.PI) / 180;
             
             const radius = 60; // Distance from button center
