@@ -249,6 +249,26 @@ window.tknz.initTokenCreate({
 4. The background script stores the parameters and opens the extension UI (popup or side panel).  
 5. On UI initialization, the stored parameters are loaded and used to prefill the token creation form.
 
+#### Iframe & Cross-Frame Support
+
+The SDK is injected into all frames of the page (including iframes), so you can call `window.tknz.initTokenCreate(...)` directly in your iframe code. If your iframe is cross-origin and cannot access the parent frame’s JavaScript objects, you can instead use the `postMessage` API:
+
+```js
+// In your iframe (cross-origin) code:
+window.parent.postMessage({
+  source: 'tknz',
+  type: 'INIT_TOKEN_CREATE',
+  options: {
+    name: 'Game Token',
+    ticker: 'GAME',
+    description: 'A token from within an iframe game',
+    imageUrl: 'https://game.example.com/logo.png',
+    websiteUrl: 'https://game.example.com',
+    investmentAmount: 1
+  }
+}, '*');
+```
+
 ## Contributing
  Contributions welcome! Please fork the repo and submit a pull request:
  1. Fork the repo.
