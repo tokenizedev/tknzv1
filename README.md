@@ -9,7 +9,7 @@
  TKNZ (pronounced "tokenize") is a Chrome extension that lets you create meme coins on Pump.fun directly from news articles and tweets. It provides a simple UI to manage a Solana wallet, extract article or tweet data (title, image, description) and generate token metadata, then launch tokens with a specified investment amount.
 
  ## Table of Contents
- - [Goals](#goals)
+ - [Goals](#overview)
  - [Features](#features)
  - [Getting Started](#getting-started)
    - [Prerequisites](#prerequisites)
@@ -27,7 +27,7 @@
  - [Roadmap](#roadmap)
  - [License](#license)
 
- ## Goals
+ ## Overview
  - Simplify the workflow for launching meme coins based on article or tweet content.
  - Abstract the complexity of Solana SPL token creation and metadata hosting.
  - Provide real-time SOL and token balance updates.
@@ -111,33 +111,36 @@
  ```
 
  ## Development
- Start the Vite development server:
+
+ Do a build
+
  ```bash
- npm run dev
+ yarn build
  ```
+
  Load the extension as an unpacked extension:
  1. Navigate to `chrome://extensions/`.
  2. Enable **Developer mode**.
- 3. Click **Load unpacked** and select the project root.
+ 3. Click **Load unpacked** and select the `dist` folder from the root.
  4. Click the TKNZ icon in the toolbar to open the popup.
 
  ## Build & Packaging
+
  Build for production:
+ 
  ```bash
- npm run build
+ yarn build
  ```
- Package into a CRX file:
- ```bash
- npm run package
- ```
+ 
  Release (bump version, build, package):
  ```bash
- npm run release
+ npm release
  ```
- The generated `.crx` file will be in the project root.
+ The generated `release/[version].zip` file will be in the `release` folder.
 
  ## Chrome Extension Installation
- To install the packaged CRX:
+ To install the built extension
+
  1. Drag and drop the `.crx` file into `chrome://extensions/`.
  2. Confirm installation.
  Alternatively, load the `dist/` folder as an unpacked extension.
