@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/logo.png" alt="TKNZ Logo" width="200" />
+  <img src="public/assets/favicon-256x256.png" alt="TKNZ Logo" width="200" />
 </div>
 
 [![CI](https://github.com/tokenizedev/tknzv1/actions/workflows/ci.yml/badge.svg)](https://github.com/tokenizedev/tknzv1/actions/workflows/ci.yml)
@@ -9,7 +9,7 @@
  TKNZ (pronounced "tokenize") is a Chrome extension that lets you create meme coins on Pump.fun directly from news articles and tweets. It provides a simple UI to manage a Solana wallet, extract article or tweet data (title, image, description) and generate token metadata, then launch tokens with a specified investment amount.
 
  ## Table of Contents
- - [Goals](#goals)
+ - [Goals](#overview)
  - [Features](#features)
  - [Getting Started](#getting-started)
    - [Prerequisites](#prerequisites)
@@ -27,7 +27,7 @@
  - [Roadmap](#roadmap)
  - [License](#license)
 
- ## Goals
+ ## Overview
  - Simplify the workflow for launching meme coins based on article or tweet content.
  - Abstract the complexity of Solana SPL token creation and metadata hosting.
  - Provide real-time SOL and token balance updates.
@@ -111,33 +111,36 @@
  ```
 
  ## Development
- Start the Vite development server:
+
+ Do a build
+
  ```bash
- npm run dev
+ yarn build
  ```
+
  Load the extension as an unpacked extension:
  1. Navigate to `chrome://extensions/`.
  2. Enable **Developer mode**.
- 3. Click **Load unpacked** and select the project root.
+ 3. Click **Load unpacked** and select the `dist` folder from the root.
  4. Click the TKNZ icon in the toolbar to open the popup.
 
  ## Build & Packaging
+
  Build for production:
+ 
  ```bash
- npm run build
+ yarn build
  ```
- Package into a CRX file:
- ```bash
- npm run package
- ```
+ 
  Release (bump version, build, package):
  ```bash
- npm run release
+ npm release
  ```
- The generated `.crx` file will be in the project root.
+ The generated `release/[version].zip` file will be in the `release` folder.
 
  ## Chrome Extension Installation
- To install the packaged CRX:
+ To install the built extension
+
  1. Drag and drop the `.crx` file into `chrome://extensions/`.
  2. Confirm installation.
  Alternatively, load the `dist/` folder as an unpacked extension.
@@ -246,6 +249,26 @@ window.tknz.initTokenCreate({
 4. The background script stores the parameters and opens the extension UI (popup or side panel).  
 5. On UI initialization, the stored parameters are loaded and used to prefill the token creation form.
 
+#### Iframe & Cross-Frame Support
+
+The SDK is injected into all frames of the page (including iframes), so you can call `window.tknz.initTokenCreate(...)` directly in your iframe code. If your iframe is cross-origin and cannot access the parent frame’s JavaScript objects, you can instead use the `postMessage` API:
+
+```js
+// In your iframe (cross-origin) code:
+window.parent.postMessage({
+  source: 'tknz',
+  type: 'INIT_TOKEN_CREATE',
+  options: {
+    name: 'Game Token',
+    ticker: 'GAME',
+    description: 'A token from within an iframe game',
+    imageUrl: 'https://game.example.com/logo.png',
+    websiteUrl: 'https://game.example.com',
+    investmentAmount: 1
+  }
+}, '*');
+```
+
 ## Contributing
  Contributions welcome! Please fork the repo and submit a pull request:
  1. Fork the repo.
@@ -260,6 +283,11 @@ window.tknz.initTokenCreate({
 This project and everyone participating in it is governed by the [Code of Conduct](CODE_OF_CONDUCT.md). By participating, you agree to abide by its terms.
 
 ## Roadmap
+
+<div align="center">
+  <img src="assets/roadmap-05-27-2025.jpg" alt="TKNZ Logo" width="200" />
+</div>
+
  ```javascript
  /* TKNZ Roadmap Implementation */
 
@@ -300,22 +328,11 @@ function initRoadmap() {
     await implement("AUTO_WALLET_PROVISIONING"); // Easy onboarding
     await implement("COIN_CREATE_CONTEST"); // Community engagement
     await implement("METRICS_DASHBOARD"); // Usage analytics
-    
-    // In Progress □ 
-    if (await getFunds("treasury")) {
-      implement("NEW_FEE_STRUCTURE"); // 3.3% to treasury
-      console.log("Fee structure: 60% complete");
-    }
-    
-    try {
-      implement("WALLET_UPGRADES"); // Send, swap, and manage assets
-      console.log("Wallet upgrades: 20% complete");
-    } catch (e) {
-      console.log("Development in progress...");
-    }
+    await implement("NEW_FEE_STRUCTURE"); // 1% to treasury
+    await implement("WALLET_UPGRADES"); // Send, swap, and manage assets
     
     // Summary
-    console.log("Total completed features: 10/12");
+    console.log("Total completed features: 12/12");
     
     resolve("Roadmap initialized with v" + VERSION);
   });
@@ -332,10 +349,17 @@ function initRoadmap() {
 |  ✓ CUSTOM_TOKEN_IMAGES                                     |
 |  ✓ EXPLAINER_VIDEO                                         |
 |  ✓ AUTO_WALLET_PROVISIONING                                |
+|  ✓ NEW_FEE_STRUCTURE                                       |
+|  ✓ WALLET_UPGRADES                                         |
 |                                                            |
 |  // PENDING:                                               |
-|  □ NEW_FEE_STRUCTURE                                       |
-|  □ WALLET_UPGRADES                                         |
+|  □ SDK / Coin plaform Engine                               |
+|    □ Meteora Integration                                   |
+|  □ TKNZ.fun launchpad                                      |
+|  □ TKNZ gated features for holders                         |
+|    □ Customizable Prompts                                  |
+|    □ Pump Swap Integration                                 |
+|                                                            |
 |                                                            |
 \*----------------------------------------------------------*/
 
