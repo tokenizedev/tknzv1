@@ -328,9 +328,13 @@ function initRoadmap() {
 |  ✓ WALLET_UPGRADES                                         |
 |                                                            |
 |  // PENDING:                                               |
-|  □ Customizable Prompts                                    |
-|  □ Pump Swap Integration                                   |
 |  □ SDK / Coin plaform Engine                               |
+|    □ Meteora Integration                                   |
+|  □ TKNZ.fun launchpad                                      |
+|  □ TKNZ gated features for holders                         |
+|    □ Customizable Prompts                                  |
+|    □ Pump Swap Integration                                 |
+|                                                            |
 |                                                            |
 \*----------------------------------------------------------*/
 
