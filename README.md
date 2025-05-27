@@ -303,22 +303,11 @@ function initRoadmap() {
     await implement("AUTO_WALLET_PROVISIONING"); // Easy onboarding
     await implement("COIN_CREATE_CONTEST"); // Community engagement
     await implement("METRICS_DASHBOARD"); // Usage analytics
-    
-    // In Progress □ 
-    if (await getFunds("treasury")) {
-      implement("NEW_FEE_STRUCTURE"); // 3.3% to treasury
-      console.log("Fee structure: 60% complete");
-    }
-    
-    try {
-      implement("WALLET_UPGRADES"); // Send, swap, and manage assets
-      console.log("Wallet upgrades: 20% complete");
-    } catch (e) {
-      console.log("Development in progress...");
-    }
+    await implement("NEW_FEE_STRUCTURE"); // 1% to treasury
+    await implement("WALLET_UPGRADES"); // Send, swap, and manage assets
     
     // Summary
-    console.log("Total completed features: 10/12");
+    console.log("Total completed features: 12/12");
     
     resolve("Roadmap initialized with v" + VERSION);
   });
@@ -335,10 +324,13 @@ function initRoadmap() {
 |  ✓ CUSTOM_TOKEN_IMAGES                                     |
 |  ✓ EXPLAINER_VIDEO                                         |
 |  ✓ AUTO_WALLET_PROVISIONING                                |
+|  ✓ NEW_FEE_STRUCTURE                                       |
+|  ✓ WALLET_UPGRADES                                         |
 |                                                            |
 |  // PENDING:                                               |
-|  □ NEW_FEE_STRUCTURE                                       |
-|  □ WALLET_UPGRADES                                         |
+|  □ Customizable Prompts                                    |
+|  □ Pump Swap Integration                                   |
+|  □ SDK / Coin plaform Engine                               |
 |                                                            |
 \*----------------------------------------------------------*/
 
