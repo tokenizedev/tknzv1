@@ -192,15 +192,22 @@ chrome.runtime.onMessage.addListener((message: any, sender, sendResponse) => {
 chrome.runtime.onMessage.addListener((message, sender) => {
   if (message.type === 'INJECT_SDK' && sender.tab?.id) {
     chrome.scripting.executeScript({
-      target: { tabId: sender.tab.id },
+      target: { tabId: sender.tab.id, allFrames: true },
       world: 'MAIN',
       func: () => {
-        (window as any).tknz = {
-          initTokenCreate: (coin: Partial<CoinCreationParams>) => {
+        ;(window as any).tknz = {
+          initTokenCreate: (coin: any) => {
+            // eslint-disable-next-line no-console
             console.log('initTokenCreate', coin);
-            window.postMessage({ source: 'tknz', type: 'INIT_TOKEN_CREATE', options: coin });
+            const data = { source: 'tknz', type: 'INIT_TOKEN_CREATE', options: coin };
+            // If in an iframe, post message to parent; otherwise post to self
+            if (window.parent && window.parent !== window) {
+              window.parent.postMessage(data, '*');
+            } else {
+              window.postMessage(data, '*');
+            }
           }
-        }
+        };
       }
     });
   }
