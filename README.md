@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="public/icon.svg" alt="TKNZ Logo" width="200" />
+  <img src="public/assets/favicon-256x256.png" alt="TKNZ Logo" width="200" />
 </div>
 
 [![CI](https://github.com/tokenizedev/tknzv1/actions/workflows/ci.yml/badge.svg)](https://github.com/tokenizedev/tknzv1/actions/workflows/ci.yml)
@@ -283,6 +283,11 @@ window.parent.postMessage({
 This project and everyone participating in it is governed by the [Code of Conduct](CODE_OF_CONDUCT.md). By participating, you agree to abide by its terms.
 
 ## Roadmap
+
+<div align="center">
+  <img src="assets/roadmap-05-27-2025.jpg" alt="TKNZ Logo" width="200" />
+</div>
+
  ```javascript
  /* TKNZ Roadmap Implementation */
 
