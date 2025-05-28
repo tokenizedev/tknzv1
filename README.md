@@ -10,6 +10,12 @@ TKNZ (pronounced "tokenize") is a Chrome extension that lets you create meme coi
 
 ## Addresses
 
+### Contract Address
+
+```bash
+AfyDiEptGHEDgD69y56XjNSbTs23LaF1YHANVKnWpump
+```
+
 ### Treasury Addresses
 
 - **General Treasury:** 4GSHNuLozGESayQp5Qc6ybLkuMTd222VubxekyyTY8B8
