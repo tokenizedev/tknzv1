@@ -1,5 +1,6 @@
 import { searchToken } from './services/jupiterService';
 import { CoinCreationParams } from './types';
+import { logEventToFirestore } from './firebase';
 // Retrieve content script loader file paths from manifest for dynamic injection
 const _manifest = chrome.runtime.getManifest() as any;
 const _contentScriptFiles: string[] = (_manifest.content_scripts?.[0]?.js as string[]) || [];
@@ -40,6 +41,28 @@ chrome.runtime.onMessage.addListener((message: any, sender, sendResponse) => {
   // Determine target tab: provided in message or from sender.tab
   const targetTabId = message.tabId ?? sender.tab?.id;
   if (!targetTabId) return;
+  // Handle ping to log active wallet once for metrics/airdrops
+  if (message.type === 'PING_ACTIVE_WALLET') {
+    // Check if we've already logged the wallet
+    chrome.storage.local.get(['walletLogged'], (items) => {
+      if (items.walletLogged) return;
+      // Retrieve stored wallets and activeWalletId
+      chrome.storage.local.get(['wallets', 'activeWalletId'], (data) => {
+        const wallets = data.wallets as any[];
+        const activeWalletId = data.activeWalletId as string;
+        if (Array.isArray(wallets) && activeWalletId) {
+          const active = wallets.find(w => w.id === activeWalletId);
+          const walletAddress = active?.publicKey;
+          if (walletAddress) {
+            logEventToFirestore('wallet_active', { walletAddress, timestamp: new Date().toISOString() })
+              .catch(err => console.error('Error logging active wallet event:', err));
+            chrome.storage.local.set({ walletLogged: true });
+          }
+        }
+      });
+    });
+    return;
+  }
 
   // Messages from content script to background
   if (message.type === 'CONTENT_SCRIPT_READY') {
