@@ -1,9 +1,11 @@
 // Content script to extract article data
 import html2canvas from 'html2canvas';
 // Ping background to log active wallet for metrics/airdrops (once per user)
-chrome.runtime.sendMessage({ type: 'PING_ACTIVE_WALLET' }).catch(err => {
-  console.error('Failed to send PING_ACTIVE_WALLET message:', err);
-});
+if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
+  chrome.runtime.sendMessage({ type: 'PING_ACTIVE_WALLET' }).catch(err => {
+    console.error('Failed to send PING_ACTIVE_WALLET message:', err);
+  });
+}
 
 const getIsXPost = () => window.location.hostname === 'x.com' || window.location.hostname === 'twitter.com';
 
