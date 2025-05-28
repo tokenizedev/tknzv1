@@ -18,9 +18,21 @@ AfyDiEptGHEDgD69y56XjNSbTs23LaF1YHANVKnWpump
 
 ### Treasury Addresses
 
-- **General Treasury:** 4GSHNuLozGESayQp5Qc6ybLkuMTd222VubxekyyTY8B8
-- **General Treasury:** GxrLkNVJyzyGRkdmZ24bvEJF36hqxAFvcaUyRYQGZ8u5
-- **Marketing Treasury (100% used for marketing efforts):** DnoAsrTs2x3UBtwDwAMrxs7VAQewvMMwqxu8i4QK4GgL
+- **General Treasury:**
+
+```bash
+4GSHNuLozGESayQp5Qc6ybLkuMTd222VubxekyyTY8B8
+```
+- **General Treasury:**
+
+```bash
+GxrLkNVJyzyGRkdmZ24bvEJF36hqxAFvcaUyRYQGZ8u5
+```
+- **Marketing Treasury (100% used for marketing efforts):**
+
+```bash
+DnoAsrTs2x3UBtwDwAMrxs7VAQewvMMwqxu8i4QK4GgL
+```
 
 All treasury addresses are 100% dedicated to operating and enhancing the product as well as redistribution to holders.
 
