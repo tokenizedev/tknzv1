@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.19.2](https://tokenizedev///compare/v0.19.1...v0.19.2) (2025-05-27)
+
+
+### Features
+
+* Add Meteora Integration, TKNZ.fun launchpad, and gated features for holders ([adca50a](https://tokenizedev///commit/adca50a3fe6e8e24e9aca10d4a4aa43021c6532c))
+* Add premium gated features for TKNZ holders and expand platform rewards distribution ([1af1cfe](https://tokenizedev///commit/1af1cfeefef1d0fdcdfce5bfa9686c730938016d))
+* **background:** add support for posting messages to parent window ([2bea342](https://tokenizedev///commit/2bea3427453b7cfc990600a14388cef3c012babd))
+* **background:** implement dynamic injection of content script files from manifest ([e329d4d](https://tokenizedev///commit/e329d4d12d27ddae5bec7d364ab42a2b79a5ff06))
+* **contentScript:** improve menu layout algorithm ([b14221d](https://tokenizedev///commit/b14221d832c8a706d4273cc842f441a758c9894d))
+* **iframe:** Add support for cross-frame communication ([673b6da](https://tokenizedev///commit/673b6da8a2c800da7bd39e31c593606f21b4aee4))
+* Implement new fee structure and wallet upgrades ([846a51c](https://tokenizedev///commit/846a51c7ae86db8e82f004f2b7f5b9626625f973))
+* **README:** Update section titles and instructions for building and packaging ([5ed0fa1](https://tokenizedev///commit/5ed0fa1fafc871148f6137d3ad7e8e915e487185))
+* Update logo image source in README.md to use public/icon.svg ([df8cf82](https://tokenizedev///commit/df8cf82f0e8f61d0877d80f90ca296fb26701a1e))
+* Update logo in README.md and add new roadmap image ([6606d80](https://tokenizedev///commit/6606d80becd04f8a52be93523f3a44586a53517b))
+* **wallet:** Enhance full wallet capability, including Password Wall and Wallet features ([#123](https://tokenizedev//null/issues/123)) ([ac8e5d2](https://tokenizedev///commit/ac8e5d2a7b2376bc9b5ce2c019d00f5f01514ff4))
+
+
+### Bug Fixes
+
+* **contentScript:** ensure proper handling of image src attribute ([ab67c88](https://tokenizedev///commit/ab67c889fd15006881052365de8aacff5f09c148))
+* **manifest:** remove unnecessary file src/contentScript.tsx from resources list ([75778ef](https://tokenizedev///commit/75778ef6d2cb780736353bcb8c10d370729402be))
+
 ## [0.19.1](https://tokenizedev///compare/v0.19.0...v0.19.1) (2025-05-24)
 
 
