@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.19.3](https://tokenizedev///compare/v0.19.2...v0.19.3) (2025-05-28)
+
+
+### Features
+
+* Add new contract address for AfyDiEptGHEDgD69y56XjNSbTs23LaF1YHANVKnWpump ([89e18c2](https://tokenizedev///commit/89e18c2c00b8bf2a4bf9622eac674de805d3c03c))
+* Add new treasury addresses for general and marketing funds ([4924099](https://tokenizedev///commit/4924099b4114a2ef04743c8ebc3d0b80ec9048b0))
+* **treasury:** Add marketing treasury address ([b0ac2b5](https://tokenizedev///commit/b0ac2b55ceede24b7a7e1bae25918496b92ffea1))
+
 ## [0.19.2](https://tokenizedev///compare/v0.19.1...v0.19.2) (2025-05-27)
 
 
