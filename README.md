@@ -6,9 +6,19 @@
 
  # TKNZ (Tokenize) Chrome Extension
 
- TKNZ (pronounced "tokenize") is a Chrome extension that lets you create meme coins on Pump.fun directly from news articles and tweets. It provides a simple UI to manage a Solana wallet, extract article or tweet data (title, image, description) and generate token metadata, then launch tokens with a specified investment amount.
+TKNZ (pronounced "tokenize") is a Chrome extension that lets you create meme coins on Pump.fun directly from news articles and tweets. It provides a simple UI to manage a Solana wallet, extract article or tweet data (title, image, description) and generate token metadata, then launch tokens with a specified investment amount.
 
- ## Table of Contents
+## Addresses
+
+### Treasury Addresses
+
+- **General Treasury:** 4GSHNuLozGESayQp5Qc6ybLkuMTd222VubxekyyTY8B8
+- **General Treasury:** GxrLkNVJyzyGRkdmZ24bvEJF36hqxAFvcaUyRYQGZ8u5
+- **Marketing Treasury (100% used for marketing efforts):** DnoAsrTs2x3UBtwDwAMrxs7VAQewvMMwqxu8i4QK4GgL
+
+All treasury addresses are 100% dedicated to operating and enhancing the product as well as redistribution to holders.
+
+## Table of Contents
  - [Goals](#overview)
  - [Features](#features)
  - [Getting Started](#getting-started)
@@ -293,7 +303,7 @@ This project and everyone participating in it is governed by the [Code of Conduc
 
 #include <progress.h>
 #include <features.h>
-#define VERSION 0.5.1
+#define VERSION 0.19.2
 
 /*==========================================================*\
 |  ████████╗██╗  ██╗███╗   ██╗███████╗                      |
