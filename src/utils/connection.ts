@@ -6,7 +6,11 @@ import { logEventToFirestore } from '../firebase';
  */
 const PROD_RPC_ENDPOINT = 'https://mainnet.helius-rpc.com/?api-key=5e4edb76-36ed-4740-942d-7843adcc1e22';
 const DEVNET_RPC_ENDPOINT = 'https://devnet.helius-rpc.com/?api-key=5e4edb76-36ed-4740-942d-7843adcc1e22';
-const RPC_ENDPOINT = (import.meta.env as any)?.VITE_ENV === 'prod' ? PROD_RPC_ENDPOINT : DEVNET_RPC_ENDPOINT;
+// Allow overriding RPC endpoint via env var VITE_RPC_URL, else fallback to ENV-based default
+const ENV_RPC_URL = (import.meta.env as Record<string, string>).VITE_RPC_URL;
+const RPC_ENDPOINT = ENV_RPC_URL
+  ? ENV_RPC_URL
+  : (import.meta.env.VITE_ENV === 'prod' ? PROD_RPC_ENDPOINT : DEVNET_RPC_ENDPOINT);
 
 /**
  * High-level Solana connection for sending and confirming transactions.
