@@ -439,6 +439,23 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   const [hasAutoScrolled, setHasAutoScrolled] = useState(false);
   const [investmentInputValue, setInvestmentInputValue] = useState('');
   const [solPriceUsd, setSolPriceUsd] = useState<number>(0);
+  // Integration mode: 'meteora' for pool creation, 'pumpportal' for token minting
+  const [integrationMode, setIntegrationMode] = useState<'meteora' | 'pumpportal'>('meteora');
+
+  // Store action for Meteora pool creation
+  const createMeteoraPool = useStore(state => state.createMeteoraPool);
+  // State for successful Meteora response
+  const [meteoraSuccess, setMeteoraSuccess] = useState<{
+    signature: string;
+    pool: string;
+    positionNft: string;
+    config: string;
+    decimals: { A: number; B: number };
+    rawAmounts: { A: string; B: string };
+    initialLiquidity: string;
+    estimatedNetworkFee: number;
+    antiSnipeVault?: string;
+  } | null>(null);
 
   // Create debounced values for auto-preview trigger
   const debouncedCoinName = useDebounce(coinName, 1500); // Increased from 1000ms
@@ -938,16 +955,25 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
 
     setIsCreating(true);
     setError(null);
+    // Reset previous results
+    setMeteoraSuccess(null);
+    setCreatedCoin(null);
 
     const createCoinCallback = async () => {
       try {
-        // If we don't have preview data yet, get it first
+        // Handle Meteora integration: build, sign, and send via store
+        if (integrationMode === 'meteora') {
+          const params = buildParams();
+          const res = await createMeteoraPool(params);
+          setMeteoraSuccess(res);
+          if (onCreationComplete) onCreationComplete(res.signature);
+          return;
+        }
+        // PumpPortal integration: preview then confirm
         if (!previewData) {
           const params = buildParams();
           await previewCreateCoinRemote(params);
         }
-
-        // Then create the coin
         const res = await confirmPreviewCreateCoin();
         setCreatedCoin(res);
         if (onCreationComplete) {
@@ -969,7 +995,20 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
     } catch (err: any) {
       handleError(err);
     }
-  }, [onCreationStart, previewData, previewCreateCoinRemote, confirmPreviewCreateCoin, onCreationComplete, onCreationError, handleError, buildParams, investmentAmount, previewData, requiredBalance, refreshPortfolioData]);
+  }, [
+    onCreationStart,
+    onCreationComplete,
+    onCreationError,
+    handleError,
+    buildParams,
+    refreshPortfolioData,
+    requiredBalance,
+    previewData,
+    previewCreateCoinRemote,
+    confirmPreviewCreateCoin,
+    createMeteoraPool,
+    integrationMode
+  ]);
 
   const clearForm = useCallback(() => {
     setArticleData({
@@ -1139,6 +1178,31 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
             </div>
           )}
 
+          {/* Integration Mode Toggle */}
+          <div className="mb-4 flex items-center space-x-4">
+            <label className="flex items-center space-x-2 font-terminal text-cyber-green">
+              <input
+                type="radio"
+                name="integrationMode"
+                value="meteora"
+                checked={integrationMode === 'meteora'}
+                onChange={e => { setIntegrationMode(e.target.value as 'meteora'|'pumpportal'); console.log('Integration mode:', e.target.value); }}
+                className="cursor-pointer"
+              />
+              <span className="uppercase text-sm">Meteora</span>
+            </label>
+            <label className="flex items-center space-x-2 font-terminal text-cyber-green">
+              <input
+                type="radio"
+                name="integrationMode"
+                value="pumpportal"
+                checked={integrationMode === 'pumpportal'}
+                onChange={e => { setIntegrationMode(e.target.value as 'meteora'|'pumpportal'); console.log('Integration mode:', e.target.value); }}
+                className="cursor-pointer"
+              />
+              <span className="uppercase text-sm">PumpPortal</span>
+            </label>
+          </div>
           {/* Token details section - shows immediately */}
           <div className="space-y-4">
             <div className="flex items-center justify-between border-b border-cyber-green/30 pb-1 mb-3">
@@ -1410,7 +1474,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
             )}
 
             {createdCoin && (
-              <div className="crypto-card p-6 space-y-4 border-cyber-green">
+              <div className="crypto-card p-6 space-y-4 border-cyber-green animate-fadeInUp">
                 <h3 className="text-lg font-terminal text-cyber-green uppercase tracking-wide">🎉 Coin Created Successfully!</h3>
                 <div className="space-y-2">
                   <p className="text-sm font-terminal text-white">Your coin is now live on Pump.fun!</p>
@@ -1423,6 +1487,22 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
                     <Globe className="w-4 h-4" />
                     <span>VIEW ON PUMP.FUN</span>
                   </a>
+                </div>
+              </div>
+            )}
+            {meteoraSuccess && (
+              <div className="crypto-card p-6 space-y-4 border-cyber-green animate-fadeInUp">
+                <h3 className="text-lg font-terminal text-cyber-green uppercase tracking-wide">🎉 Pool Created Successfully!</h3>
+                <div className="space-y-2 font-terminal text-white text-sm">
+                  <p>Signature: <a href={`https://explorer.solana.com/tx/${meteoraSuccess.signature}`} target="_blank" rel="noopener noreferrer">{meteoraSuccess.signature}</a></p>
+                  <p>Pool: {meteoraSuccess.pool}</p>
+                  <p>Position NFT: {meteoraSuccess.positionNft}</p>
+                  <p>Config: {meteoraSuccess.config}</p>
+                  <p>Decimals: A={meteoraSuccess.decimals.A}, B={meteoraSuccess.decimals.B}</p>
+                  <p>Raw Amounts: A={meteoraSuccess.rawAmounts.A}, B={meteoraSuccess.rawAmounts.B}</p>
+                  <p>Initial Liquidity: {meteoraSuccess.initialLiquidity}</p>
+                  <p>Network Fee (lamports): {meteoraSuccess.estimatedNetworkFee}</p>
+                  {meteoraSuccess.antiSnipeVault && <p>Anti-Snipe Vault: {meteoraSuccess.antiSnipeVault}</p>}
                 </div>
               </div>
             )}
