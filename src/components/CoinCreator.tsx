@@ -5,11 +5,6 @@ import type { CoinCreationParams } from '../types';
 import { VersionBadge } from './VersionBadge';
 import { Loader } from './Loader';
 import { InsufficientFundsModal } from './InsufficientFundsModal';
-import type { PumpPortalResponse, MeteoraResponse } from '../utils/api';
-import { createPumpToken, createMeteoraPool } from '../utils/api';
-import { useWallet, useConnection } from '@solana/wallet-adapter-react';
-import { VersionedTransaction } from '@solana/web3.js';
-import { Buffer } from 'buffer';
 
 interface ArticleData {
   title: string
@@ -447,11 +442,20 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   // Integration mode: 'meteora' for pool creation, 'pumpportal' for token minting
   const [integrationMode, setIntegrationMode] = useState<'meteora' | 'pumpportal'>('meteora');
 
-  // Wallet and connection for transaction submission
-  const wallet = useWallet();
-  const { connection } = useConnection();
+  // Store action for Meteora pool creation
+  const createMeteoraPool = useStore(state => state.createMeteoraPool);
   // State for successful Meteora response
-  const [meteoraSuccess, setMeteoraSuccess] = useState<(MeteoraResponse & { signature: string }) | null>(null);
+  const [meteoraSuccess, setMeteoraSuccess] = useState<{
+    signature: string;
+    pool: string;
+    positionNft: string;
+    config: string;
+    decimals: { A: number; B: number };
+    rawAmounts: { A: string; B: string };
+    initialLiquidity: string;
+    estimatedNetworkFee: number;
+    antiSnipeVault?: string;
+  } | null>(null);
 
   // Create debounced values for auto-preview trigger
   const debouncedCoinName = useDebounce(coinName, 1500); // Increased from 1000ms
@@ -957,18 +961,12 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
 
     const createCoinCallback = async () => {
       try {
-        // Handle Meteora integration: direct pool creation
+        // Handle Meteora integration: build, sign, and send via store
         if (integrationMode === 'meteora') {
-          if (!wallet.publicKey) throw new Error('Wallet not connected');
           const params = buildParams();
-          const payload = { walletAddress: wallet.publicKey.toBase58(), ...params };
-          const res = await createMeteoraPool(payload);
-          const txBuffer = Buffer.from(res.transaction, 'base64');
-          const tx = VersionedTransaction.deserialize(txBuffer);
-          const signature = await wallet.sendTransaction(tx, connection);
-          await connection.confirmTransaction(signature, 'finalized');
-          setMeteoraSuccess({ ...res, signature });
-          if (onCreationComplete) onCreationComplete(signature);
+          const res = await createMeteoraPool(params);
+          setMeteoraSuccess(res);
+          if (onCreationComplete) onCreationComplete(res.signature);
           return;
         }
         // PumpPortal integration: preview then confirm
@@ -1008,9 +1006,8 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
     previewData,
     previewCreateCoinRemote,
     confirmPreviewCreateCoin,
-    integrationMode,
-    wallet,
-    connection
+    createMeteoraPool,
+    integrationMode
   ]);
 
   const clearForm = useCallback(() => {

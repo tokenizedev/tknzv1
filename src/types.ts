@@ -132,6 +132,21 @@ export interface WalletState {
      * Clear any preview transaction data without executing
      */
     clearPreviewCreateCoin: () => void;
+    /**
+     * Create a new liquidity pool via Meteora: builds, signs, and sends the transaction
+     * Returns pool metadata and signature
+     */
+    createMeteoraPool: (params: CoinCreationParams) => Promise<{
+      signature: string;
+      pool: string;
+      positionNft: string;
+      config: string;
+      decimals: { A: number; B: number };
+      rawAmounts: { A: string; B: string };
+      initialLiquidity: string;
+      estimatedNetworkFee: number;
+      antiSnipeVault?: string;
+    }>;
     /** Parameters for SDK token create, used to pre-populate form fields */
     initialTokenCreateParams: Partial<CoinCreationParams> | null;
     /** Set initial parameters for SDK token create prefill */
