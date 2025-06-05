@@ -941,13 +941,11 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
 
     const createCoinCallback = async () => {
       try {
-        // If we don't have preview data yet, get it first
-        if (!previewData) {
-          const params = buildParams();
-          await previewCreateCoinRemote(params);
-        }
+        // Always generate a fresh preview with current form values
+        const params = buildParams();
+        await previewCreateCoinRemote(params);
 
-        // Then create the coin
+        // Then create the coin using the updated preview
         const res = await confirmPreviewCreateCoin();
         setCreatedCoin(res);
         if (onCreationComplete) {
@@ -969,7 +967,18 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
     } catch (err: any) {
       handleError(err);
     }
-  }, [onCreationStart, previewData, previewCreateCoinRemote, confirmPreviewCreateCoin, onCreationComplete, onCreationError, handleError, buildParams, investmentAmount, previewData, requiredBalance, refreshPortfolioData]);
+  }, [
+    onCreationStart,
+    previewCreateCoinRemote,
+    confirmPreviewCreateCoin,
+    onCreationComplete,
+    onCreationError,
+    handleError,
+    buildParams,
+    investmentAmount,
+    requiredBalance,
+    refreshPortfolioData
+  ]);
 
   const clearForm = useCallback(() => {
     setArticleData({
