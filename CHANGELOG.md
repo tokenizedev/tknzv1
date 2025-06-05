@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.20.0](https://tokenizedev///compare/v0.19.3...v0.20.0) (2025-06-05)
+
+
+### ⚠ BREAKING CHANGES
+
+* **components:** The behavior of the CoinCreator component has been modified to generate a fresh preview each time the createCoinCallback is called. This may affect existing implementations that rely on
+
+### Features
+
+* **components:** Update CoinCreator to always generate fresh preview ([809f9de](https://tokenizedev///commit/809f9de7fe51a95f2216b3dbb55c65dde1f0c39e))
+
+
+### Bug Fixes
+
+* **contentScript:** fix handling of chrome extension message sending ([d23040a](https://tokenizedev///commit/d23040a822b167286d0ad4f43333165724f9dd30))
+
 ## [0.19.3](https://tokenizedev///compare/v0.19.2...v0.19.3) (2025-05-28)
 
 
