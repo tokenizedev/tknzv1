@@ -19,6 +19,9 @@ interface ArticleData {
 }
 
 const DEV_MODE = process.env.NODE_ENV === 'development' && !chrome?.tabs;
+// Endpoints for server-side ledger updates and notifications
+const CONFIRM_API_URL = 'https://tknz.fun/.netlify/functions/confirm-token-creation';
+const NOTIFY_API_URL  = 'https://tknz.fun/.netlify/functions/notify-token-creation';
 
 const MOCK_ARTICLE_DATA: ArticleData = {
   title: "Bitcoin Reaches New All-Time High",
@@ -383,6 +386,13 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   const previewCreateCoinRemote = useStore(state => state.previewCreateCoinRemote);
   const confirmPreviewCreateCoin = useStore(state => state.confirmPreviewCreateCoin);
   const clearPreviewCreateCoin = useStore(state => state.clearPreviewCreateCoin);
+  // Meteora preview and ledger hooks
+  const previewMeteoraData = useStore(state => state.previewMeteoraData);
+  const previewMeteoraPool = useStore(state => state.previewMeteoraPool);
+  const activeWallet = useStore(state => state.activeWallet);
+  // Meteora preview hooks
+  const previewMeteoraData = useStore(state => state.previewMeteoraData);
+  const previewMeteoraPool = useStore(state => state.previewMeteoraPool);
   
   const refreshPortfolioData = useStore(state => state.refreshPortfolioData);
 
@@ -577,43 +587,43 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   }, [defaultInvestment]);
 
   // Auto-preview effect
+  // Auto-preview effect: pumpportal or meteora cost breakdown
   useEffect(() => {
     if (!formReady) {
-      // Clear preview if form becomes invalid
-      if (previewData) {
-        clearPreviewCreateCoin();
-        setHasAutoScrolled(false);
-      }
+      // Clear pumpportal preview if form invalid
+      if (previewData) clearPreviewCreateCoin();
+      setHasAutoScrolled(false);
       return;
     }
-
-    // Only trigger if we have all required fields and values have stabilized
     const triggerAutoPreview = async () => {
       if (isCreating || isAutoPreviewLoading) return;
-      
       setIsAutoPreviewLoading(true);
       setError(null);
-      
       try {
         const params = buildParams();
-        await previewCreateCoinRemote(params);
+        if (integrationMode === 'meteora') {
+          await previewMeteoraPool(params);
+        } else {
+          await previewCreateCoinRemote(params);
+        }
       } catch (e) {
         const msg = e instanceof Error ? e.message : 'Unknown error';
         console.error('Auto-preview failed:', msg);
-        // Don't show error for auto-preview failures
       } finally {
         setIsAutoPreviewLoading(false);
       }
     };
-
     triggerAutoPreview();
   }, [
-    debouncedCoinName, 
-    debouncedTicker, 
-    debouncedDescription, 
-    debouncedImageUrl, 
+    debouncedCoinName,
+    debouncedTicker,
+    debouncedDescription,
+    debouncedImageUrl,
     debouncedInvestmentAmount,
-    formReady
+    formReady,
+    integrationMode,
+    previewCreateCoinRemote,
+    previewMeteoraPool
   ]);
 
   // Auto-scroll to preview when it appears
@@ -981,13 +991,51 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
     const createCoinCallback = async () => {
       try {
         // Handle Meteora integration: build, sign, and send via store
-        if (integrationMode === 'meteora') {
-          const params = buildParams();
-          const res = await createMeteoraPool(params);
-          setMeteoraSuccess(res);
-          if (onCreationComplete) onCreationComplete(res.signature);
-          return;
-        }
+      if (integrationMode === 'meteora') {
+        const params = buildParams();
+        // 1) Execute mint + pool TXs
+        const res = await createMeteoraPool(params);
+        setMeteoraSuccess(res);
+        // Build payload for server-side leaderboard and notification
+        const payload = {
+          mint: res.mint,
+          ata: res.ata,
+          pool: res.pool,
+          metadataUri: res.metadataUri,
+          decimals: res.decimals,
+          initialSupply: res.initialSupply,
+          initialSupplyRaw: res.initialSupplyRaw,
+          depositSol: res.depositSol,
+          depositLamports: res.depositLamports,
+          feeSol: res.feeSol,
+          feeLamports: res.feeLamports,
+          isLockLiquidity: res.isLockLiquidity,
+          walletAddress: activeWallet?.publicKey || '',
+          token: {
+            name: params.name,
+            ticker: params.ticker,
+            description: params.description,
+            imageUrl: params.imageUrl,
+            twitter: params.twitter,
+            telegram: params.telegram,
+            websiteUrl: params.websiteUrl
+          },
+          portalParams: { amount: params.investmentAmount, priorityFee: 0 }
+        };
+        // 2) Confirm to v2 leaderboard
+        fetch(CONFIRM_API_URL, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        }).catch(err => console.error('confirm-token-creation failed', err));
+        // 3) Notify via Telegram
+        fetch(NOTIFY_API_URL, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        }).catch(err => console.error('notify-token-creation failed', err));
+        // Notify host of completion
+        if (onCreationComplete) onCreationComplete(res.mint);
+        return;
+      }
         // Always generate a fresh preview with current form values
         const params = buildParams();
         await previewCreateCoinRemote(params);
@@ -1490,11 +1538,51 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
             </div>
 
             {/* Auto-preview section - shows right after investment amount */}
-            {formReady && (previewData || isAutoPreviewLoading) && (
+            {/* PumpPortal cost preview */}
+            {integrationMode === 'pumpportal' && formReady && (previewData || isAutoPreviewLoading) && (
               <CostBreakdown
                 previewData={previewData}
                 isAutoPreviewLoading={isAutoPreviewLoading}
               />
+            )}
+            {/* Meteora cost preview */}
+            {integrationMode === 'meteora' && formReady && (previewMeteoraData || isAutoPreviewLoading) && (
+              <div
+                className={`crypto-card p-4 space-y-3 border border-cyber-green/20 relative transition-all duration-300 ${
+                  isAutoPreviewLoading ? 'opacity-60' : 'opacity-100'
+                }`}
+              >
+                <h3 className="text-sm font-terminal text-cyber-green uppercase">
+                  Cost Breakdown
+                  {isAutoPreviewLoading && (
+                    <span className="ml-2 text-cyber-green/60">
+                      <Loader2 className="w-3 h-3 inline animate-spin" />
+                    </span>
+                  )}
+                </h3>
+                {previewMeteoraData && !isAutoPreviewLoading ? (
+                  <div className="space-y-1 font-terminal text-xs text-white">
+                    <p className="flex justify-between">
+                      <span>Deposit:</span>
+                      <span>{previewMeteoraData.depositSol.toFixed(4)} SOL</span>
+                    </p>
+                    <p className="flex justify-between">
+                      <span>Fee:</span>
+                      <span>{previewMeteoraData.feeSol.toFixed(4)} SOL</span>
+                    </p>
+                    <p className="flex justify-between border-t border-cyber-green/30 pt-1 mt-1">
+                      <span>Total:</span>
+                      <span className="text-cyber-green">{(previewMeteoraData.depositSol + previewMeteoraData.feeSol).toFixed(4)} SOL</span>
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    <div className="h-4 bg-cyber-green/10 rounded skeleton-shimmer"></div>
+                    <div className="h-4 bg-cyber-green/10 rounded skeleton-shimmer"></div>
+                    <div className="h-4 bg-cyber-green/10 rounded skeleton-shimmer"></div>
+                  </div>
+                )}
+              </div>
             )}
 
             {createdCoin && (
