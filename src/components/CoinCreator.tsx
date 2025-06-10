@@ -444,17 +444,36 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
 
   // Store action for Meteora pool creation
   const createMeteoraPool = useStore(state => state.createMeteoraPool);
-  // State for successful Meteora response
+  // State for successful Meteora token+pool creation response
   const [meteoraSuccess, setMeteoraSuccess] = useState<{
-    signature: string;
+    /** Signature of the mint creation transaction */
+    signatureMint: string;
+    /** Signature of the pool creation transaction */
+    signaturePool: string;
+    /** Mint address of the new token */
+    mint: string;
+    /** Associated token account for the new mint */
+    ata: string;
+    /** Metadata URI stored on IPFS */
+    metadataUri: string;
+    /** Pool address created by Meteora */
     pool: string;
-    positionNft: string;
-    config: string;
-    decimals: { A: number; B: number };
-    rawAmounts: { A: string; B: string };
-    initialLiquidity: string;
-    estimatedNetworkFee: number;
-    antiSnipeVault?: string;
+    /** Token decimals */
+    decimals: number;
+    /** Initial supply (UI units) */
+    initialSupply: number;
+    /** Initial supply in raw units */
+    initialSupplyRaw: string;
+    /** SOL deposited into pool (UI units) */
+    depositSol: number;
+    /** Lamports deposited into pool */
+    depositLamports: number;
+    /** Fee in SOL (UI units) */
+    feeSol: number;
+    /** Fee in lamports */
+    feeLamports: number;
+    /** Whether liquidity is locked */
+    isLockLiquidity: boolean;
   } | null>(null);
 
   // Create debounced values for auto-preview trigger
@@ -1499,15 +1518,17 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
               <div className="crypto-card p-6 space-y-4 border-cyber-green animate-fadeInUp">
                 <h3 className="text-lg font-terminal text-cyber-green uppercase tracking-wide">🎉 Pool Created Successfully!</h3>
                 <div className="space-y-2 font-terminal text-white text-sm">
-                  <p>Signature: <a href={`https://explorer.solana.com/tx/${meteoraSuccess.signature}`} target="_blank" rel="noopener noreferrer">{meteoraSuccess.signature}</a></p>
-                  <p>Pool: {meteoraSuccess.pool}</p>
-                  <p>Position NFT: {meteoraSuccess.positionNft}</p>
-                  <p>Config: {meteoraSuccess.config}</p>
-                  <p>Decimals: A={meteoraSuccess.decimals.A}, B={meteoraSuccess.decimals.B}</p>
-                  <p>Raw Amounts: A={meteoraSuccess.rawAmounts.A}, B={meteoraSuccess.rawAmounts.B}</p>
-                  <p>Initial Liquidity: {meteoraSuccess.initialLiquidity}</p>
-                  <p>Network Fee (lamports): {meteoraSuccess.estimatedNetworkFee}</p>
-                  {meteoraSuccess.antiSnipeVault && <p>Anti-Snipe Vault: {meteoraSuccess.antiSnipeVault}</p>}
+                  <p>Mint TX: <a href={`https://explorer.solana.com/tx/${meteoraSuccess.signatureMint}`} target="_blank" rel="noopener noreferrer">{meteoraSuccess.signatureMint}</a></p>
+                  <p>Pool TX: <a href={`https://explorer.solana.com/tx/${meteoraSuccess.signaturePool}`} target="_blank" rel="noopener noreferrer">{meteoraSuccess.signaturePool}</a></p>
+                  <p>Mint Address: {meteoraSuccess.mint}</p>
+                  <p>Associated Token Account: {meteoraSuccess.ata}</p>
+                  <p>Metadata URI: {meteoraSuccess.metadataUri}</p>
+                  <p>Pool Address: {meteoraSuccess.pool}</p>
+                  <p>Decimals: {meteoraSuccess.decimals}</p>
+                  <p>Initial Supply: {meteoraSuccess.initialSupply} ({meteoraSuccess.initialSupplyRaw} raw)</p>
+                  <p>Deposit: {meteoraSuccess.depositSol} SOL ({meteoraSuccess.depositLamports} lamports)</p>
+                  <p>Fee: {meteoraSuccess.feeSol} SOL ({meteoraSuccess.feeLamports} lamports)</p>
+                  <p>Liquidity Locked: {meteoraSuccess.isLockLiquidity ? 'Yes' : 'No'}</p>
                 </div>
               </div>
             )}
