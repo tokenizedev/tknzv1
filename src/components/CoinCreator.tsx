@@ -1023,14 +1023,17 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
           portalParams: { amount: params.investmentAmount, priorityFee: 0 }
         };
         // 2) Confirm to v2 leaderboard
-        fetch(CONFIRM_API_URL, {
+        const { createdAt } = await fetch(CONFIRM_API_URL, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
-        }).catch(err => console.error('confirm-token-creation failed', err));
+        }).then(res => res.json())
+        .catch(err => console.error('confirm-token-creation failed', err));
+
+        console.log('createdAt', createdAt);
         // 3) Notify via Telegram
         fetch(NOTIFY_API_URL, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
+          body: JSON.stringify({ ...payload, createdAt })
         }).catch(err => console.error('notify-token-creation failed', err));
         // Notify host of completion
         if (onCreationComplete) onCreationComplete(res.mint);
