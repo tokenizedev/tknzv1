@@ -136,16 +136,39 @@ export interface WalletState {
      * Create a new liquidity pool via Meteora: builds, signs, and sends the transaction
      * Returns pool metadata and signature
      */
+    /**
+     * Create a new token and liquidity pool via Meteora: calls backend,
+     * signs and sends mint + pool transactions, returns result details.
+     */
     createMeteoraPool: (params: CoinCreationParams) => Promise<{
-      signature: string;
+      /** Signature of the mint creation transaction */
+      signatureMint: string;
+      /** Signature of the pool creation transaction */
+      signaturePool: string;
+      /** Mint address of the new token */
+      mint: string;
+      /** Associated token account for the mint */
+      ata: string;
+      /** Metadata URI stored on IPFS */
+      metadataUri: string;
+      /** Pool address created by Meteora */
       pool: string;
-      positionNft: string;
-      config: string;
-      decimals: { A: number; B: number };
-      rawAmounts: { A: string; B: string };
-      initialLiquidity: string;
-      estimatedNetworkFee: number;
-      antiSnipeVault?: string;
+      /** Token decimals */
+      decimals: number;
+      /** Initial supply (human-readable) */
+      initialSupply: number;
+      /** Initial supply in raw smallest units */
+      initialSupplyRaw: string;
+      /** SOL deposited into the pool (UI units) */
+      depositSol: number;
+      /** SOL deposit in lamports */
+      depositLamports: number;
+      /** Fee SOL amount (UI units) */
+      feeSol: number;
+      /** Fee in lamports */
+      feeLamports: number;
+      /** Whether liquidity is locked */
+      isLockLiquidity: boolean;
     }>;
     /** Parameters for SDK token create, used to pre-populate form fields */
     initialTokenCreateParams: Partial<CoinCreationParams> | null;
