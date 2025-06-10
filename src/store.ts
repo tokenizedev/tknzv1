@@ -1182,6 +1182,32 @@ export const useStore = create<WalletState>((set, get) => ({
   },
   clearPreviewCreateCoin: () => set({ previewData: null }),
   /**
+   * Preview token + pool creation via Meteora: fetch cost breakdown without executing on-chain TXs
+   */
+  previewMeteoraData: null,
+  previewMeteoraPool: async ({ name, ticker, description, imageUrl, websiteUrl, twitter, telegram, investmentAmount }: CoinCreationParams) => {
+    const { activeWallet } = get();
+    if (!activeWallet) throw new Error('Wallet not initialized');
+    const payload = {
+      walletAddress: activeWallet.publicKey.toString(),
+      token: { name, ticker, description, imageUrl, websiteUrl, twitter, telegram },
+      isLockLiquidity: false,
+      portalParams: { amount: investmentAmount, priorityFee: 0 }
+    };
+    const response = await fetch(CREATE_TOKEN_METEORA_API_URL, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+    });
+    if (!response.ok) {
+      throw new Error(`Preview Meteora failed: ${response.status} ${response.statusText}`);
+    }
+    const data = await response.json();
+    if (data.error) throw new Error(data.error);
+    const { depositSol, depositLamports, feeSol, feeLamports, initialSupply, initialSupplyRaw, pool, decimals } = data;
+    const preview = { depositSol, depositLamports, feeSol, feeLamports, initialSupply, initialSupplyRaw, pool, decimals };
+    set({ previewMeteoraData: preview });
+    return preview;
+  },
+  /**
    * Create a new token and liquidity pool via Meteora: call backend to build transactions,
    * sign, send both mint and pool TXs, and return details.
    */
