@@ -969,11 +969,11 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
           if (onCreationComplete) onCreationComplete(res.signature);
           return;
         }
-        // PumpPortal integration: preview then confirm
-        if (!previewData) {
-          const params = buildParams();
-          await previewCreateCoinRemote(params);
-        }
+        // Always generate a fresh preview with current form values
+        const params = buildParams();
+        await previewCreateCoinRemote(params);
+
+        // Then create the coin using the updated preview
         const res = await confirmPreviewCreateCoin();
         setCreatedCoin(res);
         if (onCreationComplete) {
@@ -997,6 +997,8 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
     }
   }, [
     onCreationStart,
+    previewCreateCoinRemote,
+    confirmPreviewCreateCoin,
     onCreationComplete,
     onCreationError,
     handleError,
@@ -1007,7 +1009,10 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
     previewCreateCoinRemote,
     confirmPreviewCreateCoin,
     createMeteoraPool,
-    integrationMode
+    integrationMode,
+    investmentAmount,
+    requiredBalance,
+    refreshPortfolioData
   ]);
 
   const clearForm = useCallback(() => {
