@@ -20,6 +20,8 @@ const TOKEN_CREATION_API_URL = 'https://tknz.fun/.netlify/functions/article-toke
 const COIN_CREATE_API_URL = 'https://tknz.fun/.netlify/functions/create-token-tx';
 const APP_VERSION_API_URL = 'https://tknz.fun/.netlify/functions/version';
 const SOL_PRICE_API_URL = 'https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd';
+// Endpoint for combined token minting + Meteora pool creation
+const CREATE_TOKEN_METEORA_API_URL = 'https://tknz.fun/.netlify/functions/create-token-meteora';
 
 const NATIVE_MINT = 'So11111111111111111111111111111111111111112';
 const connection = createConnection();
@@ -1180,50 +1182,81 @@ export const useStore = create<WalletState>((set, get) => ({
   },
   clearPreviewCreateCoin: () => set({ previewData: null }),
   /**
-   * Create a new liquidity pool via Meteora: fetch unsigned transaction, sign with active wallet, send and confirm
+   * Create a new token and liquidity pool via Meteora: call backend to build transactions,
+   * sign, send both mint and pool TXs, and return details.
    */
   createMeteoraPool: async ({ name, ticker, description, imageUrl, websiteUrl, twitter, telegram, investmentAmount }: CoinCreationParams) => {
     const { activeWallet } = get();
     if (!activeWallet) throw new Error('Wallet not initialized');
-    // Call backend to build pool creation transaction
-    const response = await fetch('https://tknz.fun/.netlify/functions/create-pool-meteora', {
+    // Prepare payload for Meteora token+pool creation
+    const payload = {
+      walletAddress: activeWallet.publicKey.toString(),
+      token: { name, ticker, description, imageUrl, websiteUrl, twitter, telegram },
+      isLockLiquidity: false,
+      portalParams: { amount: investmentAmount, priorityFee: 0 }
+    };
+    // Request unsigned transactions from backend
+    const response = await fetch(CREATE_TOKEN_METEORA_API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        walletAddress: activeWallet.publicKey,
-        token: { name, ticker, description, imageUrl, websiteUrl, twitter, telegram },
-        poolParams: { amount: investmentAmount }
-      })
+      body: JSON.stringify(payload)
     });
     if (!response.ok) {
-      throw new Error(`Meteora pool creation failed: ${response.status} ${response.statusText}`);
+      throw new Error(`Meteora token creation failed: ${response.status} ${response.statusText}`);
     }
     const data = await response.json();
-    const { transaction, pool, positionNft, config, decimals, rawAmounts, initialLiquidity, estimatedNetworkFee, antiSnipeVault } = data;
-    // Deserialize and sign transaction
-    const txV = VersionedTransaction.deserialize(Buffer.from(transaction, 'base64'));
-    try {
-      txV.sign([activeWallet.keypair]);
-    } catch (err) {
-      throw new Error('Failed to sign Meteora transaction');
+    if (data.error) {
+      throw new Error(`Meteora token creation error: ${data.error}`);
     }
-    // Send and confirm
-    let signature: string;
+    const {
+      transaction1,
+      transaction2,
+      mint,
+      ata,
+      metadataUri,
+      pool,
+      decimals,
+      initialSupply,
+      initialSupplyRaw,
+      depositSol,
+      depositLamports,
+      feeSol,
+      feeLamports,
+      isLockLiquidity
+    } = data;
+    // Deserialize, sign, send mint transaction
+    const tx1 = VersionedTransaction.deserialize(Buffer.from(transaction1, 'base64'));
+    try { tx1.sign([activeWallet.keypair]); } catch (err) { throw new Error('Failed to sign mint transaction'); }
+    const signatureMint = await web3Connection.sendRawTransaction(tx1.serialize());
+    const confirmation1 = await web3Connection.confirmTransaction(signatureMint);
+    if (confirmation1.value.err) throw new Error('Mint transaction failed to confirm');
+    // Deserialize, sign, send pool transaction
+    const tx2 = VersionedTransaction.deserialize(Buffer.from(transaction2, 'base64'));
+    try { tx2.sign([activeWallet.keypair]); } catch (err) { throw new Error('Failed to sign pool transaction'); }
+    const signaturePool = await web3Connection.sendRawTransaction(tx2.serialize());
+    const confirmation2 = await web3Connection.confirmTransaction(signaturePool);
+    if (confirmation2.value.err) throw new Error('Pool transaction failed to confirm');
+    // Log event for analytics
     try {
-      const rawTx = txV.serialize();
-      signature = await web3Connection.sendRawTransaction(rawTx);
-    } catch (err: any) {
-      throw new Error(`Failed to send Meteora transaction: ${err.message || err}`);
-    }
-    const confirmation = await web3Connection.confirmTransaction(signature);
-    if (confirmation.value.err) {
-      throw new Error('Meteora transaction failed on chain');
-    }
-    // Log event and return data
-    try {
-      logEventToFirestore('meteora_pool_created', { walletAddress: activeWallet.publicKey, poolAddress: pool });
+      logEventToFirestore('token_launched', { walletAddress: activeWallet.publicKey, contractAddress: mint });
     } catch {}
-    return { signature, pool, positionNft, config, decimals, rawAmounts, initialLiquidity, estimatedNetworkFee, antiSnipeVault };
+    // Return result details
+    return {
+      signatureMint,
+      signaturePool,
+      mint,
+      ata,
+      metadataUri,
+      pool,
+      decimals,
+      initialSupply,
+      initialSupplyRaw,
+      depositSol,
+      depositLamports,
+      feeSol,
+      feeLamports,
+      isLockLiquidity
+    };
   },
   // Send native SOL or SPL token to a recipient address
   sendToken: async (mintAddress: string, recipient: string, amount: number): Promise<string> => {
