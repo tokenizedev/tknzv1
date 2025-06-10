@@ -133,6 +133,29 @@ export interface WalletState {
      */
     clearPreviewCreateCoin: () => void;
     /**
+     * Preview a Meteora token + pool creation: returns cost breakdown without on-chain execution
+     */
+    previewMeteoraData: {
+      depositSol: number;
+      depositLamports: number;
+      feeSol: number;
+      feeLamports: number;
+      initialSupply: number;
+      initialSupplyRaw: string;
+      pool: string;
+      decimals: number;
+    } | null;
+    previewMeteoraPool: (params: CoinCreationParams) => Promise<{
+      depositSol: number;
+      depositLamports: number;
+      feeSol: number;
+      feeLamports: number;
+      initialSupply: number;
+      initialSupplyRaw: string;
+      pool: string;
+      decimals: number;
+    }>;
+    /**
      * Create a new liquidity pool via Meteora: builds, signs, and sends the transaction
      * Returns pool metadata and signature
      */
