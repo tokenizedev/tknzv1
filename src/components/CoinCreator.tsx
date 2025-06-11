@@ -1015,7 +1015,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
             name: params.name,
             ticker: params.ticker,
             description: params.description,
-            imageUrl: params.imageUrl,
+            imageUrl: res.tokenMetadata?.imageUrl || '',
             twitter: params.twitter,
             telegram: params.telegram,
             websiteUrl: params.websiteUrl
