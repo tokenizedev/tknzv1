@@ -95,6 +95,14 @@ export const useStore = create<WalletState>((set, get) => ({
   createdCoins: [],
   isRefreshing: false,
   investmentAmount: 0,
+  /**
+   * Optional overrides for Meteora DBC curveConfig, set via extension UI
+   */
+  curveConfigOverrides: {},
+  /**
+   * Update DBC curveConfig overrides before token creation
+   */
+  setCurveConfigOverrides: (overrides: Record<string, any>) => set({ curveConfigOverrides: overrides }),
   // Initial parameters for SDK token creation, used to pre-populate form fields
   initialTokenCreateParams: null,
   // Set initial token creation parameters
@@ -1215,11 +1223,16 @@ export const useStore = create<WalletState>((set, get) => ({
     const { activeWallet } = get();
     if (!activeWallet) throw new Error('Wallet not initialized');
     // Prepare payload for Meteora token+pool creation
+    const { curveConfigOverrides } = get();
+    const portalParams: Record<string, any> = { amount: investmentAmount, priorityFee: 0 };
+    if (curveConfigOverrides && Object.keys(curveConfigOverrides).length > 0) {
+      portalParams.curveConfig = curveConfigOverrides;
+    }
     const payload = {
       walletAddress: activeWallet.publicKey.toString(),
       token: { name, ticker, description, imageUrl, websiteUrl, twitter, telegram },
       isLockLiquidity: false,
-      portalParams: { amount: investmentAmount, priorityFee: 0 }
+      portalParams
     };
     // Request unsigned transactions from backend
     const response = await fetch(CREATE_TOKEN_METEORA_API_URL, {
