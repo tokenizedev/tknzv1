@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.21.0](https://tokenizedev///compare/v0.20.0...v0.21.0) (2025-06-11)
+
+
+### ⚠ BREAKING CHANGES
+
+* **store:** This change adds a new feature and introduces a new function that affects the behavior of the store related to Meteora pool creation.
+* **components:** This feature introduces Meteora integration for cost breakdown, changing the behavior and appearance of the CoinCreator component.
+* **store:** None
+* **components:** Integration mode selection now available to choose between 'meteora' for pool creation and 'pumpportal' for token minting. Kindly update your workflow according to the new feature.
+
+### Features
+
+* Add MQTT and treasury wallet configurations to .env.example ([8b22d7b](https://tokenizedev///commit/8b22d7b2b90f021af076d7be1e4dda66a0ee296f))
+* **api:** api endpoint ([d48cbcc](https://tokenizedev///commit/d48cbcc678de67b351ad41f460b70e4d957692a8))
+* **components:** add conditional default image URL for CoinCreator ([aec0310](https://tokenizedev///commit/aec0310f82b8a9fc06948f26a2dd42f52279f124))
+* **components:** add integration mode toggle for Meteora and PumpPortal ([26b5345](https://tokenizedev///commit/26b534542b08c6ce3f3175392ed13ae48264b1a7))
+* **components:** Add Meteora integration for cost breakdown in CoinCreator ([121de39](https://tokenizedev///commit/121de3976466ca3304b27f518d7022cddd0a3280))
+* **components:** enhance Meteora token+pool creation details ([9676a87](https://tokenizedev///commit/9676a871654b7d292a579d8d23ac8def4781ff34))
+* **components:** update CoinCreator to include createdAt in payload ([131973c](https://tokenizedev///commit/131973c12676e66a92d4e0e0550e0e3d44071e1a))
+* **store:** add endpoint for combined token minting + Meteora pool creation ([499d108](https://tokenizedev///commit/499d1080ad1bf0932244c2b1ea82ef8ff965737f))
+* **store:** add function to preview Meteora pool creation ([8bf79c7](https://tokenizedev///commit/8bf79c79309b98ad43ecd610ea159b1e2fcfe0ff))
+* **store:** add tokenMetadata to WalletState ([e33179d](https://tokenizedev///commit/e33179d9ae98f207f921f75f0305483438a3bd9e))
+* **types:** add createMeteoraPool enhancements ([93acf22](https://tokenizedev///commit/93acf22a93e57661eed4f39b91d8311882c387f4))
+* **types:** add functions for previewing Meteora token creation and pool creation ([fdd7411](https://tokenizedev///commit/fdd7411706ad80da917e8c5e09a302197aa32b2f))
+* **utils:** allow overriding RPC endpoint via env var VITE_RPC_URL ([8e53dc9](https://tokenizedev///commit/8e53dc9d1c5fc3b51472ff2d8578c8c2bbb0ee18))
+
 ## [0.20.0](https://tokenizedev///compare/v0.19.3...v0.20.0) (2025-06-05)
 
 
