@@ -390,9 +390,6 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   const previewMeteoraData = useStore(state => state.previewMeteoraData);
   const previewMeteoraPool = useStore(state => state.previewMeteoraPool);
   const activeWallet = useStore(state => state.activeWallet);
-  // Meteora preview hooks
-  const previewMeteoraData = useStore(state => state.previewMeteoraData);
-  const previewMeteoraPool = useStore(state => state.previewMeteoraPool);
   
   const refreshPortfolioData = useStore(state => state.refreshPortfolioData);
 
@@ -449,8 +446,8 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   const [hasAutoScrolled, setHasAutoScrolled] = useState(false);
   const [investmentInputValue, setInvestmentInputValue] = useState('');
   const [solPriceUsd, setSolPriceUsd] = useState<number>(0);
-  // Integration mode: 'meteora' for pool creation, 'pumpportal' for token minting
-  const [integrationMode, setIntegrationMode] = useState<'meteora' | 'pumpportal'>('meteora');
+  // Integration mode: currently fixed to 'meteora' for pool creation
+  const [integrationMode] = useState<'meteora' | 'pumpportal'>('meteora');
 
   // Store action for Meteora pool creation
   const createMeteoraPool = useStore(state => state.createMeteoraPool);
@@ -1253,31 +1250,6 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
             </div>
           )}
 
-          {/* Integration Mode Toggle */}
-          <div className="mb-4 flex items-center space-x-4">
-            <label className="flex items-center space-x-2 font-terminal text-cyber-green">
-              <input
-                type="radio"
-                name="integrationMode"
-                value="meteora"
-                checked={integrationMode === 'meteora'}
-                onChange={e => { setIntegrationMode(e.target.value as 'meteora'|'pumpportal'); console.log('Integration mode:', e.target.value); }}
-                className="cursor-pointer"
-              />
-              <span className="uppercase text-sm">Meteora</span>
-            </label>
-            <label className="flex items-center space-x-2 font-terminal text-cyber-green">
-              <input
-                type="radio"
-                name="integrationMode"
-                value="pumpportal"
-                checked={integrationMode === 'pumpportal'}
-                onChange={e => { setIntegrationMode(e.target.value as 'meteora'|'pumpportal'); console.log('Integration mode:', e.target.value); }}
-                className="cursor-pointer"
-              />
-              <span className="uppercase text-sm">PumpPortal</span>
-            </label>
-          </div>
           {/* Token details section - shows immediately */}
           <div className="space-y-4">
             <div className="flex items-center justify-between border-b border-cyber-green/30 pb-1 mb-3">
