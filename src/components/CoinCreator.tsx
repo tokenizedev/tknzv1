@@ -19,6 +19,8 @@ interface ArticleData {
 }
 
 const DEV_MODE = process.env.NODE_ENV === 'development' && !chrome?.tabs;
+import CurveConfigPanel from './CurveConfigPanel';
+import { Settings } from 'lucide-react';
 // Endpoints for server-side ledger updates and notifications
 const CONFIRM_API_URL = 'https://tknz.fun/.netlify/functions/confirm-token-creation';
 const NOTIFY_API_URL  = 'https://tknz.fun/.netlify/functions/notify-token-creation';
@@ -1177,6 +1179,8 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isCarouselOpen, articleData.images, carouselIndex]);
 
+  // State for DBC config panel
+  const [showCurveConfig, setShowCurveConfig] = useState(false);
   // Add a ref for the main container
   const mainContainerRef = useRef<HTMLDivElement>(null);
 
@@ -1219,16 +1223,23 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
       <div className={insufficientFunds ? "blur-sm pointer-events-none select-none" : ""}>
         <div>
           {/* Compact header with logo, address dropdown, and action buttons */}
-          <div className="flex items-center justify-between my-2">
-            <HeaderActions
-              onSelectContent={handleSelectContent}
-              onGenerateSuggestions={() => generateSuggestions(articleData)}
-              onClearForm={clearForm}
-              isSuggestionsLoading={isSuggestionsLoading}
-              websiteUrl={websiteUrl}
-            />
+        {/* Curve Config Panel */}
+        <CurveConfigPanel isOpen={showCurveConfig} onClose={() => setShowCurveConfig(false)} />
+        <div className="flex items-center justify-between my-2">
+          <HeaderActions
+            onSelectContent={handleSelectContent}
+            onGenerateSuggestions={() => generateSuggestions(articleData)}
+            onClearForm={clearForm}
+            isSuggestionsLoading={isSuggestionsLoading}
+            websiteUrl={websiteUrl}
+          />
+          <div className="flex items-center space-x-2">
+            <button onClick={() => setShowCurveConfig(true)} className="p-1">
+              <Settings size={20} />
+            </button>
             <VersionBadge className="ml-auto mt-1" />
           </div>
+        </div>
           
           {(error || walletError) && (
             <div className="terminal-window p-3 flex items-start space-x-2 mb-3">
