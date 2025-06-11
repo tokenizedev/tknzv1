@@ -48,28 +48,23 @@ export const TokenCreationProgress: React.FC<TokenCreationProgressProps> = ({
   const [logMessages, setLogMessages] = useState<string[]>([]);
   const [showSecurityMsg, setShowSecurityMsg] = useState(false);
   
-  // Determine the current stage based on progress
+  // Determine the current step in the Meteora deployment based on progress
   const getCurrentStage = () => {
-    if (progress < 30) return "Initializing transaction...";
-    if (progress < 60) return "Generating token metadata...";
-    if (progress < 90) return "Sending to blockchain...";
-    return "Finalizing creation...";
+    if (progress < 25) return "Requesting transactions from Meteora backend...";
+    if (progress < 50) return "Signing mint transaction...";
+    if (progress < 75) return "Signing pool transaction...";
+    return "Finalizing on-chain creation...";
   };
   
   // Add simulated log entries
   useEffect(() => {
+    // Log entries corresponding to each main Meteora step
     const messages = [
-      { threshold: 5, message: "> Initializing TKNZ protocol..." },
-      { threshold: 15, message: "> Generating keypair..." },
-      { threshold: 25, message: "> Preparing transaction parameters..." },
-      { threshold: 35, message: "> Constructing metadata URI..." },
-      { threshold: 45, message: "> Uploading token assets..." },
-      { threshold: 55, message: "> Asset hash verified..." },
-      { threshold: 65, message: "> Connecting to Solana network..." },
-      { threshold: 70, message: "> Building transaction..." },
-      { threshold: 80, message: "> Signing transaction..." },
-      { threshold: 85, message: "> Broadcasting to validators..." },
-      { threshold: 95, message: "> Transaction confirmed..." }
+      { threshold: 10, message: "> Fetching transactions from Meteora backend..." },
+      { threshold: 30, message: "> Signing mint transaction..." },
+      { threshold: 50, message: "> Mint transaction confirmed." },
+      { threshold: 70, message: "> Signing pool transaction..." },
+      { threshold: 90, message: "> Pool transaction confirmed." }
     ];
     
     const interval = setInterval(() => {
@@ -157,17 +152,17 @@ export const TokenCreationProgress: React.FC<TokenCreationProgressProps> = ({
           </div>
 
           <div className="border border-cyber-green/20 rounded p-3 bg-cyber-black/50 transition-all duration-500" style={{
-            boxShadow: progress > 90 ? '0 0 10px rgba(0, 255, 65, 0.2)' : 'none'
+            boxShadow: progress > 75 ? '0 0 10px rgba(0, 255, 65, 0.2)' : 'none'
           }}>
             <p className="font-terminal text-xs text-cyber-purple">
-              {/* Show different explanatory texts based on progress */}
-              {progress < 30 && "Preparing secure transaction for the Solana blockchain..."}
-              {progress >= 30 && progress < 60 && "Building cryptographically signed metadata for your token..."}
-              {progress >= 60 && progress < 90 && "Broadcasting transaction to the Solana network..."}
-              {progress >= 90 && (
+              {/* Explanatory text for each Meteora step */}
+              {progress < 25 && "Requesting signed transactions for mint & pool from Meteora..."}
+              {progress >= 25 && progress < 50 && "Signing and sending mint transaction to Solana..."}
+              {progress >= 50 && progress < 75 && "Signing and sending pool transaction to Solana..."}
+              {progress >= 75 && (
                 <span className="flex items-center">
                   <CheckCircle className="w-3 h-3 mr-2 terminal-pulse" />
-                  <span>Transaction confirmed! Your token is now live on-chain.</span>
+                  <span>Pool transaction confirmed! Your token and pool are live on-chain.</span>
                 </span>
               )}
             </p>
