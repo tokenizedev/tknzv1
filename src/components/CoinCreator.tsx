@@ -1014,7 +1014,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
             name: params.name,
             ticker: params.ticker,
             description: params.description,
-            imageUrl: res.tokenMetadata?.imageUrl || '',
+            imageUrl: params.imageUrl || '',
             twitter: params.twitter,
             telegram: params.telegram,
             websiteUrl: params.websiteUrl
@@ -1234,9 +1234,6 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
             websiteUrl={websiteUrl}
           />
           <div className="flex items-center space-x-2">
-            <button onClick={() => setShowCurveConfig(true)} className="p-1">
-              <Settings size={20} />
-            </button>
             <VersionBadge className="ml-auto mt-1" />
           </div>
         </div>
@@ -1522,6 +1519,15 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
                 </div>
               )}
             </div>
+
+            {/* Bonding Curve Configuration Button */}
+            <button
+              onClick={() => setShowCurveConfig(true)}
+              className="w-full bg-black border border-cyber-purple/70 hover:bg-cyber-purple/10 text-cyber-purple px-4 py-3 font-terminal text-sm flex items-center justify-center space-x-2 rounded-sm transition-all duration-200 uppercase"
+            >
+              <Settings className="w-4 h-4" />
+              <span>Configure Bonding Curve</span>
+            </button>
 
             {/* Auto-preview section - shows right after investment amount */}
             {/* PumpPortal cost preview */}
