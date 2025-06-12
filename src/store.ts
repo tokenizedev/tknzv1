@@ -1247,35 +1247,45 @@ export const useStore = create<WalletState>((set, get) => ({
     if (data.error) {
       throw new Error(`Meteora token creation error: ${data.error}`);
     }
-    const {
-      transaction1,
-      transaction2,
-      mint,
-      ata,
-      metadataUri,
-      tokenMetadata,
-      pool,
-      decimals,
-      initialSupply,
-      initialSupplyRaw,
-      depositSol,
-      depositLamports,
-      feeSol,
-      feeLamports,
-      isLockLiquidity
-    } = data;
-    // Deserialize, sign, send mint transaction
-    const tx1 = VersionedTransaction.deserialize(Buffer.from(transaction1, 'base64'));
-    try { tx1.sign([activeWallet.keypair]); } catch (err) { throw new Error('Failed to sign mint transaction'); }
-    const signatureMint = await web3Connection.sendRawTransaction(tx1.serialize());
-    const confirmation1 = await web3Connection.confirmTransaction(signatureMint);
-    if (confirmation1.value.err) throw new Error('Mint transaction failed to confirm');
-    // Deserialize, sign, send pool transaction
-    const tx2 = VersionedTransaction.deserialize(Buffer.from(transaction2, 'base64'));
-    try { tx2.sign([activeWallet.keypair]); } catch (err) { throw new Error('Failed to sign pool transaction'); }
-    const signaturePool = await web3Connection.sendRawTransaction(tx2.serialize());
-    const confirmation2 = await web3Connection.confirmTransaction(signaturePool);
-    if (confirmation2.value.err) throw new Error('Pool transaction failed to confirm');
+    // Expect an array of base64-encoded VersionedTransactions
+    const { transactions, mint, ata, metadataUri, tokenMetadata, pool, decimals, initialSupply, initialSupplyRaw, depositSol, depositLamports, feeSol, feeLamports, isLockLiquidity } = data as {
+      transactions: string[];
+      mint: string;
+      ata: string;
+      metadataUri: string;
+      tokenMetadata: any;
+      pool: string;
+      decimals: number;
+      initialSupply: number;
+      initialSupplyRaw: string;
+      depositSol: number;
+      depositLamports: number;
+      feeSol: number;
+      feeLamports: number;
+      isLockLiquidity: boolean;
+    };
+    if (!Array.isArray(transactions) || transactions.length === 0) {
+      throw new Error('Expected at least one transaction from server');
+    }
+    // Deserialize, sign, and send each transaction sequentially
+    let signatureMint: string | undefined;
+    let signaturePool: string | undefined;
+    for (let i = 0; i < transactions.length; i++) {
+      const txBase64 = transactions[i];
+      const tx = VersionedTransaction.deserialize(Buffer.from(txBase64, 'base64'));
+      try {
+        tx.sign([activeWallet.keypair]);
+      } catch (err) {
+        throw new Error(`Failed to sign transaction ${i}`);
+      }
+      const sig = await web3Connection.sendRawTransaction(tx.serialize());
+      const conf = await web3Connection.confirmTransaction(sig);
+      if (conf.value.err) {
+        throw new Error(`Transaction ${i} failed to confirm`);
+      }
+      if (i === 0) signatureMint = sig;
+      else if (i === 1) signaturePool = sig;
+    }
     // Log event for analytics
     try {
       logEventToFirestore('token_launched', { walletAddress: activeWallet.publicKey, contractAddress: mint });
