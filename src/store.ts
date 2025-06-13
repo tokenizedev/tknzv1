@@ -1067,6 +1067,7 @@ export const useStore = create<WalletState>((set, get) => ({
     if (!activeWallet) throw new Error('Wallet not initialized');
     // Build request payload
     const mintKeypair = Keypair.generate();
+    const { curveConfigOverrides } = get();
     const payload = {
       walletAddress: activeWallet.publicKey,
       token: { name, ticker, description, imageUrl, websiteUrl, twitter, telegram },
@@ -1196,11 +1197,19 @@ export const useStore = create<WalletState>((set, get) => ({
   previewMeteoraPool: async ({ name, ticker, description, imageUrl, websiteUrl, twitter, telegram, investmentAmount }: CoinCreationParams) => {
     const { activeWallet } = get();
     if (!activeWallet) throw new Error('Wallet not initialized');
+    // Pre-flight preview so the UI can display the required SOL amount before the
+    // user signs any transactions. We use the same portalParams structure that will
+    // be sent for the real creation call so numbers match exactly.
     const payload = {
       walletAddress: activeWallet.publicKey.toString(),
       token: { name, ticker, description, imageUrl, websiteUrl, twitter, telegram },
       isLockLiquidity: false,
-      portalParams: { amount: investmentAmount, priorityFee: 0 }
+      portalParams: {
+        amount: investmentAmount,
+        buyAmount: investmentAmount,
+        priorityFee: 0,
+        ...(curveConfigOverrides && Object.keys(curveConfigOverrides).length > 0 ? { curveConfig: curveConfigOverrides } : {}),
+      },
     };
     const response = await fetch(CREATE_TOKEN_METEORA_API_URL, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
@@ -1224,7 +1233,18 @@ export const useStore = create<WalletState>((set, get) => ({
     if (!activeWallet) throw new Error('Wallet not initialized');
     // Prepare payload for Meteora token+pool creation
     const { curveConfigOverrides } = get();
-    const portalParams: Record<string, any> = { amount: investmentAmount, priorityFee: 0 };
+    // Build portal params for the backend API – we deposit `investmentAmount` SOL into the
+    // quote side of the bonding-curve *and* immediately spend an equal amount to buy the
+    // token so the UX mirrors pump.fun defaults. This produces the familiar “half deposit,
+    // half buy” experience users expect when launching via pump.fun.
+    const portalParams: Record<string, any> = {
+      amount: investmentAmount,      // SOL seeded into the pool
+      buyAmount: investmentAmount,   // SOL used for the first buy swap
+      priorityFee: 0,
+    };
+
+    // If the user provided custom DBC curve configuration via the UI we forward it in
+    // the request so the backend can merge it with the pump.fun-like defaults.
     if (curveConfigOverrides && Object.keys(curveConfigOverrides).length > 0) {
       portalParams.curveConfig = curveConfigOverrides;
     }
@@ -1267,24 +1287,38 @@ export const useStore = create<WalletState>((set, get) => ({
     if (!Array.isArray(transactions) || transactions.length === 0) {
       throw new Error('Expected at least one transaction from server');
     }
-    // Deserialize, sign, and send each transaction sequentially
+    // 1) Build, sign, and simulate all transactions before sending
+    const txObjs: VersionedTransaction[] = transactions.map((txBase64, idx) => {
+      const tx = VersionedTransaction.deserialize(Buffer.from(txBase64, 'base64'));
+      tx.sign([activeWallet.keypair]);
+      return tx;
+    });
+    // Simulate all transactions
+    for (let i = 0; i < txObjs.length; i++) {
+      const tx = txObjs[i];
+      const sim = await web3Connection.simulateTransaction(tx);
+      if (sim.value.err) {
+        // Gather instruction details
+        const msg = tx.message;
+        const instrDetails = msg.instructions.map((ix, idx) => {
+          const pid = msg.staticAccountKeys[ix.programIdIndex].toBase58();
+          return `${idx}: ${pid} len:${ix.data.length}`;
+        }).join('; ');
+        throw new Error(`Simulation failed for tx ${i}: ${JSON.stringify(sim.value.err)}; instructions: ${instrDetails}`);
+      }
+    }
+    // 2) Submit all transactions sequentially
     let signatureMint: string | undefined;
     let signaturePool: string | undefined;
-    for (let i = 0; i < transactions.length; i++) {
-      const txBase64 = transactions[i];
-      const tx = VersionedTransaction.deserialize(Buffer.from(txBase64, 'base64'));
-      try {
-        tx.sign([activeWallet.keypair]);
-      } catch (err) {
-        throw new Error(`Failed to sign transaction ${i}`);
-      }
-      const sig = await web3Connection.sendRawTransaction(tx.serialize());
+    for (let i = 0; i < txObjs.length; i++) {
+      const raw = txObjs[i].serialize();
+      const sig = await web3Connection.sendRawTransaction(raw);
       const conf = await web3Connection.confirmTransaction(sig);
       if (conf.value.err) {
         throw new Error(`Transaction ${i} failed to confirm`);
       }
       if (i === 0) signatureMint = sig;
-      else if (i === 1) signaturePool = sig;
+      if (i === 3) signaturePool = sig;
     }
     // Log event for analytics
     try {
