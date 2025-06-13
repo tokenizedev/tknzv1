@@ -219,6 +219,14 @@ export interface WalletState {
      * Update the selected exchange
      */
     setSelectedExchange: (exchange: string) => Promise<void>;
+    /**
+     * Optional overrides for Meteora DBC curveConfig
+     */
+    curveConfigOverrides: Record<string, any>;
+    /**
+     * Update DBC curveConfig overrides
+     */
+    setCurveConfigOverrides: (overrides: Record<string, any>) => void;
 }
   
 export interface ArticleData {
