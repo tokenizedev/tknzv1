@@ -1019,7 +1019,7 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
             telegram: params.telegram,
             websiteUrl: params.websiteUrl
           },
-          portalParams: { amount: params.investmentAmount, priorityFee: 0 }
+          portalParams: { amount: params.investmentAmount, buyAmount: params.investmentAmount, priorityFee: 0 }
         };
         // 2) Confirm to v2 leaderboard
         const { createdAt } = await fetch(CONFIRM_API_URL, {
