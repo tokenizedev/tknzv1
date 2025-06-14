@@ -339,6 +339,31 @@ const CostBreakdown = React.memo<{
   </div>
 ));
 
+// Utility to normalize raw article data and ensure required fields for rendering
+const ensureArticleData = (data: any): ArticleData => {
+  if (!data) {
+    return {
+      title: '',
+      primaryImage: '',
+      image: '',
+      images: [],
+      description: '',
+      url: '',
+      isXPost: false,
+    };
+  }
+  const primaryImage = data.primaryImage || data.image || '';
+  return {
+    title: data.title || '',
+    primaryImage,
+    image: primaryImage,
+    images: data.images || (primaryImage ? [primaryImage] : []),
+    description: data.description || '',
+    url: data.url || '',
+    isXPost: data.isXPost || false,
+  };
+};
+
 export const CoinCreator: React.FC<CoinCreatorProps> = ({ 
   isSidebar = false, 
   sdkOptions,
@@ -694,35 +719,6 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
     });
   }
 
-  // Fix for TypeScript error - ensure ArticleData has all required properties
-  const ensureArticleData = (data: any): ArticleData => {
-    // If data is null or undefined, return a default ArticleData object
-    if (!data) {
-      return {
-        title: '',
-        primaryImage: '',
-        image: '',
-        images: [],
-        description: '',
-        url: '',
-        isXPost: false
-      };
-    }
-    
-    // Make sure we have both image properties for compatibility
-    const primaryImage = data.primaryImage || data.image || '';
-    
-    // Return data with defaults for any missing properties
-    return {
-      title: data.title || '',
-      primaryImage: primaryImage,
-      image: primaryImage, // Set both image properties to the same value
-      images: data.images || (primaryImage ? [primaryImage] : []),
-      description: data.description || '',
-      url: data.url || '',
-      isXPost: data.isXPost || false
-    };
-  };
   const PUMP_FEE = 0.03;
   const requiredBalance = useMemo(() => investmentAmount + PUMP_FEE, [investmentAmount]);
 
