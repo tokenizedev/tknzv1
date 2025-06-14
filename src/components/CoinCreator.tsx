@@ -19,6 +19,11 @@ interface ArticleData {
 }
 
 const DEV_MODE = process.env.NODE_ENV === 'development' && !chrome?.tabs;
+import CurveConfigPanel from './CurveConfigPanel';
+import { Settings } from 'lucide-react';
+// Endpoints for server-side ledger updates and notifications
+const CONFIRM_API_URL = 'https://tknz.fun/.netlify/functions/confirm-token-creation';
+const NOTIFY_API_URL  = 'https://tknz.fun/.netlify/functions/notify-token-creation';
 
 const MOCK_ARTICLE_DATA: ArticleData = {
   title: "Bitcoin Reaches New All-Time High",
@@ -334,6 +339,31 @@ const CostBreakdown = React.memo<{
   </div>
 ));
 
+// Utility to normalize raw article data and ensure required fields for rendering
+const ensureArticleData = (data: any): ArticleData => {
+  if (!data) {
+    return {
+      title: '',
+      primaryImage: '',
+      image: '',
+      images: [],
+      description: '',
+      url: '',
+      isXPost: false,
+    };
+  }
+  const primaryImage = data.primaryImage || data.image || '';
+  return {
+    title: data.title || '',
+    primaryImage,
+    image: primaryImage,
+    images: data.images || (primaryImage ? [primaryImage] : []),
+    description: data.description || '',
+    url: data.url || '',
+    isXPost: data.isXPost || false,
+  };
+};
+
 export const CoinCreator: React.FC<CoinCreatorProps> = ({ 
   isSidebar = false, 
   sdkOptions,
@@ -383,6 +413,10 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   const previewCreateCoinRemote = useStore(state => state.previewCreateCoinRemote);
   const confirmPreviewCreateCoin = useStore(state => state.confirmPreviewCreateCoin);
   const clearPreviewCreateCoin = useStore(state => state.clearPreviewCreateCoin);
+  // Meteora preview and ledger hooks
+  const previewMeteoraData = useStore(state => state.previewMeteoraData);
+  const previewMeteoraPool = useStore(state => state.previewMeteoraPool);
+  const activeWallet = useStore(state => state.activeWallet);
   
   const refreshPortfolioData = useStore(state => state.refreshPortfolioData);
 
@@ -439,6 +473,42 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   const [hasAutoScrolled, setHasAutoScrolled] = useState(false);
   const [investmentInputValue, setInvestmentInputValue] = useState('');
   const [solPriceUsd, setSolPriceUsd] = useState<number>(0);
+  // Integration mode: currently fixed to 'meteora' for pool creation
+  const [integrationMode] = useState<'meteora' | 'pumpportal'>('meteora');
+
+  // Store action for Meteora pool creation
+  const createMeteoraPool = useStore(state => state.createMeteoraPool);
+  // State for successful Meteora token+pool creation response
+  const [meteoraSuccess, setMeteoraSuccess] = useState<{
+    /** Signature of the mint creation transaction */
+    signatureMint: string;
+    /** Signature of the pool creation transaction */
+    signaturePool: string;
+    /** Mint address of the new token */
+    mint: string;
+    /** Associated token account for the new mint */
+    ata: string;
+    /** Metadata URI stored on IPFS */
+    metadataUri: string;
+    /** Pool address created by Meteora */
+    pool: string;
+    /** Token decimals */
+    decimals: number;
+    /** Initial supply (UI units) */
+    initialSupply: number;
+    /** Initial supply in raw units */
+    initialSupplyRaw: string;
+    /** SOL deposited into pool (UI units) */
+    depositSol: number;
+    /** Lamports deposited into pool */
+    depositLamports: number;
+    /** Fee in SOL (UI units) */
+    feeSol: number;
+    /** Fee in lamports */
+    feeLamports: number;
+    /** Whether liquidity is locked */
+    isLockLiquidity: boolean;
+  } | null>(null);
 
   // Create debounced values for auto-preview trigger
   const debouncedCoinName = useDebounce(coinName, 1500); // Increased from 1000ms
@@ -541,43 +611,43 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
   }, [defaultInvestment]);
 
   // Auto-preview effect
+  // Auto-preview effect: pumpportal or meteora cost breakdown
   useEffect(() => {
     if (!formReady) {
-      // Clear preview if form becomes invalid
-      if (previewData) {
-        clearPreviewCreateCoin();
-        setHasAutoScrolled(false);
-      }
+      // Clear pumpportal preview if form invalid
+      if (previewData) clearPreviewCreateCoin();
+      setHasAutoScrolled(false);
       return;
     }
-
-    // Only trigger if we have all required fields and values have stabilized
     const triggerAutoPreview = async () => {
       if (isCreating || isAutoPreviewLoading) return;
-      
       setIsAutoPreviewLoading(true);
       setError(null);
-      
       try {
         const params = buildParams();
-        await previewCreateCoinRemote(params);
+        if (integrationMode === 'meteora') {
+          await previewMeteoraPool(params);
+        } else {
+          await previewCreateCoinRemote(params);
+        }
       } catch (e) {
         const msg = e instanceof Error ? e.message : 'Unknown error';
         console.error('Auto-preview failed:', msg);
-        // Don't show error for auto-preview failures
       } finally {
         setIsAutoPreviewLoading(false);
       }
     };
-
     triggerAutoPreview();
   }, [
-    debouncedCoinName, 
-    debouncedTicker, 
-    debouncedDescription, 
-    debouncedImageUrl, 
+    debouncedCoinName,
+    debouncedTicker,
+    debouncedDescription,
+    debouncedImageUrl,
     debouncedInvestmentAmount,
-    formReady
+    formReady,
+    integrationMode,
+    previewCreateCoinRemote,
+    previewMeteoraPool
   ]);
 
   // Auto-scroll to preview when it appears
@@ -649,35 +719,6 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
     });
   }
 
-  // Fix for TypeScript error - ensure ArticleData has all required properties
-  const ensureArticleData = (data: any): ArticleData => {
-    // If data is null or undefined, return a default ArticleData object
-    if (!data) {
-      return {
-        title: '',
-        primaryImage: '',
-        image: '',
-        images: [],
-        description: '',
-        url: '',
-        isXPost: false
-      };
-    }
-    
-    // Make sure we have both image properties for compatibility
-    const primaryImage = data.primaryImage || data.image || '';
-    
-    // Return data with defaults for any missing properties
-    return {
-      title: data.title || '',
-      primaryImage: primaryImage,
-      image: primaryImage, // Set both image properties to the same value
-      images: data.images || (primaryImage ? [primaryImage] : []),
-      description: data.description || '',
-      url: data.url || '',
-      isXPost: data.isXPost || false
-    };
-  };
   const PUMP_FEE = 0.03;
   const requiredBalance = useMemo(() => investmentAmount + PUMP_FEE, [investmentAmount]);
 
@@ -938,9 +979,61 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
 
     setIsCreating(true);
     setError(null);
+    // Reset previous results
+    setMeteoraSuccess(null);
+    setCreatedCoin(null);
 
     const createCoinCallback = async () => {
       try {
+        // Handle Meteora integration: build, sign, and send via store
+      if (integrationMode === 'meteora') {
+        const params = buildParams();
+        // 1) Execute mint + pool TXs
+        const res = await createMeteoraPool(params);
+        setMeteoraSuccess(res);
+        // Build payload for server-side leaderboard and notification
+        const payload = {
+          mint: res.mint,
+          ata: res.ata,
+          pool: res.pool,
+          metadataUri: res.metadataUri,
+          decimals: res.decimals,
+          initialSupply: res.initialSupply,
+          initialSupplyRaw: res.initialSupplyRaw,
+          depositSol: res.depositSol,
+          depositLamports: res.depositLamports,
+          feeSol: res.feeSol,
+          feeLamports: res.feeLamports,
+          isLockLiquidity: res.isLockLiquidity,
+          walletAddress: activeWallet?.publicKey || '',
+          token: {
+            name: params.name,
+            ticker: params.ticker,
+            description: params.description,
+            imageUrl: params.imageUrl || '',
+            twitter: params.twitter,
+            telegram: params.telegram,
+            websiteUrl: params.websiteUrl
+          },
+          portalParams: { amount: params.investmentAmount, buyAmount: params.investmentAmount, priorityFee: 0 }
+        };
+        // 2) Confirm to v2 leaderboard
+        const { createdAt } = await fetch(CONFIRM_API_URL, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        }).then(res => res.json())
+        .catch(err => console.error('confirm-token-creation failed', err));
+
+        console.log('createdAt', createdAt);
+        // 3) Notify via Telegram
+        fetch(NOTIFY_API_URL, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...payload, createdAt })
+        }).catch(err => console.error('notify-token-creation failed', err));
+        // Notify host of completion
+        if (onCreationComplete) onCreationComplete(res.mint);
+        return;
+      }
         // Always generate a fresh preview with current form values
         const params = buildParams();
         await previewCreateCoinRemote(params);
@@ -975,6 +1068,13 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
     onCreationError,
     handleError,
     buildParams,
+    refreshPortfolioData,
+    requiredBalance,
+    previewData,
+    previewCreateCoinRemote,
+    confirmPreviewCreateCoin,
+    createMeteoraPool,
+    integrationMode,
     investmentAmount,
     requiredBalance,
     refreshPortfolioData
@@ -1075,6 +1175,8 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isCarouselOpen, articleData.images, carouselIndex]);
 
+  // State for DBC config panel
+  const [showCurveConfig, setShowCurveConfig] = useState(false);
   // Add a ref for the main container
   const mainContainerRef = useRef<HTMLDivElement>(null);
 
@@ -1117,16 +1219,20 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
       <div className={insufficientFunds ? "blur-sm pointer-events-none select-none" : ""}>
         <div>
           {/* Compact header with logo, address dropdown, and action buttons */}
-          <div className="flex items-center justify-between my-2">
-            <HeaderActions
-              onSelectContent={handleSelectContent}
-              onGenerateSuggestions={() => generateSuggestions(articleData)}
-              onClearForm={clearForm}
-              isSuggestionsLoading={isSuggestionsLoading}
-              websiteUrl={websiteUrl}
-            />
+        {/* Curve Config Panel */}
+        <CurveConfigPanel isOpen={showCurveConfig} onClose={() => setShowCurveConfig(false)} />
+        <div className="flex items-center justify-between my-2">
+          <HeaderActions
+            onSelectContent={handleSelectContent}
+            onGenerateSuggestions={() => generateSuggestions(articleData)}
+            onClearForm={clearForm}
+            isSuggestionsLoading={isSuggestionsLoading}
+            websiteUrl={websiteUrl}
+          />
+          <div className="flex items-center space-x-2">
             <VersionBadge className="ml-auto mt-1" />
           </div>
+        </div>
           
           {(error || walletError) && (
             <div className="terminal-window p-3 flex items-start space-x-2 mb-3">
@@ -1410,16 +1516,65 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
               )}
             </div>
 
+            {/* Bonding Curve Configuration Button */}
+            <button
+              onClick={() => setShowCurveConfig(true)}
+              className="w-full bg-black border border-cyber-purple/70 hover:bg-cyber-purple/10 text-cyber-purple px-4 py-3 font-terminal text-sm flex items-center justify-center space-x-2 rounded-sm transition-all duration-200 uppercase"
+            >
+              <Settings className="w-4 h-4" />
+              <span>Configure Bonding Curve</span>
+            </button>
+
             {/* Auto-preview section - shows right after investment amount */}
-            {formReady && (previewData || isAutoPreviewLoading) && (
+            {/* PumpPortal cost preview */}
+            {integrationMode === 'pumpportal' && formReady && (previewData || isAutoPreviewLoading) && (
               <CostBreakdown
                 previewData={previewData}
                 isAutoPreviewLoading={isAutoPreviewLoading}
               />
             )}
+            {/* Meteora cost preview */}
+            {integrationMode === 'meteora' && formReady && (previewMeteoraData || isAutoPreviewLoading) && (
+              <div
+                className={`crypto-card p-4 space-y-3 border border-cyber-green/20 relative transition-all duration-300 ${
+                  isAutoPreviewLoading ? 'opacity-60' : 'opacity-100'
+                }`}
+              >
+                <h3 className="text-sm font-terminal text-cyber-green uppercase">
+                  Cost Breakdown
+                  {isAutoPreviewLoading && (
+                    <span className="ml-2 text-cyber-green/60">
+                      <Loader2 className="w-3 h-3 inline animate-spin" />
+                    </span>
+                  )}
+                </h3>
+                {previewMeteoraData && !isAutoPreviewLoading ? (
+                  <div className="space-y-1 font-terminal text-xs text-white">
+                    <p className="flex justify-between">
+                      <span>Deposit:</span>
+                      <span>{previewMeteoraData.depositSol.toFixed(4)} SOL</span>
+                    </p>
+                    <p className="flex justify-between">
+                      <span>Fee:</span>
+                      <span>{previewMeteoraData.feeSol.toFixed(4)} SOL</span>
+                    </p>
+                    <p className="flex justify-between border-t border-cyber-green/30 pt-1 mt-1">
+                      <span>Total:</span>
+                      <span className="text-cyber-green">{(previewMeteoraData.depositSol + previewMeteoraData.feeSol).toFixed(4)} SOL</span>
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    <div className="h-4 bg-cyber-green/10 rounded skeleton-shimmer"></div>
+                    <div className="h-4 bg-cyber-green/10 rounded skeleton-shimmer"></div>
+                    <div className="h-4 bg-cyber-green/10 rounded skeleton-shimmer"></div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {createdCoin && (
-              <div className="crypto-card p-6 space-y-4 border-cyber-green">
+              <div className="crypto-card p-6 space-y-4 border-cyber-green animate-fadeInUp">
                 <h3 className="text-lg font-terminal text-cyber-green uppercase tracking-wide">🎉 Coin Created Successfully!</h3>
                 <div className="space-y-2">
                   <p className="text-sm font-terminal text-white">Your coin is now live on Pump.fun!</p>
@@ -1432,6 +1587,24 @@ export const CoinCreator: React.FC<CoinCreatorProps> = ({
                     <Globe className="w-4 h-4" />
                     <span>VIEW ON PUMP.FUN</span>
                   </a>
+                </div>
+              </div>
+            )}
+            {meteoraSuccess && (
+              <div className="crypto-card p-6 space-y-4 border-cyber-green animate-fadeInUp">
+                <h3 className="text-lg font-terminal text-cyber-green uppercase tracking-wide">🎉 Pool Created Successfully!</h3>
+                <div className="space-y-2 font-terminal text-white text-sm">
+                  <p>Mint TX: <a href={`https://explorer.solana.com/tx/${meteoraSuccess.signatureMint}`} target="_blank" rel="noopener noreferrer">{meteoraSuccess.signatureMint}</a></p>
+                  <p>Pool TX: <a href={`https://explorer.solana.com/tx/${meteoraSuccess.signaturePool}`} target="_blank" rel="noopener noreferrer">{meteoraSuccess.signaturePool}</a></p>
+                  <p>Mint Address: {meteoraSuccess.mint}</p>
+                  <p>Associated Token Account: {meteoraSuccess.ata}</p>
+                  <p>Metadata URI: {meteoraSuccess.metadataUri}</p>
+                  <p>Pool Address: {meteoraSuccess.pool}</p>
+                  <p>Decimals: {meteoraSuccess.decimals}</p>
+                  <p>Initial Supply: {meteoraSuccess.initialSupply} ({meteoraSuccess.initialSupplyRaw} raw)</p>
+                  <p>Deposit: {meteoraSuccess.depositSol} SOL ({meteoraSuccess.depositLamports} lamports)</p>
+                  <p>Fee: {meteoraSuccess.feeSol} SOL ({meteoraSuccess.feeLamports} lamports)</p>
+                  <p>Liquidity Locked: {meteoraSuccess.isLockLiquidity ? 'Yes' : 'No'}</p>
                 </div>
               </div>
             )}

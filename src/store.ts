@@ -15,11 +15,16 @@ import { TOKEN_PROGRAM_ID, createTransferInstruction, getAssociatedTokenAddress,
 import { getTokenInfo, getUltraBalances, getPrices, BalanceInfo } from './services/jupiterService';
 import { WalletState, CreatedCoin, ArticleData, CoinCreationParams, TokenCreationData, WalletInfo } from './types';
 import { v4 as uuidv4 } from 'uuid';
+import nacl from 'tweetnacl';
 
 const TOKEN_CREATION_API_URL = 'https://tknz.fun/.netlify/functions/article-token';
 const COIN_CREATE_API_URL = 'https://tknz.fun/.netlify/functions/create-token-tx';
 const APP_VERSION_API_URL = 'https://tknz.fun/.netlify/functions/version';
 const SOL_PRICE_API_URL = 'https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd';
+// Endpoint for combined token minting + Meteora pool creation
+const CREATE_TOKEN_METEORA_API_URL = DEV_MODE
+  ? 'http://localhost:8888/.netlify/functions/create-token-meteora'
+  : 'https://tknz.fun/.netlify/functions/create-token-meteora';
 
 const NATIVE_MINT = 'So11111111111111111111111111111111111111112';
 const connection = createConnection();
@@ -93,6 +98,14 @@ export const useStore = create<WalletState>((set, get) => ({
   createdCoins: [],
   isRefreshing: false,
   investmentAmount: 0,
+  /**
+   * Optional overrides for Meteora DBC curveConfig, set via extension UI
+   */
+  curveConfigOverrides: {},
+  /**
+   * Update DBC curveConfig overrides before token creation
+   */
+  setCurveConfigOverrides: (overrides: Record<string, any>) => set({ curveConfigOverrides: overrides }),
   // Initial parameters for SDK token creation, used to pre-populate form fields
   initialTokenCreateParams: null,
   // Set initial token creation parameters
@@ -1029,7 +1042,14 @@ export const useStore = create<WalletState>((set, get) => ({
       if (!response.ok) throw new Error(`Failed to create transaction: ${response.statusText}`);
       const data = await response.arrayBuffer();
       const tx = VersionedTransaction.deserialize(new Uint8Array(data));
-      tx.sign([mintKeypair, activeWallet.keypair]);
+      // Add signatures using addSignature to preserve existing ones
+      {
+        const messageData = tx.message.serialize();
+        const mintSig = nacl.sign.detached(messageData, mintKeypair.secretKey);
+        tx.addSignature(mintKeypair.publicKey, mintSig);
+        const walletSig = nacl.sign.detached(messageData, activeWallet.keypair.secretKey);
+        tx.addSignature(activeWallet.keypair.publicKey, walletSig);
+      }
       // Send raw signed versioned transaction
       const rawTx = tx.serialize();
       const signature = await web3Connection.sendRawTransaction(rawTx);
@@ -1057,6 +1077,7 @@ export const useStore = create<WalletState>((set, get) => ({
     if (!activeWallet) throw new Error('Wallet not initialized');
     // Build request payload
     const mintKeypair = Keypair.generate();
+    const { curveConfigOverrides } = get();
     const payload = {
       walletAddress: activeWallet.publicKey,
       token: { name, ticker, description, imageUrl, websiteUrl, twitter, telegram },
@@ -1097,36 +1118,44 @@ export const useStore = create<WalletState>((set, get) => ({
     try {
       const txBytes = Buffer.from(transaction, 'base64');
       txV = VersionedTransaction.deserialize(txBytes);
+      // Add signatures without overwriting existing ones
+      {
+        const messageData = txV.message.serialize();
+        const mintSig = nacl.sign.detached(messageData, mintKeypair.secretKey);
+        txV.addSignature(mintKeypair.publicKey, mintSig);
+        const walletSig = nacl.sign.detached(messageData, activeWallet.keypair.secretKey);
+        txV.addSignature(activeWallet.keypair.publicKey, walletSig);
+      }
     } catch (err) {
       throw new Error('Failed to deserialize versioned transaction');
     }
     try {
-      txV.sign([mintKeypair, activeWallet.keypair]);
-    } catch {
-      throw new Error('Failed to sign transaction');
+      let signature: string;
+      try {
+        const rawTx = txV.serialize();
+        signature = await web3Connection.sendRawTransaction(rawTx);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        throw new Error(`Failed to send transaction: ${msg}`);
+      }
+      const confirmation = await web3Connection.confirmTransaction(signature);
+      if (confirmation.value.err) {
+        throw new Error('Transaction failed on chain');
+      }
+      // Persist and return
+      const tokenAddress = mintKeypair.publicKey.toString();
+      const pumpUrl = `https://pump.fun/coin/${tokenAddress}`;
+      try {
+        logEventToFirestore('token_launched', { walletAddress: activeWallet.publicKey, contractAddress: tokenAddress, name, ticker, investmentAmount });
+        await get().addCreatedCoin({ address: tokenAddress, name, ticker, pumpUrl, balance: 0 });
+      } catch (err) {
+        console.error('Error persisting created coin:', err);
+      }
+      return { address: tokenAddress, pumpUrl };
+    } catch (error) {
+      console.error('Failed to sign transaction:', error);
+      throw error;
     }
-    let signature: string;
-    try {
-      const rawTx = txV.serialize();
-      signature = await web3Connection.sendRawTransaction(rawTx);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      throw new Error(`Failed to send transaction: ${msg}`);
-    }
-    const confirmation = await web3Connection.confirmTransaction(signature);
-    if (confirmation.value.err) {
-      throw new Error('Transaction failed on chain');
-    }
-    // Persist and return
-    const tokenAddress = mintKeypair.publicKey.toString();
-    const pumpUrl = `https://pump.fun/coin/${tokenAddress}`;
-    try {
-      logEventToFirestore('token_launched', { walletAddress: activeWallet.publicKey, contractAddress: tokenAddress, name, ticker, investmentAmount });
-      await get().addCreatedCoin({ address: tokenAddress, name, ticker, pumpUrl, balance: 0 });
-    } catch (err) {
-      console.error('Error persisting created coin:', err);
-    }
-    return { address: tokenAddress, pumpUrl };
   },
   // Preview-only token creation: fetch unsigned tx and fee info
   previewData: null,
@@ -1166,7 +1195,14 @@ export const useStore = create<WalletState>((set, get) => ({
     const { mintKeypair, serializedTransaction, feeAmount, totalAmount, netAmount, name, ticker } = previewData;
     // Deserialize, sign, and send versioned preview transaction
     const txV = VersionedTransaction.deserialize(Buffer.from(serializedTransaction, 'base64'));
-    txV.sign([mintKeypair, activeWallet.keypair]);
+    // Add signatures without overwriting existing ones
+    {
+      const messageData = txV.message.serialize();
+      const mintSig = nacl.sign.detached(messageData, mintKeypair.secretKey);
+      txV.addSignature(mintKeypair.publicKey, mintSig);
+      const walletSig = nacl.sign.detached(messageData, activeWallet.keypair.secretKey);
+      txV.addSignature(activeWallet.keypair.publicKey, walletSig);
+    }
     const rawTx = txV.serialize();
     const sig = await web3Connection.sendRawTransaction(rawTx);
     const conf = await web3Connection.confirmTransaction(sig);
@@ -1179,6 +1215,175 @@ export const useStore = create<WalletState>((set, get) => ({
     return { address: tokenAddress, pumpUrl };
   },
   clearPreviewCreateCoin: () => set({ previewData: null }),
+  /**
+   * Preview token + pool creation via Meteora: fetch cost breakdown without executing on-chain TXs
+   */
+  previewMeteoraData: null,
+  previewMeteoraPool: async ({ name, ticker, description, imageUrl, websiteUrl, twitter, telegram, investmentAmount }: CoinCreationParams) => {
+    const { activeWallet } = get();
+    if (!activeWallet) throw new Error('Wallet not initialized');
+    const { curveConfigOverrides } = get();
+    // Pre-flight preview so the UI can display the required SOL amount before the
+    // user signs any transactions. We use the same portalParams structure that will
+    // be sent for the real creation call so numbers match exactly.
+    const payload = {
+      walletAddress: activeWallet.publicKey.toString(),
+      token: { name, ticker, description, imageUrl, websiteUrl, twitter, telegram },
+      isLockLiquidity: false,
+      portalParams: {
+        amount: investmentAmount,
+        buyAmount: investmentAmount,
+        priorityFee: 0,
+        ...(curveConfigOverrides && Object.keys(curveConfigOverrides).length > 0 ? { curveConfig: curveConfigOverrides } : {}),
+      },
+    };
+    const response = await fetch(CREATE_TOKEN_METEORA_API_URL, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+    });
+    if (!response.ok) {
+      throw new Error(`Preview Meteora failed: ${response.status} ${response.statusText}`);
+    }
+    const data = await response.json();
+    if (data.error) throw new Error(data.error);
+    const { depositSol, depositLamports, feeSol, feeLamports, initialSupply, initialSupplyRaw, pool, decimals } = data;
+    const preview = { depositSol, depositLamports, feeSol, feeLamports, initialSupply, initialSupplyRaw, pool, decimals };
+    set({ previewMeteoraData: preview });
+    return preview;
+  },
+  /**
+   * Create a new token and liquidity pool via Meteora: call backend to build transactions,
+   * sign, send both mint and pool TXs, and return details.
+   */
+  createMeteoraPool: async ({ name, ticker, description, imageUrl, websiteUrl, twitter, telegram, investmentAmount }: CoinCreationParams) => {
+    const { activeWallet } = get();
+    if (!activeWallet) throw new Error('Wallet not initialized');
+    // Prepare payload for Meteora token+pool creation
+    const { curveConfigOverrides } = get();
+    // Build portal params for the backend API – we deposit `investmentAmount` SOL into the
+    // quote side of the bonding-curve *and* immediately spend an equal amount to buy the
+    // token so the UX mirrors pump.fun defaults. This produces the familiar "half deposit,
+    // half buy" experience users expect when launching via pump.fun.
+    const portalParams: Record<string, any> = {
+      amount: investmentAmount,      // SOL seeded into the pool
+      buyAmount: investmentAmount,   // SOL used for the first buy swap
+      priorityFee: 0,
+    };
+
+    // If the user provided custom DBC curve configuration via the UI we forward it in
+    // the request so the backend can merge it with the pump.fun-like defaults.
+    if (curveConfigOverrides && Object.keys(curveConfigOverrides).length > 0) {
+      portalParams.curveConfig = curveConfigOverrides;
+    }
+    const payload = {
+      walletAddress: activeWallet.publicKey.toString(),
+      token: { name, ticker, description, imageUrl, websiteUrl, twitter, telegram },
+      isLockLiquidity: false,
+      portalParams
+    };
+    // Request unsigned transactions from backend
+    const response = await fetch(CREATE_TOKEN_METEORA_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!response.ok) {
+      throw new Error(`Meteora token creation failed: ${response.status} ${response.statusText}`);
+    }
+    const data = await response.json();
+    if (data.error) {
+      throw new Error(`Meteora token creation error: ${data.error}`);
+    }
+    // Expect an array of base64-encoded VersionedTransactions
+    let transactions: string[] = Array.isArray(data.transactions)
+      ? data.transactions
+      : data.transactions
+        ? [data.transactions]
+        : [];
+    const {
+      mint,
+      ata,
+      metadataUri,
+      tokenMetadata,
+      pool,
+      decimals,
+      initialSupply,
+      initialSupplyRaw,
+      depositSol,
+      depositLamports,
+      feeSol,
+      feeLamports,
+      isLockLiquidity
+    } = data as any;
+    if (transactions.length === 0) {
+      throw new Error('Expected at least one transaction from server (got none)');
+    }
+    // 1) Build, sign, and simulate all transactions before sending
+    const txObjs: VersionedTransaction[] = transactions.map((txBase64: string, idx: number) => {
+      const tx = VersionedTransaction.deserialize(Buffer.from(txBase64, 'base64'));
+      // Add signature without overwriting existing ones
+      {
+        const messageData = tx.message.serialize();
+        const walletSig = nacl.sign.detached(messageData, activeWallet.keypair.secretKey);
+        tx.addSignature(activeWallet.keypair.publicKey, walletSig);
+      }
+      return tx;
+    });
+    // Simulate all transactions
+    //for (let i = 0; i < txObjs.length; i++) {
+    //  const tx = txObjs[i];
+    //  const sim = await web3Connection.simulateTransaction(tx);
+    //  if (sim.value.err) {
+    //    console.error(sim.value.err);
+    //    console.log(sim)
+    //    // Gather instruction details (guard against undefined instructions)
+    //    const msg = tx.message;
+    //    const instrDetails = Array.isArray(msg.instructions)
+    //      ? msg.instructions.map((ix, idx) => {
+    //          const pid = msg.staticAccountKeys?.[ix.programIdIndex]?.toBase58() ?? '';
+    //          return `${idx}: ${pid} len:${ix.data?.length ?? 0}`;
+    //        }).join('; ')
+    //      : '';
+    //    throw new Error(
+    //      `Simulation failed for tx ${i}: ${JSON.stringify(sim.value.err)}; instructions: ${instrDetails}`
+    //    );
+    //  }
+    //}
+    // 2) Submit all transactions sequentially
+    let signatureMint: string | undefined;
+    let signaturePool: string | undefined;
+    for (let i = 0; i < txObjs.length; i++) {
+      const raw = txObjs[i].serialize();
+      const sig = await web3Connection.sendRawTransaction(raw);
+      const conf = await web3Connection.confirmTransaction(sig);
+      if (conf.value.err) {
+        throw new Error(`Transaction ${i} failed to confirm`);
+      }
+      if (i === 0) signatureMint = sig;
+      if (i === 3) signaturePool = sig;
+    }
+    // Log event for analytics
+    try {
+      logEventToFirestore('token_launched', { walletAddress: activeWallet.publicKey, contractAddress: mint });
+    } catch {}
+    // Return result details
+    return {
+      signatureMint,
+      signaturePool,
+      mint,
+      ata,
+      metadataUri,
+      tokenMetadata,
+      pool,
+      decimals,
+      initialSupply,
+      initialSupplyRaw,
+      depositSol,
+      depositLamports,
+      feeSol,
+      feeLamports,
+      isLockLiquidity
+    };
+  },
   // Send native SOL or SPL token to a recipient address
   sendToken: async (mintAddress: string, recipient: string, amount: number): Promise<string> => {
     const { activeWallet } = get();

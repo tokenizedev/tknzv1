@@ -132,6 +132,67 @@ export interface WalletState {
      * Clear any preview transaction data without executing
      */
     clearPreviewCreateCoin: () => void;
+    /**
+     * Preview a Meteora token + pool creation: returns cost breakdown without on-chain execution
+     */
+    previewMeteoraData: {
+      depositSol: number;
+      depositLamports: number;
+      feeSol: number;
+      feeLamports: number;
+      initialSupply: number;
+      initialSupplyRaw: string;
+      pool: string;
+      decimals: number;
+    } | null;
+    previewMeteoraPool: (params: CoinCreationParams) => Promise<{
+      depositSol: number;
+      depositLamports: number;
+      feeSol: number;
+      feeLamports: number;
+      initialSupply: number;
+      initialSupplyRaw: string;
+      pool: string;
+      decimals: number;
+    }>;
+    /**
+     * Create a new liquidity pool via Meteora: builds, signs, and sends the transaction
+     * Returns pool metadata and signature
+     */
+    /**
+     * Create a new token and liquidity pool via Meteora: calls backend,
+     * signs and sends mint + pool transactions, returns result details.
+     */
+    createMeteoraPool: (params: CoinCreationParams) => Promise<{
+      /** Signature of the mint creation transaction */
+      signatureMint: string;
+      /** Signature of the pool creation transaction */
+      signaturePool: string;
+      /** Mint address of the new token */
+      mint: string;
+      /** Associated token account for the mint */
+      ata: string;
+      /** Metadata URI stored on IPFS */
+      metadataUri: string;
+      /** Pool address created by Meteora */
+      pool: string;
+      /** Token decimals */
+      decimals: number;
+      /** Initial supply (human-readable) */
+      initialSupply: number;
+      /** Initial supply in raw smallest units */
+      initialSupplyRaw: string;
+      /** SOL deposited into the pool (UI units) */
+      depositSol: number;
+      /** SOL deposit in lamports */
+      depositLamports: number;
+      /** Fee SOL amount (UI units) */
+      feeSol: number;
+      /** Fee in lamports */
+      feeLamports: number;
+      /** Whether liquidity is locked */
+      isLockLiquidity: boolean;
+    }>;
     /** Parameters for SDK token create, used to pre-populate form fields */
     initialTokenCreateParams: Partial<CoinCreationParams> | null;
     /** Set initial parameters for SDK token create prefill */
@@ -158,6 +219,14 @@ export interface WalletState {
      * Update the selected exchange
      */
     setSelectedExchange: (exchange: string) => Promise<void>;
+    /**
+     * Optional overrides for Meteora DBC curveConfig
+     */
+    curveConfigOverrides: Record<string, any>;
+    /**
+     * Update DBC curveConfig overrides
+     */
+    setCurveConfigOverrides: (overrides: Record<string, any>) => void;
 }
   
 export interface ArticleData {
